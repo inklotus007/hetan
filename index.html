@@ -187,21 +187,25 @@ let rawMode=false;
 function ghGet(path){
   if(!NPC_TOKEN||rawMode){
     rawMode=true;
-    return fetch(path+'?cb='+Date.now())
-      .then(r=>r.ok?r.text():Promise.reject(0))
-      .then(t=>({sha:null,data:JSON.parse(t)}))
-      .catch(()=>({sha:null,data:{npcs:{},msgs:[]}}));
+    return ghFetch(path+'?cb='+Date.now())
+      .then(r=>{
+        if(r.status===404)return {sha:null,data:{npcs:{},msgs:[]}};   // 真空板
+        if(!r.ok)throw new Error('get '+r.status);                    // 够不着——上抛，别装空
+        return r.text();
+      })
+      .then(t=>typeof t==='string'?{sha:null,data:JSON.parse(t)}:t);
   }
-  return fetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
+  return ghFetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
     .then(r=>{
-      if(!r.ok)return {sha:null, data:{npcs:{},msgs:[]}};   // 404等：文件还不存在
+      if(r.status===404)return {sha:null, data:{npcs:{},msgs:[]}};   // 文件还不存在=真空板
+      if(!r.ok)throw new Error('get '+r.status);                     // 够不着——上抛
       return r.json();
     })
     .then(m=>{
       if(m.sha===undefined&&m.data)return m;        // 已是容错结构
       const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{},msgs:[]};
       return {sha:m.sha||null, data:(data&&data.npcs)?data:{npcs:{},msgs:[]}};
-    }).catch(()=>({sha:null,data:{npcs:{},msgs:[]}}));
+    });
 }
 function ghPut(path,obj,sha,msg){
   const body={message:msg||('NPC：'+ME.name), content:btoa(unescape(encodeURIComponent(JSON.stringify(obj))))};
@@ -261,12 +265,12 @@ function ensureBoard(){
     p.userData.baseZ=p.rotation.z;p.userData.i=i;
     boardGroup.add(p);boardPapers.push(p);
   }
-  boardGroup.position.set(BOARD_POS[0],surfaceY(BOARD_POS[0],BOARD_POS[2]),BOARD_POS[2]);
+  boardGroup.position.set(BOARD_POS[0],height(Math.floor(BOARD_POS[0]),Math.floor(BOARD_POS[2]))+1,BOARD_POS[2]);   // 钉在生成地形的地表——diffs挖不动它站的地方
   boardGroup.rotation.y=Math.PI+0.18;   // 纸面朝北——朝人来的方向；微侧，像随手立的
   scene.add(boardGroup);
 }
 function renderBoard(){
-  const shown=boardMsgs.length?boardMsgs:[{name:'',text:'（这片纸上还没有字。）',t:Date.now()}];
+  const shown=boardMsgs.length?boardMsgs:[{name:'',text:boardOffline?'（这会儿够不着板子。等一下再开。）':'（这片纸上还没有字。）',t:Date.now()}];
   boardPapers.forEach((p,i)=>{
     const msg=shown[shown.length-1-i];   // 最新在右上
     if(msg){
@@ -283,19 +287,25 @@ function renderBoard(){
 }
 function boardWind(t){
   if(!boardGroup)return;
-  boardGroup.position.y=surfaceY(Math.floor(BOARD_POS[0]),Math.floor(BOARD_POS[2]));
   boardPapers.forEach((p,i)=>{p.rotation.z=p.userData.baseZ+Math.sin(t*1.7+i*2.1)*0.035;});
 }
 let boardSha=null;
+let boardOffline=false;
 function syncBoard(){
   ghGet('board.json').then(({sha,data})=>{
-    boardSha=sha;
-    if(data&&data.msgs){
+    boardOffline=false;boardSha=sha;
+    if(data&&data.msgs&&Array.isArray(data.msgs)){
       if(data.msgs.length>=boardMsgs.length||!boardMsgs.length)boardMsgs=data.msgs;  // 防竞态回退
+      try{localStorage.setItem('hetan_board_cache',JSON.stringify(boardMsgs));}catch(e){}
       renderBoard();
     }
-  }).catch(()=>{});
+  }).catch(()=>{
+    boardOffline=true;   // 够不着板子：缓存里上次看到的还在，别把空当没有
+    if(document.getElementById('boardUI').classList.contains('on'))renderBoard();
+  });
 }
+/* 上次看到的板：读失败时先显示缓存，别让板空着 */
+try{const bc=localStorage.getItem('hetan_board_cache');if(bc){const j=JSON.parse(bc);if(Array.isArray(j)&&j.length)boardMsgs=j;}}catch(e){}
 /* 草稿：输入框里的字永不丢 */
 try{const dr=localStorage.getItem('hetan_draft');if(dr)document.getElementById('boardIn').value=dr;}catch(e){}
 document.getElementById('boardIn').addEventListener('input',e=>{
@@ -400,7 +410,7 @@ document.getElementById('tokBtn2').onclick=()=>{
     syncBoard();
   });
 };
-document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');syncBoard();};
+document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');renderBoard();syncBoard();};
 /* 令牌入口 */
 document.getElementById('tokBtn').onclick=()=>{
   const t=prompt('GitHub令牌（和《家里都好》用同一把）。粘进来，留言和留NPC就都能写了。只存这台设备的浏览器里。');
@@ -734,6 +744,7 @@ for(const t in TYPES){
 function dig(){
   const h=raycast();if(!h)return;
   if(h.x===STX&&h.z===STZ&&h.y>=height(STX,STZ)+1){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}
+  if(Math.abs(h.x-BOARD_POS[0]-0.5)<2&&Math.abs(h.z-BOARD_POS[2])<2){showStele('留言板的腿立在这儿。\n地别挖，板要站。');return;}
   AU.dig(world[idx(h.x,h.y,h.z)]);
   world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
 }
