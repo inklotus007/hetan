@@ -59,7 +59,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v13</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v15</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="help"></div>
 <div id="btnBoard">留言板</div>
@@ -559,8 +559,11 @@ function pollNPCs(){
     npcList=Object.values(npcs);
   }).catch(()=>{});
 }
+let worldLoopCount=0;
 function npcLoop(){
   syncBoard();                            // 留言板：有没有令牌都读（raw公开读）
+  worldLoopCount++;
+  if(worldLoopCount%4===0)pullWorld();    // 约每28秒，世界长一次别人的搭建
   if(!NPC_TOKEN){renderNPCs([],performance.now()/1000);setTimeout(npcLoop,9000);return;}
   syncNPCs();
   setTimeout(pollNPCs,3000);
