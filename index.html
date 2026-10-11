@@ -351,9 +351,43 @@ function writeBoard(){
   tip.textContent='写上了，钉牢……';
   const mine={id:'m'+Date.now(),name:ME?ME.name:'客',text,t:Date.now()};
   boardMsgs.push(mine);renderBoard();          // 本地先上墙
-  ghPut('board.json',{msgs:boardMsgs.slice(-60)},boardSha,'留言板：'+ME.name)
-    .then(r=>{boardSha=r.content.sha;inp.value='';localStorage.removeItem('hetan_draft');tip.textContent='钉上了。';syncBoard();})
-    .catch(()=>{boardMsgs=boardMsgs.filter(m=>m!==mine);renderBoard();tip.textContent='没钉上——风大，再试一次。';});
+  mergeWriteBoard(mine,inp,tip,0);
+}
+/* 写纸的规矩：先够到板子（拉远端最新）→把两张纸都钉上（按id去重合并）→带版本锁PUT。
+   够不到板子就不钉——不拿自己手里这一张盖掉别人钉上去的。（10/11的账：读失败的会话PUT了残缺数据，
+   建军的第一句、长贵的三条被一张一张盖掉了。git历史里找回的。） */
+function ghFetch(url,opts,ms){
+  const ctl=new AbortController();const tid=setTimeout(()=>ctl.abort(),ms||8000);
+  return fetch(url,Object.assign({},opts,{signal:ctl.signal})).finally(()=>clearTimeout(tid));
+}
+function mergeWriteBoard(mine,inp,tip,retry){
+  ghFetch('https://api.github.com/repos/inklotus007/hetan/contents/board.json',{headers:ghHeaders()})
+    .then(r=>{
+      if(r.status===404)return {sha:null,_msgs:[]};       // 板子还空着——也是够到了
+      if(!r.ok)throw new Error('get '+r.status);
+      return r.json().then(m=>{
+        let msgs=[];
+        if(m.content){try{const d=JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,'')))));if(d&&Array.isArray(d.msgs))msgs=d.msgs;}catch(e){}}
+        return {sha:m.sha,_msgs:msgs};
+      });
+    })
+    .then(b=>{
+      const ids=new Set(b._msgs.map(x=>x.id));
+      const merged=b._msgs.concat(boardMsgs.filter(x=>!ids.has(x.id)));
+      merged.sort((a,b)=>a.t-b.t);
+      return ghPut('board.json',{msgs:merged.slice(-60)},b.sha,'留言板：'+ME.name)
+        .then(()=>{boardMsgs=merged;renderBoard();inp.value='';localStorage.removeItem('hetan_draft');tip.textContent='钉上了。';})
+        .catch(err=>{
+          const s=+((err.message||'').match(/put (\d+)/)||[0,0])[1];
+          if((s===409||s===422)&&retry<3){boardMsgs=merged;return mergeWriteBoard(mine,inp,tip,retry+1);}  // 别人刚也钉了一张，重拉再钉
+          throw err;
+        });
+    })
+    .catch(()=>{
+      if(retry<3){setTimeout(()=>mergeWriteBoard(mine,inp,tip,retry+1),1200);return;}
+      boardMsgs=boardMsgs.filter(m=>m!==mine);renderBoard();
+      tip.textContent='没钉上——够不着板子，稍后再试一次。';
+    });
 }
 function boardDist(){return Math.hypot(p.x-BOARD_POS[0]-0.5,p.z-BOARD_POS[2]);}
 document.getElementById('boardClose').onclick=()=>document.getElementById('boardUI').classList.remove('on');
