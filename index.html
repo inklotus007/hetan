@@ -125,11 +125,155 @@ function saveDiff(x,y,z,t){
   try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
 }
 
+/* ================= 来客NPC =================
+   配了令牌的来客（和《家里都好》同一个令牌）在河滩上留一个NPC：
+   在线时是本人（别人能看到你走动），走了之后NPC留在滩上，
+   按自己的性子（seed）继续走动——确定性漫游，所有在线的人算出同一个位置。
+   没配令牌就是路过，不留下。 */
+const NPCS_URL='npcs.json';
+const NAMES=['建军','卫国','秀兰','长贵','水生','爱香','拴柱','玉梅','根生','大妮','来福','秋生','凤兰','满仓','银锁','石头'];
+const SKIN=['#e8c39e','#d9a97c','#c69066'];
+const COATS=['#5a7a8c','#7a5a4a','#4a6a52','#8c6a4a','#6a5a7a','#8c4a4a','#5a6a6a','#7a7a4a'];
+let ME=null,NPC_TOKEN=null;
+try{NPC_TOKEN=localStorage.getItem('jldh_token');}catch(e){}
+function meInit(){
+  try{
+    const s=localStorage.getItem('hetan_me');
+    if(s){ME=JSON.parse(s);return;}
+  }catch(e){}
+  const id='p_'+Math.random().toString(36).slice(2,8);
+  const seed=Math.floor(Math.random()*99991);
+  ME={id, name:NAMES[seed%NAMES.length], seed,
+      coat:COATS[seed%COATS.length], skin:SKIN[(seed>>3)%SKIN.length],
+      home:[Math.max(4,Math.min(59,STX+((seed%11)-5))), Math.max(4,Math.min(59,STZ+4+((seed>>2)%7)))]};
+  try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}
+}
+function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
+function ghGet(path){
+  return fetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
+    .then(r=>{
+      if(!r.ok)return {sha:null, data:{npcs:{}}};   // 404等：文件还不存在
+      return r.json();
+    })
+    .then(m=>{
+      if(m.sha===undefined&&m.data)return m;        // 已是容错结构
+      const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{}};
+      return {sha:m.sha||null, data:(data&&data.npcs)?data:{npcs:{}}};
+    }).catch(()=>({sha:null,data:{npcs:{}}}));
+}
+function ghPut(path,obj,sha){
+  const body={message:'NPC：'+ME.name, content:btoa(unescape(encodeURIComponent(JSON.stringify(obj))))};
+  if(sha)body.sha=sha;
+  return fetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{
+    method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)
+  }).then(r=>{if(!r.ok)throw new Error('put '+r.status);return r.json();});
+}
+/* NPC小人渲染 */
+const NPC_ONLINE_TTL=20000, NPC_MAX=32;
+function nameSprite(txt,color){
+  const cv=document.createElement('canvas');cv.width=256;cv.height=64;
+  const g=cv.getContext('2d');
+  g.font='28px Songti SC,serif';g.textAlign='center';g.textBaseline='middle';
+  g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=5;g.strokeText(txt,128,32);
+  g.fillStyle=color;g.fillText(txt,128,32);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
+  sp.scale.set(1.7,0.42,1);return sp;
+}
+function makeNPCBody(npc){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.85,0.32),new THREE.MeshLambertMaterial({color:npc.coat}));
+  body.position.y=0.62;
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.48,0.48,0.48),new THREE.MeshLambertMaterial({color:npc.skin}));
+  head.position.y=1.28;
+  const tag=nameSprite(npc.name,'#f4efe2');tag.position.y=1.95;
+  g.add(body);g.add(head);g.add(tag);
+  g.userData={tag};
+  return g;
+}
+let npcObjs={};   // id -> THREE.Group
+function surfaceY(x,z){
+  for(let y=13;y>=0;y--){const b=get(x,y,z);if(b!==AIR&&b!==8)return y+1;}
+  return 7;
+}
+/* 离线漫游：确定性——同一时刻所有人算出同一位置 */
+function npcPos(npc,tSec){
+  const s=npc.seed;
+  const dx=Math.sin(tSec*0.071+s)*8+Math.sin(tSec*0.021+s*2.7)*5;
+  const dz=Math.cos(tSec*0.052+s*1.3)*9+Math.cos(tSec*0.033+s*0.7)*4;
+  let x=npc.home[0]+0.5+dx, z=npc.home[1]+0.5+dz;
+  x=Math.max(2,Math.min(61,x));z=Math.max(2,Math.min(61,z));
+  return [x,z];
+}
+function renderNPCs(list,tSec){
+  const seen={};
+  list.slice(0,NPC_MAX).forEach(npc=>{
+    if(npc.id===ME.id)return;               // 自己第一人称，不渲染
+    seen[npc.id]=true;
+    let g=npcObjs[npc.id];
+    if(!g){g=makeNPCBody(npc);npcGroup.add(g);npcObjs[npc.id]=g;}
+    let x,z,yaw;
+    const isOnline=npc.online&&(Date.now()-npc.lastSeen<NPC_ONLINE_TTL);
+    if(isOnline){x=npc.pos[0];z=npc.pos[1];yaw=npc.yaw||0;}
+    else{const P=npcPos(npc,tSec);x=P[0];z=P[1];yaw=Math.atan2(Math.cos(tSec*0.052+npc.seed*1.3),-Math.sin(tSec*0.071+npc.seed));}
+    const y=surfaceY(Math.floor(x),Math.floor(z));
+    const bob=(!isOnline&&Math.sin(tSec*2.3+npc.seed)>0.92)?Math.abs(Math.sin(tSec*7))*0.12:0;
+    g.position.set(x,y+bob,z);g.rotation.y=yaw;
+    g.visible=true;
+  });
+  for(const id in npcObjs)if(!seen[id]){npcGroup.remove(npcObjs[id]);delete npcObjs[id];}
+}
+/* 云端同步：只在配了令牌时 */
+let npcSha=null,npcList=[],npcBusy=false;
+function syncNPCs(){
+  if(!NPC_TOKEN||!ME||npcBusy)return;npcBusy=true;
+  ghGet(NPCS_URL).then(({sha,data})=>{
+    npcSha=sha;
+    const npcs=(data&&data.npcs)||{};
+    const now=Date.now();
+    // 自己写进去（心跳）
+    npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
+      home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
+    // 限数：砍最老的
+    const keys=Object.keys(npcs);
+    if(keys.length>40){
+      keys.sort((a,b)=>(npcs[a].lastSeen||0)-(npcs[b].lastSeen||0));
+      keys.slice(0,keys.length-40).forEach(k=>delete npcs[k]);
+    }
+    npcList=Object.values(npcs);
+    return ghPut(NPCS_URL,{npcs:npcs},sha);
+  }).then(()=>{
+    // 拉最新（含别人的在线位置）——省一次GET，用刚写的全量+别人的lastSeen判断在线
+    npcBusy=false;
+  }).catch(()=>{npcBusy=false;});
+}
+function pollNPCs(){
+  if(!NPC_TOKEN||npcBusy)return;
+  ghGet(NPCS_URL).then(({data})=>{
+    const npcs=(data&&data.npcs)||{};
+    // 合并自己（自己的位置以本地为准）
+    if(ME&&npcs[ME.id])npcs[ME.id].pos=[p.x,p.z],npcs[ME.id].yaw=p.yaw;
+    npcList=Object.values(npcs);
+  }).catch(()=>{});
+}
+function npcLoop(){
+  if(!NPC_TOKEN){renderNPCs([],performance.now()/1000);return;}
+  syncNPCs();
+  setTimeout(pollNPCs,3000);
+  setTimeout(npcLoop,7000);
+}
+/* 首次进入 */
+meInit();
+if(NPC_TOKEN){
+  npcLoop();
+  setTimeout(()=>{if(!sessionStorage.getItem('hetan_greeted')){sessionStorage.setItem('hetan_greeted','1');showStele('你叫'+ME.name+'。\n河滩记下你了——走了，人也还在。');}},2600);
+}
+
 /* ================= 渲染 ================= */
 const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 const scene=new THREE.Scene();
+const npcGroup=new THREE.Group();scene.add(npcGroup);   // 来客NPC容器（npcs在NPC模块定义）
 scene.background=new THREE.Color(0x9fc5e0);
 scene.fog=new THREE.Fog(0x9fc5e0,38,92);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.08,200);
@@ -474,6 +618,7 @@ function loop(now){
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
   checkStele();
+  renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
   // 水声：距河越近越响
   if((now|0)%6===0){
     const rz=34+Math.sin(p.x*0.09)*6+Math.cos(p.z*0.07)*4;
