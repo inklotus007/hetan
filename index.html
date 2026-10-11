@@ -59,7 +59,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v15</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v16</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="help"></div>
 <div id="btnBoard">留言板</div>
@@ -240,28 +240,33 @@ function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'applic
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
 let rawMode=false;
+function ghSame(path){
+  return ghFetch(path+'?cb='+Date.now())
+    .then(r=>{
+      if(r.status===404)return {sha:null,data:{npcs:{},msgs:[]}};   // 真空板
+      if(!r.ok)throw new Error('same get '+r.status);
+      return r.text();
+    })
+    .then(t=>typeof t==='string'?{sha:null,data:JSON.parse(t)}:t);
+}
+/* 读世界数据：实时通道优先，断了自动换同源兜底（Pages副本——能打开页面就够得着） */
 function ghGet(path){
   if(!NPC_TOKEN||rawMode){
     rawMode=true;
-    return ghFetch(path+'?cb='+Date.now())
-      .then(r=>{
-        if(r.status===404)return {sha:null,data:{npcs:{},msgs:[]}};   // 真空板
-        if(!r.ok)throw new Error('get '+r.status);                    // 够不着——上抛，别装空
-        return r.text();
-      })
-      .then(t=>typeof t==='string'?{sha:null,data:JSON.parse(t)}:t);
+    return ghSame(path);
   }
   return ghFetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
     .then(r=>{
       if(r.status===404)return {sha:null, data:{npcs:{},msgs:[]}};   // 文件还不存在=真空板
-      if(!r.ok)throw new Error('get '+r.status);                     // 够不着——上抛
+      if(!r.ok)throw new Error('get '+r.status);
       return r.json();
     })
     .then(m=>{
       if(m.sha===undefined&&m.data)return m;        // 已是容错结构
       const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{},msgs:[]};
       return {sha:m.sha||null, data:(data&&data.npcs)?data:{npcs:{},msgs:[]}};
-    });
+    })
+    .catch(()=>ghSame(path));   // 实时通道断了→备用路
 }
 function ghPut(path,obj,sha,msg){
   const body={message:msg||('NPC：'+ME.name), content:btoa(unescape(encodeURIComponent(JSON.stringify(obj))))};
