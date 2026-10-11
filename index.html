@@ -43,7 +43,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span></div>
 <div id="stele"></div>
 <div id="help"></div>
 <div id="hot"></div>
@@ -220,12 +220,20 @@ function physics(dt){
   p.vz=(-ix*sin + iz*cos)*sp;
   p.vy-=22*dt;
   if(p.vy<-40)p.vy=-40;
-  if(keys.jump&&p.ground){p.vy=8.2;p.ground=false;}
+  if(keys.jump&&p.ground){p.vy=8.2;p.ground=false;AU.jump();}
+  // 音效钩子：落地+脚步
+  const preVy=p.vy, wasGround=p.ground;
   moveAxis(p.vx*dt,0,0);
   moveAxis(0,0,p.vz*dt);
   moveAxis(0,p.vy*dt,0);
+  if(!wasGround&&p.ground)AU.land(-preVy);
+  if(p.ground&&Math.hypot(p.vx,p.vz)>1.2){
+    _stepT+=dt;
+    if(_stepT>0.34){_stepT=0;AU.step();}
+  }else _stepT=0.2;
   if(p.y<-20)spawn();
 }
+let _stepT=0.2;
 
 /* ================= 视线（体素DDA） ================= */
 function lookDir(){
@@ -265,6 +273,7 @@ for(const t in TYPES){
 function dig(){
   const h=raycast();if(!h)return;
   if(h.x===STX&&h.z===STZ&&h.y>=height(STX,STZ)+1){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}
+  AU.dig(world[idx(h.x,h.y,h.z)]);
   world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
 }
 function put(){
@@ -274,8 +283,79 @@ function put(){
   if(world[idx(x,y,z)]!==AIR&&world[idx(x,y,z)]!==8)return;
   // 别放进自己身体
   if(curType!==8&&x+1>p.x-PW&&x<p.x+PW&&z+1>p.z-PW&&z<p.z+PW&&y+1>p.y&&y<p.y+PH)return;
+  AU.put();
   world[idx(x,y,z)]=curType;saveDiff(x,y,z,curType);rebuild();
 }
+
+/* ================= 音效（Web Audio合成，零文件） ================= */
+const AU=(function(){
+  let ctx=null,master=null,muted=false;
+  function ensure(){
+    if(muted)return false;
+    if(!ctx){
+      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return false;
+      ctx=new AC();master=ctx.createGain();master.gain.value=0.55;master.connect(ctx.destination);
+      riverStart();
+    }
+    if(ctx.state==='suspended')ctx.resume();
+    return true;
+  }
+  function noiseBuf(dur){
+    const b=ctx.createBuffer(1,Math.max(1,ctx.sampleRate*dur|0),ctx.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;return b;
+  }
+  // 挖：噪声burst，材质定频率（草软石硬）
+  function dig(t){
+    if(!ensure())return;const now=ctx.currentTime;
+    const src=ctx.createBufferSource();src.buffer=noiseBuf(0.13);
+    const f=ctx.createBiquadFilter();f.type='bandpass';
+    f.frequency.value=(t===2||t===3)?1500:(t===4||t===5)?950:650;f.Q.value=1.1;
+    const g=ctx.createGain();g.gain.setValueAtTime(0.5,now);g.gain.exponentialRampToValueAtTime(0.01,now+0.13);
+    src.connect(f);f.connect(g);g.connect(master);src.start(now);
+  }
+  // 放：低频叩
+  function put(){
+    if(!ensure())return;const now=ctx.currentTime;
+    const o=ctx.createOscillator();o.type='triangle';
+    o.frequency.setValueAtTime(190,now);o.frequency.exponentialRampToValueAtTime(85,now+0.08);
+    const g=ctx.createGain();g.gain.setValueAtTime(0.42,now);g.gain.exponentialRampToValueAtTime(0.01,now+0.09);
+    o.connect(g);g.connect(master);o.start(now);o.stop(now+0.1);
+  }
+  function jump(){
+    if(!ensure())return;const now=ctx.currentTime;
+    const o=ctx.createOscillator();o.type='sine';
+    o.frequency.setValueAtTime(150,now);o.frequency.exponentialRampToValueAtTime(320,now+0.1);
+    const g=ctx.createGain();g.gain.setValueAtTime(0.12,now);g.gain.exponentialRampToValueAtTime(0.01,now+0.12);
+    o.connect(g);g.connect(master);o.start(now);o.stop(now+0.13);
+  }
+  function land(v){
+    if(!ensure())return;const now=ctx.currentTime;
+    const src=ctx.createBufferSource();src.buffer=noiseBuf(0.09);
+    const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=380;
+    const g=ctx.createGain();g.gain.setValueAtTime(Math.min(0.4,0.1+v*0.012),now);g.gain.exponentialRampToValueAtTime(0.01,now+0.09);
+    src.connect(f);f.connect(g);g.connect(master);src.start(now);
+  }
+  function step(){
+    if(!ensure())return;const now=ctx.currentTime;
+    const src=ctx.createBufferSource();src.buffer=noiseBuf(0.05);
+    const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=500;f.Q.value=0.8;
+    const g=ctx.createGain();g.gain.setValueAtTime(0.07,now);g.gain.exponentialRampToValueAtTime(0.005,now+0.05);
+    src.connect(f);f.connect(g);g.connect(master);src.start(now);
+  }
+  // 环境水声：噪声循环+带通，音量按距河远近调
+  let rg=null;
+  function riverStart(){
+    const src=ctx.createBufferSource();src.buffer=noiseBuf(2.2);src.loop=true;
+    const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=620;f.Q.value=0.55;
+    rg=ctx.createGain();rg.gain.value=0;
+    src.connect(f);f.connect(rg);rg.connect(master);src.start();
+  }
+  function riverSet(v){ if(rg)rg.gain.setTargetAtTime(muted?0:v,ctx.currentTime,0.4); }
+  function toggleMute(){ muted=!muted; if(master)master.gain.value=muted?0:0.55; return muted; }
+  return {ensure,dig,put,jump,land,step,riverSet,toggleMute};
+})();
+// 解锁：手机上AudioContext要在用户手势里激活
+['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev,()=>AU.ensure(),{passive:true}));
 
 /* ================= 输入 ================= */
 const keys={w:false,s:false,a:false,d:false,jump:false};
@@ -394,12 +474,25 @@ function loop(now){
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
   checkStele();
+  // 水声：距河越近越响
+  if((now|0)%6===0){
+    const rz=34+Math.sin(p.x*0.09)*6+Math.cos(p.z*0.07)*4;
+    const dz=Math.abs(p.z-rz);
+    AU.riverSet(Math.max(0,1-dz/16)*0.4);
+  }
   renderer.render(scene,camera);
 }
 addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
+document.getElementById('mute').addEventListener('click',e=>{
+  const m=AU.toggleMute();e.target.textContent=m?'♪̶':'♪';e.target.style.opacity=m?.4:.85;
+});
+document.getElementById('mute').addEventListener('touchstart',e=>{
+  e.preventDefault();e.stopPropagation();
+  const m=AU.toggleMute();e.target.textContent=m?'♪̶':'♪';e.target.style.opacity=m?.4:.85;
+},{passive:false});
 requestAnimationFrame(loop);
 const bt=document.getElementById('boot');
 bt.style.opacity=0;setTimeout(()=>bt.style.display='none',700);
