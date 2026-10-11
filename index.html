@@ -59,7 +59,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v16</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v17</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="diag" style="position:fixed;top:calc(30px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:10px;color:rgba(244,239,226,.75);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px"></div>
 <div id="help"></div>
@@ -194,7 +194,11 @@ function pushWorld(){
       else{a[k]=v;const ri=r.findIndex(p=>p[0]===x&&p[1]===y&&p[2]===z);if(ri>=0)r.splice(ri,1);}
     }
     return ghPut('world.json',{diffs:{r:r,a:a}},worldSha,'河滩：'+ME.name+'动了'+Object.keys(local).length+'格')
-      .then(()=>{worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;});
+      .then(()=>{
+        worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
+        diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
+        try{localStorage.removeItem(SKEY);}catch(e){}
+      });
   }).catch(()=>{worldBusy=false;});
 }
 let worldPulled=false,worldCells=0;
@@ -266,7 +270,7 @@ function ghGet(path){
     .then(m=>{
       if(m.sha===undefined&&m.data)return m;        // 已是容错结构
       const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{},msgs:[]};
-      return {sha:m.sha||null, data:(data&&data.npcs)?data:{npcs:{},msgs:[]}};
+      return {sha:m.sha||null, data:(data&&(data.npcs||data.msgs||data.diffs))?data:{npcs:{},msgs:[]}};
     })
     .catch(()=>ghSame(path));   // 实时通道断了→备用路
 }
