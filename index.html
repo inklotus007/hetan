@@ -155,6 +155,55 @@ function saveDiff(x,y,z,t){
   if(t===AIR){if(!diffs.r.some(p=>p[0]===x&&p[1]===y&&p[2]===z))diffs.r.push([x,y,z]);delete diffs.a[key];}
   else{diffs.a[key]=t;diffs.r=diffs.r.filter(p=>!(p[0]===x&&p[1]===y&&p[2]===z));}
   try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
+  worldDirty=true;   // 搭的东西要上云——别人也看得到
+}
+let worldDirty=false;
+
+/* ---- 世界共享：diffs上云（伊卡洛斯的花台只在它自己的浏览器里——共享机制补上，搭一次全看得见） ---- */
+let worldSha=null,worldBusy=false;
+function remoteDiffs(data){
+  // 兼容两种格式：{diffs:{r,a}}（伊卡洛斯的花台用的）和{cells:{k:{t,v}}}（初版）
+  const r=[],a={};
+  if(data&&data.diffs){
+    (data.diffs.r||[]).forEach(p=>{if(Array.isArray(p))r.push(p);});
+    Object.assign(a,data.diffs.a||{});
+  }
+  if(data&&data.cells){
+    for(const k in data.cells){
+      const v=data.cells[k].v;
+      if(v===0){const[x,y,z]=k.split(',').map(Number);if(!r.some(p=>p[0]===x&&p[1]===y&&p[2]===z))r.push([x,y,z]);}
+      else a[k]=v;
+    }
+  }
+  return {r:r,a:a};
+}
+function pushWorld(){
+  if(!NPC_TOKEN||worldBusy||!worldDirty)return;
+  worldBusy=true;
+  const local=localCells();
+  ghGet('world.json').then(({sha,data})=>{
+    worldSha=sha;
+    const rd=remoteDiffs(data);
+    const a=Object.assign({},rd.a), r=rd.r.slice();
+    for(const k in local){
+      const v=local[k].v;
+      const[x,y,z]=k.split(',').map(Number);
+      if(v===0){if(!r.some(p=>p[0]===x&&p[1]===y&&p[2]===z))r.push([x,y,z]);delete a[k];}
+      else{a[k]=v;const ri=r.findIndex(p=>p[0]===x&&p[1]===y&&p[2]===z);if(ri>=0)r.splice(ri,1);}
+    }
+    return ghPut('world.json',{diffs:{r:r,a:a}},worldSha,'河滩：'+ME.name+'动了'+Object.keys(local).length+'格')
+      .then(()=>{worldBusy=false;worldDirty=false;});
+  }).catch(()=>{worldBusy=false;});
+}
+function pullWorld(){
+  return ghGet('world.json').then(({data})=>{
+    const rd=remoteDiffs(data);
+    let n=0;
+    rd.r.forEach(p=>{const[x,y,z]=p;if(inW(x,y,z)&&world[idx(x,y,z)]!==AIR){world[idx(x,y,z)]=AIR;n++;}});
+    for(const k in rd.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z)&&world[idx(x,y,z)]!==rd.a[k]){world[idx(x,y,z)]=rd.a[k];n++;}}
+    if(n)rebuild();
+    return n;
+  }).catch(()=>0);
 }
 
 /* ================= 来客NPC =================
@@ -634,6 +683,7 @@ function rebuild(){
   for(const t in meshes){meshes[t].count=counts[t];meshes[t].instanceMatrix.needsUpdate=true;}
 }
 rebuild();
+pullWorld().then(()=>{/* 云端的花台、别人搭的一切，叠上来 */});
 
 /* ---- 杨棉 ---- */
 const FLOC=260;
@@ -689,9 +739,18 @@ function physics(dt){
   const sp=4.4, sin=Math.sin(p.yaw),cos=Math.cos(p.yaw);
   p.vx=(ix*cos + iz*sin)*sp;
   p.vz=(-ix*sin + iz*cos)*sp;
-  p.vy-=22*dt;
-  if(p.vy<-40)p.vy=-40;
-  if(keys.jump&&p.ground){p.vy=8.2;p.ground=false;AU.jump();}
+  const inWater=get(Math.floor(p.x),Math.floor(p.y+0.3),Math.floor(p.z))===8||get(Math.floor(p.x),Math.floor(p.y+1.1),Math.floor(p.z))===8;
+  if(inWater){
+    p.vy-=3.2*dt;                              // 浮力：水里沉得慢
+    if(keys.jump)p.vy+=30*dt;                  // 划水上升
+    p.vy=Math.max(-1.1,Math.min(2.4,p.vy));
+    const headOut=get(Math.floor(p.x),Math.floor(p.y+1.75),Math.floor(p.z))!==8;
+    if(keys.jump&&headOut&&get(Math.floor(p.x),Math.floor(p.y+0.3),Math.floor(p.z))===8){p.vy=5.2;keys.jump=false;}  // 出水一跃
+  }else{
+    p.vy-=22*dt;
+    if(p.vy<-40)p.vy=-40;
+  }
+  if(keys.jump&&p.ground&&!inWater){p.vy=8.2;p.ground=false;AU.jump();}
   // 音效钩子：落地+脚步
   const preVy=p.vy, wasGround=p.ground;
   moveAxis(p.vx*dt,0,0);
@@ -957,6 +1016,7 @@ function loop(now){
   tickHighlight();
   renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
   ensureBoard();boardWind(now/1000);
+  if((now|0)%3===0)pushWorld();   // 三秒一查，搭了就上云
   const nearBoard=boardDist()<4.5;
   document.getElementById('btnBoard').style.display=nearBoard?'block':'none';
   // 水声：距河越近越响
