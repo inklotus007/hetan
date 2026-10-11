@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>河滩 · 一九九五年四月</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:Georgia,'Songti SC',serif;touch-action:none}
+#c{display:block;width:100%;height:100%}
+/* 准星 */
+#xhair{position:fixed;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none;z-index:5}
+#xhair:before,#xhair:after{content:'';position:absolute;background:rgba(255,255,255,.85);box-shadow:0 0 2px rgba(0,0,0,.5)}
+#xhair:before{left:8px;top:0;width:2px;height:18px}
+#xhair:after{left:0;top:8px;width:18px;height:2px}
+/* 顶栏 */
+#top{position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;text-align:center;color:#f4efe2;font-size:13px;letter-spacing:4px;text-shadow:0 1px 3px rgba(40,50,60,.5);pointer-events:none;z-index:4}
+#top small{display:block;font-size:11px;letter-spacing:2px;opacity:.85;margin-top:2px}
+/* 热栏 */
+#hot{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:6px;z-index:6}
+.slot{width:40px;height:40px;border:2px solid rgba(255,255,255,.5);border-radius:5px;cursor:pointer;position:relative;box-shadow:0 2px 6px rgba(30,40,50,.35)}
+.slot.on{border-color:#ffe9a8;box-shadow:0 0 0 2px rgba(255,233,168,.55),0 2px 6px rgba(30,40,50,.35)}
+.slot span{position:absolute;left:0;right:0;bottom:-16px;text-align:center;font-size:10px;color:#f4efe2;text-shadow:0 1px 2px rgba(40,50,60,.6);white-space:nowrap}
+/* 移动端按钮 */
+.mbtn{position:fixed;z-index:7;width:58px;height:58px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(50,60,70,.38);color:#f4efe2;font-size:16px;letter-spacing:2px;display:none;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;font-family:inherit}
+.mbtn:active{background:rgba(50,60,70,.6)}
+#btnDig{right:calc(18px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom))}
+#btnPut{right:calc(88px + env(safe-area-inset-right));bottom:calc(160px + env(safe-area-inset-bottom))}
+#btnJmp{right:calc(18px + env(safe-area-inset-right));bottom:calc(180px + env(safe-area-inset-bottom))}
+/* 摇杆 */
+#stickBase{position:fixed;z-index:7;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:rgba(50,60,70,.25);display:none;pointer-events:none}
+#stickKnob{position:fixed;z-index:8;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.5);display:none;pointer-events:none}
+/* 碑文 */
+#stele{position:fixed;left:50%;top:16%;transform:translateX(-50%);max-width:min(520px,86vw);padding:14px 22px;background:rgba(24,28,32,.72);color:#efe8d8;font-size:14px;line-height:2;letter-spacing:1px;border-radius:4px;border:1px solid rgba(255,240,200,.25);opacity:0;transition:opacity .8s;pointer-events:none;z-index:9;text-align:center}
+/* 载入 */
+#boot{position:fixed;inset:0;background:#9fc5e0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;transition:opacity .6s}
+#boot h1{color:#f4efe2;font-size:26px;letter-spacing:8px;font-weight:normal;text-shadow:0 2px 6px rgba(40,50,60,.4)}
+#boot p{color:#eef4f8;font-size:12px;letter-spacing:2px;margin-top:12px}
+#help{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-size:11px;color:rgba(244,239,226,.9);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
+<canvas id="c"></canvas>
+<div id="xhair"></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small></div>
+<div id="stele"></div>
+<div id="help"></div>
+<div id="hot"></div>
+<div class="mbtn" id="btnDig">挖</div>
+<div class="mbtn" id="btnPut">放</div>
+<div class="mbtn" id="btnJmp">跳</div>
+<div id="stickBase"></div><div id="stickKnob"></div>
+<script src="three.min.js"></script>
+<script>
+/* ================= 基础 ================= */
+const W=64, D=64, H=14;               // 世界尺寸
+const AIR=0;
+// 方块类型: 1草 2土 3石 4沙 5木 6叶 7砖 8水
+const TYPES={
+  1:{n:'草', c:0x7aa25c},
+  2:{n:'土', c:0x8a6a48},
+  3:{n:'石', c:0x8d8d8a},
+  4:{n:'沙', c:0xd6c58c},
+  5:{n:'木', c:0x7a5b3a},
+  6:{n:'叶', c:0x5d8a4a},
+  7:{n:'砖', c:0xa8563e},
+  8:{n:'水', c:0x4d8fae, water:true}
+};
+const world=new Uint8Array(W*H*D);
+const idx=(x,y,z)=>(x*D+z)*H+y;
+const inW=(x,y,z)=>x>=0&&x<W&&y>=0&&y<H&&z>=0&&z<D;
+const get=(x,y,z)=>inW(x,y,z)?world[idx(x,y,z)]:AIR;
+
+/* ---- 地形：河滩 + 老柳树 ---- */
+function hash(x,z){let h=Math.sin(x*127.1+z*311.7)*43758.5453;return h-Math.floor(h);}
+function height(x,z){
+  // 河从东北向西南弯过去，滩地沿河
+  const river=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4; // 河道中心线的z偏移
+  const dz=Math.abs(z-(34+river));                    // 距河中心
+  let h;
+  if(dz<5)      h=2+Math.round(dz*0.3);               // 河床
+  else if(dz<11) h=4+Math.round((dz-5)*0.5);          // 滩
+  else          h=6+Math.round((dz-11)*0.35+hash(x,z)*1.6); // 岸上缓坡
+  return Math.max(1,Math.min(H-3,h));
+}
+for(let x=0;x<W;x++)for(let z=0;z<D;z++){
+  const h=height(x,z), river=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4, dz=Math.abs(z-(34+river));
+  for(let y=0;y<=h;y++){
+    let t;
+    if(dz<5)       t=(y===h)?4:3;                       // 河底：沙面石身
+    else if(dz<9)  t=(y===h)?4:2;                       // 滩：沙面土身
+    else           t=(y===h)?1:(y>h-3?2:3);             // 岸：草面土石
+    if(dz<7&&y===h) t=4;                                // 水边全沙
+    world[idx(x,y,z)]=t;
+  }
+  if(dz>=6&&dz<8.5&&h>=3) world[idx(x,h,z)]=8;          // 浅水
+}
+// 老柳树：岸上几棵
+const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26]];
+trees.forEach(([tx,tz])=>{
+  const h=height(tx,tz); if(h<5)return;
+  const th=3+Math.floor(hash(tx,tz)*2);
+  for(let y=h+1;y<=h+th;y++)world[idx(tx,y,tz)]=5;      // 干
+  for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=0;dy<=2;dy++){
+    const r=Math.abs(dx)+Math.abs(dz)+dy*1.4;
+    if(r<=3.4&&!(dx===0&&dz===0&&dy<1)){const X=tx+dx,Z=tz+dz,Y=h+th+dy-1;if(inW(X,Y,Z)&&!world[idx(X,Y,Z)])world[idx(X,Y,Z)]=6;}
+  }
+});
+// 碑：出生点旁
+const STX=34,STZ=20;
+{const h=height(STX,STZ);
+ world[idx(STX,h+1,STZ)]=3;world[idx(STX,h+2,STZ)]=3;world[idx(STX-1,h+1,STZ)]=3;world[idx(STX+1,h+1,STZ)]=3;}
+
+/* ---- 存档（diff） ---- */
+const SKEY='hetan_save_v1';
+let diffs={r:[],a:{}};
+try{const s=localStorage.getItem(SKEY);if(s)diffs=JSON.parse(s);}catch(e){}
+diffs.r.forEach(([x,y,z])=>{if(inW(x,y,z))world[idx(x,y,z)]=AIR;});
+for(const k in diffs.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z))world[idx(x,y,z)]=diffs.a[k];}
+function saveDiff(x,y,z,t){
+  const key=x+','+y+','+z;
+  if(t===AIR){if(!diffs.r.some(p=>p[0]===x&&p[1]===y&&p[2]===z))diffs.r.push([x,y,z]);delete diffs.a[key];}
+  else{diffs.a[key]=t;diffs.r=diffs.r.filter(p=>!(p[0]===x&&p[1]===y&&p[2]===z));}
+  try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
+}
+
+/* ================= 渲染 ================= */
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9fc5e0);
+scene.fog=new THREE.Fog(0x9fc5e0,38,92);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.08,200);
+scene.add(new THREE.AmbientLight(0xdfeaf2,0.85));
+const sun=new THREE.DirectionalLight(0xfff2dd,0.75);
+sun.position.set(40,60,20);scene.add(sun);
+
+// 几何：普通方块 + 水稍矮半透明
+const geo=new THREE.BoxGeometry(1,1,1);
+const meshes={};
+for(const t in TYPES){
+  const m=new THREE.MeshLambertMaterial({color:TYPES[t].c});
+  if(TYPES[t].water){m.transparent=true;m.opacity=0.55;}
+  meshes[t]=new THREE.InstancedMesh(geo,m,W*H*D);
+  meshes[t].count=0;meshes[t].frustumCulled=false;
+  scene.add(meshes[t]);
+}
+const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8;};
+const exposed=(x,y,z)=>{
+  return get(x,y+1,z)===AIR||get(x,y-1,z)===AIR||get(x+1,y,z)===AIR||get(x-1,y,z)===AIR||get(x,y,z+1)===AIR||get(x,y,z-1)===AIR;
+};
+const _m=new THREE.Matrix4();
+function rebuild(){
+  const counts={};for(const t in meshes)counts[t]=0;
+  for(let x=0;x<W;x++)for(let z=0;z<D;z++)for(let y=0;y<H;y++){
+    const t=world[idx(x,y,z)];if(t===AIR)continue;
+    if(!exposed(x,y,z))continue;
+    const mesh=meshes[t],i=counts[t]++;
+    _m.makeTranslation(x+0.5, y+0.5, z+0.5);mesh.setMatrixAt(i,_m);
+  }
+  for(const t in meshes){meshes[t].count=counts[t];meshes[t].instanceMatrix.needsUpdate=true;}
+}
+rebuild();
+
+/* ---- 杨棉 ---- */
+const FLOC=260;
+const fGeo=new THREE.BufferGeometry();
+const fPos=new Float32Array(FLOC*3), fSeed=new Float32Array(FLOC);
+for(let i=0;i<FLOC;i++){fPos[i*3]=Math.random()*W;fPos[i*3+1]=Math.random()*14+2;fPos[i*3+2]=Math.random()*D;fSeed[i]=Math.random()*100;}
+fGeo.setAttribute('position',new THREE.BufferAttribute(fPos,3));
+const floss=new THREE.Points(fGeo,new THREE.PointsMaterial({color:0xffffff,size:0.13,transparent:true,opacity:0.85}));
+scene.add(floss);
+function tickFloss(t){
+  for(let i=0;i<FLOC;i++){
+    let x=fPos[i*3],y=fPos[i*3+1],z=fPos[i*3+2];
+    x+=Math.sin(t*0.0004+fSeed[i])*0.012+0.008;
+    z+=Math.cos(t*0.0003+fSeed[i])*0.010;
+    y+=Math.sin(t*0.0006+fSeed[i]*2)*0.006;
+    if(x>W+2)x=-2; if(z>D+2)z=-2; if(z<-2)z=D+2; if(y<0.5)y=13; if(y>14)y=1;
+    fPos[i*3]=x;fPos[i*3+1]=y;fPos[i*3+2]=z;
+  }
+  fGeo.attributes.position.needsUpdate=true;
+}
+
+/* ================= 玩家与物理 ================= */
+const PW=0.30, PH=1.75, EYE=1.62;
+const p={x:STX+0.5,y:height(STX,STZ+3)+3,z:STZ+3+0.5,vx:0,vy:0,vz:0,yaw:Math.PI,pitch:-0.06,ground:false};
+const spawn=()=>{p.x=STX+0.5;p.z=STZ+3+0.5;p.y=height(STX,STZ+3)+3;p.vy=0;};
+const boxBlocks=(minx,miny,minz,maxx,maxy,maxz,fn)=>{
+  for(let x=Math.floor(minx);x<=Math.floor(maxx);x++)
+  for(let y=Math.floor(miny);y<=Math.floor(maxy);y++)
+  for(let z=Math.floor(minz);z<=Math.floor(maxz);z++)if(fn(x,y,z))return true;
+  return false;
+};
+const hitAny=(minx,miny,minz,maxx,maxy,maxz)=>boxBlocks(minx,miny,minz,maxx,maxy,maxz,solid);
+function moveAxis(dx,dy,dz){
+  p.x+=dx;p.z+=dz;
+  const y0=p.y, y1=p.y+PH;
+  if(hitAny(p.x-PW,y0+0.02,p.z-PW,p.x+PW,y1-0.02,p.z+PW)){
+    p.x-=dx;p.z-=dz;
+  }
+  p.y+=dy;
+  if(hitAny(p.x-PW+0.02,p.y,p.z-PW+0.02,p.x+PW-0.02,p.y+PH,p.z+PW-0.02)){
+    if(dy<0){p.y=Math.floor(p.y)+1.0001;p.ground=true;}
+    else{p.y=Math.ceil(p.y+PH)-PH-0.0001;}
+    p.vy=0;
+  }else if(dy<-0.001)p.ground=false;
+}
+function physics(dt){
+  // 输入方向（相机系）
+  let ix=0,iz=0;
+  if(keys.w)iz-=1; if(keys.s)iz+=1; if(keys.a)ix-=1; if(keys.d)ix+=1;
+  ix+=stick.x; iz+=stick.y;
+  const len=Math.hypot(ix,iz);
+  if(len>1){ix/=len;iz/=len;}
+  const sp=4.4, sin=Math.sin(p.yaw),cos=Math.cos(p.yaw);
+  p.vx=(ix*cos - iz*sin)*sp;
+  p.vz=(ix*sin + iz*cos)*sp;
+  p.vy-=22*dt;
+  if(p.vy<-40)p.vy=-40;
+  if(keys.jump&&p.ground){p.vy=8.2;p.ground=false;}
+  moveAxis(p.vx*dt,0,0);
+  moveAxis(0,0,p.vz*dt);
+  moveAxis(0,p.vy*dt,0);
+  if(p.y<-20)spawn();
+}
+
+/* ================= 视线（体素DDA） ================= */
+function lookDir(){
+  return new THREE.Vector3(
+    -Math.sin(p.yaw)*Math.cos(p.pitch),
+    Math.sin(p.pitch),
+    -Math.cos(p.yaw)*Math.cos(p.pitch)
+  );
+}
+function raycast(maxDist=5.2){
+  const o={x:p.x,y:p.y+EYE,z:p.z}, d=lookDir();
+  let x=Math.floor(o.x),y=Math.floor(o.y),z=Math.floor(o.z);
+  const stepX=d.x>0?1:-1,stepY=d.y>0?1:-1,stepZ=d.z>0?1:-1;
+  const tdx=Math.abs(1/(d.x||1e-9)),tdy=Math.abs(1/(d.y||1e-9)),tdz=Math.abs(1/(d.z||1e-9));
+  let tmx=((d.x>0?x+1-o.x:o.x-x))*tdx, tmy=((d.y>0?y+1-o.y:o.y-y))*tdy, tmz=((d.z>0?z+1-o.z:o.z-z))*tdz;
+  let nx=0,ny=0,nz=0,t=0;
+  while(t<=maxDist){
+    if(solid(x,y,z))return{x,y,z,nx,ny,nz};
+    if(tmx<tmy&&tmx<tmz){x+=stepX;t=tmx;tmx+=tdx;nx=-stepX;ny=0;nz=0;}
+    else if(tmy<tmz){y+=stepY;t=tmy;tmy+=tdy;nx=0;ny=-stepY;nz=0;}
+    else{z+=stepZ;t=tmz;tmz+=tdz;nx=0;ny=0;nz=-stepZ;}
+  }
+  return null;
+}
+
+/* ================= 交互：挖 / 放 ================= */
+let curType=1;
+const hot=document.getElementById('hot');
+for(const t in TYPES){
+  const s=document.createElement('div');s.className='slot'+(+t===1?' on':'');
+  s.style.background='#'+TYPES[t].c.toString(16).padStart(6,'0');
+  if(TYPES[t].water)s.innerHTML='<span>水</span>';
+  else s.innerHTML='<span>'+TYPES[t].n+'</span>';
+  s.onclick=()=>{curType=+t;[...hot.children].forEach(c=>c.classList.remove('on'));s.classList.add('on');};
+  hot.appendChild(s);
+}
+function dig(){
+  const h=raycast();if(!h)return;
+  if(h.x===STX&&h.z===STZ&&h.y>=height(STX,STZ)+1){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}
+  world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
+}
+function put(){
+  const h=raycast();if(!h)return;
+  const x=h.x+h.nx,y=h.y+h.ny,z=h.z+h.nz;
+  if(!inW(x,y,z))return;
+  if(world[idx(x,y,z)]!==AIR&&world[idx(x,y,z)]!==8)return;
+  // 别放进自己身体
+  if(curType!==8&&x+1>p.x-PW&&x<p.x+PW&&z+1>p.z-PW&&z<p.z+PW&&y+1>p.y&&y<p.y+PH)return;
+  world[idx(x,y,z)]=curType;saveDiff(x,y,z,curType);rebuild();
+}
+
+/* ================= 输入 ================= */
+const keys={w:false,s:false,a:false,d:false,jump:false};
+const stick={x:0,y:0};
+const isTouch=('ontouchstart'in window)||navigator.maxTouchPoints>0;
+const tpos=t=>({x:t.clientX,y:t.clientY});
+document.getElementById('help').textContent=isTouch
+  ?'左下摇杆走 · 右侧滑动转视角 · 短点屏幕挖 · 长按放'
+  :'WASD走 · 鼠标转视角（点击画面锁定）· 左键挖 · 右键放 · 空格跳';
+
+// 桌面
+const canvas=renderer.domElement;
+let dragging=false;
+canvas.addEventListener('click',()=>{if(!isTouch&&!dragging){canvas.requestPointerLock&&canvas.requestPointerLock();}});
+document.addEventListener('pointerlockchange',()=>{dragging=document.pointerLockElement===canvas;});
+document.addEventListener('mousemove',e=>{
+  if(document.pointerLockElement!==canvas)return;
+  p.yaw-=e.movementX*0.0026;
+  p.pitch=Math.max(-1.45,Math.min(1.45,p.pitch-e.movementY*0.0026));
+});
+document.addEventListener('mousedown',e=>{
+  if(document.pointerLockElement!==canvas)return;
+  if(e.button===0)dig(); else if(e.button===2)put();
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('keydown',e=>{
+  if(e.code==='KeyW')keys.w=true;if(e.code==='KeyS')keys.s=true;
+  if(e.code==='KeyA')keys.a=true;if(e.code==='KeyD')keys.d=true;
+  if(e.code==='Space'){keys.jump=true;e.preventDefault();}
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='KeyW')keys.w=false;if(e.code==='KeyS')keys.s=false;
+  if(e.code==='KeyA')keys.a=false;if(e.code==='KeyD')keys.d=false;
+  if(e.code==='Space')keys.jump=false;
+});
+
+// 移动端：左半屏摇杆，右半屏滑视角；右屏「点按=挖，长按=放」（移动过就不算长按）
+let lookId=null,lx=0,ly=0;
+let stickId=null,sx0=0,sy0=0;
+let pressTimer=null,pressed=false,lookMoved=false;
+const stickBase=document.getElementById('stickBase'),stickKnob=document.getElementById('stickKnob');
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    const pos=tpos(t);
+    if(pos.x<innerWidth*0.45&&stickId===null){
+      stickId=t.identifier;sx0=pos.x;sy0=pos.y;
+      stickBase.style.display=stickKnob.style.display='block';
+      stickBase.style.left=(sx0-55)+'px';stickBase.style.top=(sy0-55)+'px';
+      stickKnob.style.left=(sx0-24)+'px';stickKnob.style.top=(sy0-24)+'px';
+    }else if(lookId===null){
+      lookId=t.identifier;lx=pos.x;ly=pos.y;lookMoved=false;
+      pressed=true;
+      clearTimeout(pressTimer);
+      pressTimer=setTimeout(()=>{if(pressed&&!lookMoved){put();pressed=false;}},430);
+    }
+  }
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    const pos=tpos(t);
+    if(t.identifier===stickId){
+      let dx=pos.x-sx0,dy=pos.y-sy0;
+      const L=Math.hypot(dx,dy),max=48;
+      if(L>max){dx=dx/L*max;dy=dy/L*max;}
+      stick.x=dx/max;stick.y=dy/max;
+      stickKnob.style.left=(sx0+dx-24)+'px';stickKnob.style.top=(sy0+dy-24)+'px';
+    }else if(t.identifier===lookId){
+      const dx=pos.x-lx,dy=pos.y-ly;
+      if(Math.hypot(dx,dy)>6)lookMoved=true;   // 动了就取消长按
+      p.yaw-=dx*0.005;
+      p.pitch=Math.max(-1.45,Math.min(1.45,p.pitch-dy*0.005));
+      lx=pos.x;ly=pos.y;
+    }
+  }
+},{passive:false});
+function tend(e){
+  for(const t of e.changedTouches){
+    if(t.identifier===stickId){stickId=null;stick.x=stick.y=0;stickBase.style.display=stickKnob.style.display='none';}
+    if(t.identifier===lookId){
+      clearTimeout(pressTimer);
+      if(pressed&&!lookMoved)dig();
+      pressed=false;lookId=null;
+    }
+  }
+}
+canvas.addEventListener('touchend',tend);canvas.addEventListener('touchcancel',tend);
+if(isTouch){['btnDig','btnPut','btnJmp'].forEach(id=>document.getElementById(id).style.display='flex');}
+document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();dig();},{passive:false});
+document.getElementById('btnPut').addEventListener('touchstart',e=>{e.preventDefault();put();},{passive:false});
+document.getElementById('btnJmp').addEventListener('touchstart',e=>{e.preventDefault();keys.jump=true;},{passive:false});
+document.getElementById('btnJmp').addEventListener('touchend',e=>{e.preventDefault();keys.jump=false;},{passive:false});
+
+/* ================= 碑文 ================= */
+const stele=document.getElementById('stele');
+let steleShown=false;
+function checkStele(){
+  const d=Math.hypot(p.x-STX-0.5,p.z-STZ-0.5);
+  if(d<5.5&&!steleShown){steleShown=true;showStele('河滩是大家的。\n\n——搭吧。搭什么都不迟。\n\n宋');}
+  if(d>=6.5&&steleShown){steleShown=false;stele.style.opacity=0;}
+}
+function showStele(txt){
+  stele.innerText=txt;stele.style.opacity=1;
+  clearTimeout(stele._t);stele._t=setTimeout(()=>{stele.style.opacity=0;steleShown=false;},5200);
+}
+
+/* ================= 主循环 ================= */
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  physics(dt);
+  camera.position.set(p.x,p.y+EYE,p.z);
+  camera.rotation.set(0,0,0);
+  camera.rotateY(p.yaw);camera.rotateX(p.pitch);
+  tickFloss(now);
+  checkStele();
+  renderer.render(scene,camera);
+}
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+requestAnimationFrame(loop);
+const bt=document.getElementById('boot');
+bt.style.opacity=0;setTimeout(()=>bt.style.display='none',700);
+</script>
+</body>
+</html>
