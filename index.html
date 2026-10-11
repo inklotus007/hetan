@@ -148,7 +148,8 @@ const STX=34,STZ=20;
 const SKEY='hetan_save_v1';
 let diffs={r:[],a:{}};
 try{const s=localStorage.getItem(SKEY);if(s)diffs=JSON.parse(s);}catch(e){}
-if(diffs.r.length||Object.keys(diffs.a).length)worldDirty=true;   // 存量的搭也上云
+let worldDirty=false;   // 存量的搭也上云（声明必须在最前——v14的TDZ死法）
+if(diffs.r.length||Object.keys(diffs.a).length)worldDirty=true;
 diffs.r.forEach(([x,y,z])=>{if(inW(x,y,z))world[idx(x,y,z)]=AIR;});
 for(const k in diffs.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z))world[idx(x,y,z)]=diffs.a[k];}
 function saveDiff(x,y,z,t){
@@ -158,7 +159,6 @@ function saveDiff(x,y,z,t){
   try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
   worldDirty=true;   // 搭的东西要上云——别人也看得到
 }
-let worldDirty=false;
 
 /* ---- 世界共享：diffs上云（伊卡洛斯的花台只在它自己的浏览器里——共享机制补上，搭一次全看得见） ---- */
 let worldSha=null,worldBusy=false;
