@@ -37,15 +37,42 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 #boot h1{color:#f4efe2;font-size:26px;letter-spacing:8px;font-weight:normal;text-shadow:0 2px 6px rgba(40,50,60,.4)}
 #boot p{color:#eef4f8;font-size:12px;letter-spacing:2px;margin-top:12px}
 #help{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-size:11px;color:rgba(244,239,226,.9);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px}
+/* 留言板UI（纸质） */
+#boardUI{position:fixed;inset:0;background:rgba(20,16,8,.45);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
+#boardUI.on{display:flex}
+#boardCard{background:#f3ecd8;color:#3a2f1e;max-width:400px;width:100%;max-height:80vh;display:flex;flex-direction:column;border:1px solid #d8caa4;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+#boardHead{padding:10px 14px;border-bottom:1px solid #d8caa4;letter-spacing:3px;font-size:13px;color:#8a7448;display:flex;justify-content:space-between;align-items:center}
+#boardHead b{cursor:pointer;font-weight:normal}
+#boardList{overflow-y:auto;padding:8px 14px;flex:1;min-height:120px}
+.bMsg{padding:7px 2px;border-bottom:1px dashed #ddd0ac;font-size:13px;line-height:1.55}
+.bMsg .bn{color:#8a7448;font-size:12px;margin-right:6px}
+.bMsg .bt{color:#a09478;font-size:11px;margin-left:6px}
+#boardFoot{padding:10px 14px;border-top:1px solid #d8caa4}
+#boardIn{width:100%;height:52px;background:#faf6ea;border:1px solid #d0c29c;color:#3a2f1e;font-family:inherit;font-size:13px;padding:6px 8px;resize:none}
+#boardGo{margin-top:6px;width:100%;padding:7px;background:#8a7448;color:#f3ecd8;border:0;letter-spacing:6px;font-size:13px;font-family:inherit;cursor:pointer}
+#boardTip{margin-top:5px;font-size:11px;color:#a09478;line-height:1.5}
+#btnBoard{position:fixed;left:50%;bottom:26vh;transform:translateX(-50%);display:none;padding:9px 22px;background:rgba(58,47,30,.82);color:#f3ecd8;border:1px solid #d8caa4;border-radius:3px;letter-spacing:4px;font-size:13px;font-family:inherit;z-index:8;cursor:pointer}
 </style>
 </head>
 <body>
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="help"></div>
+<div id="btnBoard">留言板</div>
+<div id="boardUI">
+  <div id="boardCard">
+    <div id="boardHead">河滩留言板 <b id="boardClose">合上</b></div>
+    <div id="boardList"></div>
+    <div id="boardFoot">
+      <textarea id="boardIn" maxlength="40" placeholder="写点什么。四十个字以内。"></textarea>
+      <button id="boardGo">写上</button>
+      <div id="boardTip"></div>
+    </div>
+  </div>
+</div>
 <div id="hot"></div>
 <div class="mbtn" id="btnDig">挖</div>
 <div class="mbtn" id="btnPut">放</div>
@@ -149,17 +176,26 @@ function meInit(){
   try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}
 }
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
+/* 读：有令牌走API（实时），没令牌走raw公开读——所有访客都看得到痕迹 */
+let rawMode=false;
 function ghGet(path){
+  if(!NPC_TOKEN||rawMode){
+    rawMode=true;
+    return fetch('https://raw.githubusercontent.com/inklotus007/hetan/main/'+path+'?cb='+Date.now())
+      .then(r=>r.ok?r.text():Promise.reject(0))
+      .then(t=>({sha:null,data:JSON.parse(t)}))
+      .catch(()=>({sha:null,data:{npcs:{},msgs:[]}}));
+  }
   return fetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
     .then(r=>{
-      if(!r.ok)return {sha:null, data:{npcs:{}}};   // 404等：文件还不存在
+      if(!r.ok)return {sha:null, data:{npcs:{},msgs:[]}};   // 404等：文件还不存在
       return r.json();
     })
     .then(m=>{
       if(m.sha===undefined&&m.data)return m;        // 已是容错结构
-      const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{}};
-      return {sha:m.sha||null, data:(data&&data.npcs)?data:{npcs:{}}};
-    }).catch(()=>({sha:null,data:{npcs:{}}}));
+      const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{},msgs:[]};
+      return {sha:m.sha||null, data:(data&&data.npcs)?data:{npcs:{},msgs:[]}};
+    }).catch(()=>({sha:null,data:{npcs:{},msgs:[]}}));
 }
 function ghPut(path,obj,sha){
   const body={message:'NPC：'+ME.name, content:btoa(unescape(encodeURIComponent(JSON.stringify(obj))))};
@@ -168,6 +204,112 @@ function ghPut(path,obj,sha){
     method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)
   }).then(r=>{if(!r.ok)throw new Error('put '+r.status);return r.json();});
 }
+/* ================= 留言板（3D实体+纸片+云端） ================= */
+let boardGroup=null,boardPapers=[];
+let boardMsgs=[];   // {id,name,text,t}
+const BOARD_POS=[STX+0.5,0,STZ+5];   // 出生点正南旱滩（碑-出生-板一线），面河（+z）
+function paperTexture(msg){
+  const cv=document.createElement('canvas');cv.width=128;cv.height=160;
+  const g=cv.getContext('2d');
+  g.fillStyle='#f0e6cc';g.fillRect(0,0,128,160);
+  g.strokeStyle='#c9b98f';g.lineWidth=2;g.strokeRect(3,3,122,154);
+  g.fillStyle='#8a5a3a';g.font='bold 15px Songti SC,serif';g.fillText(msg.name,10,24);
+  g.fillStyle='#a09478';g.font='10px Georgia,serif';
+  const dt=new Date(msg.t||Date.now());
+  g.fillText((dt.getMonth()+1)+'/'+dt.getDate(),92,24);
+  g.fillStyle='#3a2f1e';g.font='13px Songti SC,serif';
+  const text=msg.text||'';
+  for(let i=0;i*6<text.length&&i<5;i++)g.fillText(text.slice(i*6,i*6+6),10,48+i*22);
+  if(text.length>30)g.fillText('……',10,48+5*22);
+  return new THREE.CanvasTexture(cv);
+}
+function ensureBoard(){
+  if(boardGroup)return;
+  boardGroup=new THREE.Group();
+  const woodM=new THREE.MeshLambertMaterial({color:0x6a4f35});
+  const postM=new THREE.MeshLambertMaterial({color:0x54402a});
+  // 两根柱
+  [-1.05,1.05].forEach(dx=>{
+    const post=new THREE.Mesh(new THREE.BoxGeometry(0.14,2.3,0.14),postM);
+    post.position.set(dx,1.15,0);boardGroup.add(post);
+  });
+  // 背板
+  const back=new THREE.Mesh(new THREE.BoxGeometry(2.3,1.4,0.08),woodM);
+  back.position.set(0,1.62,0.03);boardGroup.add(back);
+  // 檐
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.09,0.4),postM);
+  roof.position.set(0,2.4,0.05);roof.rotation.x=-0.12;boardGroup.add(roof);
+  // 顶牌
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.3,0.06),woodM);
+  sign.position.set(0,2.62,0.08);boardGroup.add(sign);
+  // 9张纸（3x3）
+  for(let i=0;i<9;i++){
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.78),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(paperTexture({name:'',text:''})),transparent:true}));
+    p.position.set(-0.72+(i%3)*0.72,1.92-Math.floor(i/3)*0.55,0.1);
+    p.rotation.z=(Math.random()-0.5)*0.06;
+    p.userData.baseZ=p.rotation.z;p.userData.i=i;
+    boardGroup.add(p);boardPapers.push(p);
+  }
+  boardGroup.position.set(BOARD_POS[0],surfaceY(BOARD_POS[0],BOARD_POS[2]),BOARD_POS[2]);
+  boardGroup.rotation.y=Math.PI+0.18;   // 纸面朝北——朝人来的方向；微侧，像随手立的
+  scene.add(boardGroup);
+}
+function renderBoard(){
+  const shown=boardMsgs.length?boardMsgs:[{name:'',text:'（这片纸上还没有字。）',t:Date.now()}];
+  boardPapers.forEach((p,i)=>{
+    const msg=shown[shown.length-1-i];   // 最新在右上
+    if(msg){
+      const old=p.material.map;p.material.map=paperTexture(msg);p.material.needsUpdate=true;
+      if(old)old.dispose();
+      p.visible=true;
+    }else p.visible=false;
+  });
+  const ul=document.getElementById('boardList');
+  ul.innerHTML=boardMsgs.slice().reverse().map(m=>{
+    const dt=new Date(m.t||Date.now());
+    return '<div class="bMsg"><span class="bn">'+m.name+'</span>'+m.text.replace(/</g,'&lt;')+'<span class="bt">'+(dt.getMonth()+1)+'/'+dt.getDate()+'</span></div>';
+  }).join('')||'<div class="bMsg" style="color:#a09478">板上还没有字。头一张纸给你留着的。</div>';
+}
+function boardWind(t){
+  if(!boardGroup)return;
+  boardGroup.position.y=surfaceY(Math.floor(BOARD_POS[0]),Math.floor(BOARD_POS[2]));
+  boardPapers.forEach((p,i)=>{p.rotation.z=p.userData.baseZ+Math.sin(t*1.7+i*2.1)*0.035;});
+}
+let boardSha=null;
+function syncBoard(){
+  ghGet('board.json').then(({sha,data})=>{
+    boardSha=sha;
+    if(data&&data.msgs){
+      if(data.msgs.length>=boardMsgs.length||!boardMsgs.length)boardMsgs=data.msgs;  // 防竞态回退
+      renderBoard();
+    }
+  }).catch(()=>{});
+}
+function writeBoard(){
+  const inp=document.getElementById('boardIn');
+  const text=(inp.value||'').trim().slice(0,40);
+  const tip=document.getElementById('boardTip');
+  if(!text){tip.textContent='纸上空着。';return;}
+  if(!NPC_TOKEN){
+    tip.innerHTML='留言要一把小钥匙（GitHub令牌）。右下角<a href="https://github.com/settings/tokens" target="_blank" style="color:#8a5a3a">这儿</a>造一个（只勾repo读写），然后点右上角「令牌」贴进来。';
+    return;
+  }
+  tip.textContent='写上了，钉牢……';
+  boardMsgs.push({id:'m'+Date.now(),name:ME?ME.name:'客',text,t:Date.now()});
+  ghPut('board.json',{msgs:boardMsgs.slice(-60)},boardSha,'留言板：'+ME.name)
+    .then(()=>{inp.value='';tip.textContent='钉上了。';syncBoard();})
+    .catch(()=>{boardMsgs.pop();tip.textContent='没钉上——风大，再试一次。';});
+}
+function boardDist(){return Math.hypot(p.x-BOARD_POS[0]-0.5,p.z-BOARD_POS[2]);}
+document.getElementById('boardClose').onclick=()=>document.getElementById('boardUI').classList.remove('on');
+document.getElementById('boardUI').addEventListener('click',e=>{if(e.target.id==='boardUI')document.getElementById('boardUI').classList.remove('on');});
+document.getElementById('boardGo').onclick=writeBoard;
+document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');syncBoard();};
+/* 令牌入口 */
+document.getElementById('tokBtn').onclick=()=>{
+  const t=prompt('GitHub令牌（和《家里都好》用同一把）。粘进来，留言和留NPC就都能写了。只存这台设备的浏览器里。');
+  if(t&&t.trim()){localStorage.setItem('jldh_token',t.trim());location.reload();}
+};
 /* NPC小人渲染 */
 const NPC_ONLINE_TTL=20000, NPC_MAX=32;
 function nameSprite(txt,color){
@@ -256,15 +398,16 @@ function pollNPCs(){
   }).catch(()=>{});
 }
 function npcLoop(){
-  if(!NPC_TOKEN){renderNPCs([],performance.now()/1000);return;}
+  syncBoard();                            // 留言板：有没有令牌都读（raw公开读）
+  if(!NPC_TOKEN){renderNPCs([],performance.now()/1000);setTimeout(npcLoop,9000);return;}
   syncNPCs();
   setTimeout(pollNPCs,3000);
   setTimeout(npcLoop,7000);
 }
 /* 首次进入 */
 meInit();
+npcLoop();                    // 无令牌也跑（读留言板+公开读NPC）
 if(NPC_TOKEN){
-  npcLoop();
   setTimeout(()=>{if(!sessionStorage.getItem('hetan_greeted')){sessionStorage.setItem('hetan_greeted','1');showStele('你叫'+ME.name+'。\n河滩记下你了——走了，人也还在。');}},2600);
 }
 
@@ -619,6 +762,9 @@ function loop(now){
   tickFloss(now);
   checkStele();
   renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
+  ensureBoard();boardWind(now/1000);
+  const nearBoard=boardDist()<4.5;
+  document.getElementById('btnBoard').style.display=nearBoard?'block':'none';
   // 水声：距河越近越响
   if((now|0)%6===0){
     const rz=34+Math.sin(p.x*0.09)*6+Math.cos(p.z*0.07)*4;
