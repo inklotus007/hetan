@@ -23,8 +23,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 .slot.on{border-color:#ffe9a8;box-shadow:0 0 0 2px rgba(255,233,168,.55),0 2px 6px rgba(30,40,50,.35)}
 .slot span{position:absolute;left:0;right:0;bottom:-16px;text-align:center;font-size:10px;color:#f4efe2;text-shadow:0 1px 2px rgba(40,50,60,.6);white-space:nowrap}
 /* 移动端按钮 */
-.mbtn{position:fixed;z-index:7;width:58px;height:58px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(50,60,70,.38);color:#f4efe2;font-size:16px;letter-spacing:2px;display:none;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;font-family:inherit}
-.mbtn:active{background:rgba(50,60,70,.6)}
+.mbtn{position:fixed;z-index:7;width:58px;height:58px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(50,60,70,.38);color:#f4efe2;font-size:16px;letter-spacing:2px;display:none;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;font-family:inherit;transition:transform .06s,background .06s}
+.mbtn:active{background:rgba(240,230,200,.5);transform:scale(0.9);border-color:#f0e6c8}
 #btnDig{right:calc(18px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom))}
 #btnPut{right:calc(88px + env(safe-area-inset-right));bottom:calc(160px + env(safe-area-inset-bottom))}
 #btnJmp{right:calc(18px + env(safe-area-inset-right));bottom:calc(180px + env(safe-area-inset-bottom))}
@@ -769,6 +769,13 @@ const AU=(function(){
     const g=ctx.createGain();g.gain.setValueAtTime(0.07,now);g.gain.exponentialRampToValueAtTime(0.005,now+0.05);
     src.connect(f);f.connect(g);g.connect(master);src.start(now);
   }
+  function click(){
+    if(!ensure())return;const now=ctx.currentTime;
+    const o=ctx.createOscillator();o.type='square';
+    o.frequency.setValueAtTime(880,now);
+    const g=ctx.createGain();g.gain.setValueAtTime(0.06,now);g.gain.exponentialRampToValueAtTime(0.005,now+0.035);
+    o.connect(g);g.connect(master);o.start(now);o.stop(now+0.04);
+  }
   // 环境水声：噪声循环+带通，音量按距河远近调
   let rg=null;
   function riverStart(){
@@ -779,7 +786,7 @@ const AU=(function(){
   }
   function riverSet(v){ if(rg)rg.gain.setTargetAtTime(muted?0:v,ctx.currentTime,0.4); }
   function toggleMute(){ muted=!muted; if(master)master.gain.value=muted?0:0.55; return muted; }
-  return {ensure,dig,put,jump,land,step,riverSet,toggleMute};
+  return {ensure,dig,put,jump,land,step,click,riverSet,toggleMute};
 })();
 // 解锁：手机上AudioContext要在用户手势里激活
 ['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev,()=>AU.ensure(),{passive:true}));
@@ -790,7 +797,7 @@ const stick={x:0,y:0};
 const isTouch=('ontouchstart'in window)||navigator.maxTouchPoints>0;
 const tpos=t=>({x:t.clientX,y:t.clientY});
 document.getElementById('help').textContent=isTouch
-  ?'左下摇杆走 · 右侧滑动转视角 · 短点屏幕挖 · 长按放'
+  ?'左下摇杆走 · 右侧滑转视角 · 右下按钮挖放跳 · 白框是准星指的方块'
   :'WASD走 · 鼠标转视角（点击画面锁定）· 左键挖 · 右键放 · 空格跳';
 
 // 桌面
@@ -819,10 +826,9 @@ document.addEventListener('keyup',e=>{
   if(e.code==='Space')keys.jump=false;
 });
 
-// 移动端：左半屏摇杆，右半屏滑视角；右屏「点按=挖，长按=放」（移动过就不算长按）
+// 移动端：左半屏摇杆，右半屏滑视角。挖/放/跳全部走右下按钮——没有手势，不会误触
 let lookId=null,lx=0,ly=0;
 let stickId=null,sx0=0,sy0=0;
-let pressTimer=null,pressed=false,lookMoved=false;
 const stickBase=document.getElementById('stickBase'),stickKnob=document.getElementById('stickKnob');
 canvas.addEventListener('touchstart',e=>{
   e.preventDefault();
@@ -834,10 +840,7 @@ canvas.addEventListener('touchstart',e=>{
       stickBase.style.left=(sx0-55)+'px';stickBase.style.top=(sy0-55)+'px';
       stickKnob.style.left=(sx0-24)+'px';stickKnob.style.top=(sy0-24)+'px';
     }else if(lookId===null){
-      lookId=t.identifier;lx=pos.x;ly=pos.y;lookMoved=false;
-      pressed=true;
-      clearTimeout(pressTimer);
-      pressTimer=setTimeout(()=>{if(pressed&&!lookMoved){put();pressed=false;}},430);
+      lookId=t.identifier;lx=pos.x;ly=pos.y;
     }
   }
 },{passive:false});
@@ -852,10 +855,8 @@ canvas.addEventListener('touchmove',e=>{
       stick.x=dx/max;stick.y=dy/max;
       stickKnob.style.left=(sx0+dx-24)+'px';stickKnob.style.top=(sy0+dy-24)+'px';
     }else if(t.identifier===lookId){
-      const dx=pos.x-lx,dy=pos.y-ly;
-      if(Math.hypot(dx,dy)>6)lookMoved=true;   // 动了就取消长按
-      p.yaw-=dx*0.005;
-      p.pitch=Math.max(-1.45,Math.min(1.45,p.pitch-dy*0.005));
+      p.yaw-=(pos.x-lx)*0.005;
+      p.pitch=Math.max(-1.45,Math.min(1.45,p.pitch-(pos.y-ly)*0.005));
       lx=pos.x;ly=pos.y;
     }
   }
@@ -863,17 +864,13 @@ canvas.addEventListener('touchmove',e=>{
 function tend(e){
   for(const t of e.changedTouches){
     if(t.identifier===stickId){stickId=null;stick.x=stick.y=0;stickBase.style.display=stickKnob.style.display='none';}
-    if(t.identifier===lookId){
-      clearTimeout(pressTimer);
-      if(pressed&&!lookMoved)dig();
-      pressed=false;lookId=null;
-    }
+    if(t.identifier===lookId)lookId=null;
   }
 }
 canvas.addEventListener('touchend',tend);canvas.addEventListener('touchcancel',tend);
 if(isTouch){['btnDig','btnPut','btnJmp'].forEach(id=>document.getElementById(id).style.display='flex');}
-document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();dig();},{passive:false});
-document.getElementById('btnPut').addEventListener('touchstart',e=>{e.preventDefault();put();},{passive:false});
+document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();AU.click();dig();},{passive:false});
+document.getElementById('btnPut').addEventListener('touchstart',e=>{e.preventDefault();AU.click();put();},{passive:false});
 document.getElementById('btnJmp').addEventListener('touchstart',e=>{e.preventDefault();keys.jump=true;},{passive:false});
 document.getElementById('btnJmp').addEventListener('touchend',e=>{e.preventDefault();keys.jump=false;},{passive:false});
 
@@ -892,6 +889,17 @@ function showStele(txt){
 
 /* ================= 主循环 ================= */
 let last=performance.now();
+/* ================= 目标高亮框 ================= */
+const hlGeo=new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002,1.002,1.002));
+const hlBox=new THREE.LineSegments(hlGeo,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.85}));
+hlBox.visible=false;scene.add(hlBox);
+function tickHighlight(){
+  if(document.getElementById('boardUI').classList.contains('on')){hlBox.visible=false;return;}
+  const h=raycast();
+  if(h){hlBox.position.set(h.x+0.5,h.y+0.5,h.z+0.5);hlBox.visible=true;}
+  else hlBox.visible=false;
+}
+
 function loop(now){
   requestAnimationFrame(loop);
   const dt=Math.min(0.05,(now-last)/1000);last=now;
@@ -901,6 +909,7 @@ function loop(now){
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
   checkStele();
+  tickHighlight();
   renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
   ensureBoard();boardWind(now/1000);
   const nearBoard=boardDist()<4.5;
