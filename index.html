@@ -65,7 +65,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="btnBoard">留言板</div>
 <div id="boardUI">
   <div id="boardCard">
-    <div id="boardHead">河滩留言板 <b id="boardClose">合上</b></div>
+    <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <b id="boardClose">合上</b></div>
     <div id="boardList"></div>
     <div id="boardFoot">
       <textarea id="boardIn" maxlength="40" placeholder="写点什么。四十个字以内。"></textarea>
@@ -286,25 +286,76 @@ function syncBoard(){
     }
   }).catch(()=>{});
 }
+/* 草稿：输入框里的字永不丢 */
+try{const dr=localStorage.getItem('hetan_draft');if(dr)document.getElementById('boardIn').value=dr;}catch(e){}
+document.getElementById('boardIn').addEventListener('input',e=>{
+  try{localStorage.setItem('hetan_draft',e.target.value);}catch(err){}
+});
+/* 改名字：留言署名+河滩NPC一起变 */
+document.getElementById('nameBtn').onclick=()=>{
+  miniPrompt('在河滩上叫什么（六个字以内）','',ME.name,v=>{
+    ME.name=v.slice(0,6);localStorage.setItem('hetan_me',JSON.stringify(ME));
+    if(NPC_TOKEN){syncNPCs();}          // 立刻让新名字上云端
+    document.getElementById('boardTip').textContent='名字改好了——滩上的你也是这个名字。';
+  });
+};
+/* 小输入弹层：贴令牌/改名字共用（不依赖prompt，微信里也不拦） */
+function miniPrompt(title, ph, val, cb){
+  const w=document.getElementById('boardUI');
+  const old=document.getElementById('miniUI');if(old)old.remove();
+  const d=document.createElement('div');d.id='miniUI';
+  d.style.cssText='position:fixed;inset:0;background:rgba(20,16,8,.55);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML='<div style="background:#f3ecd8;color:#3a2f1e;max-width:340px;width:100%;border:1px solid #d8caa4;box-shadow:0 8px 40px rgba(0,0,0,.4)">'+
+    '<div style="padding:10px 14px;border-bottom:1px solid #d8caa4;font-size:13px;letter-spacing:2px;color:#8a7448">'+title+'</div>'+
+    '<div style="padding:12px 14px"><input id="miniIn" placeholder="'+ph+'" value="'+(val||'')+'" style="width:100%;padding:8px;background:#faf6ea;border:1px solid #d0c29c;color:#3a2f1e;font-family:inherit;font-size:13px">'+
+    '<div style="margin-top:10px;display:flex;gap:8px"><button id="miniOk" style="flex:1;padding:7px;background:#8a7448;color:#f3ecd8;border:0;letter-spacing:4px;font-size:13px;font-family:inherit">好</button>'+
+    '<button id="miniNo" style="padding:7px 14px;background:none;border:1px solid #d0c29c;color:#8a7448;font-size:13px;font-family:inherit">算了</button></div></div></div>';
+  w.appendChild(d);
+  const inp=d.querySelector('#miniIn');
+  inp.focus();
+  const close=()=>d.remove();
+  d.querySelector('#miniNo').onclick=close;
+  d.onclick=e=>{if(e.target===d)close();};
+  const ok=()=>{
+    const v=inp.value.trim();
+    if(!v)return;
+    cb(v);close();
+  };
+  d.querySelector('#miniOk').onclick=ok;
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();ok();}};
+}
 function writeBoard(){
   const inp=document.getElementById('boardIn');
   const text=(inp.value||'').trim().slice(0,40);
   const tip=document.getElementById('boardTip');
   if(!text){tip.textContent='纸上空着。';return;}
   if(!NPC_TOKEN){
-    tip.innerHTML='留言要一把小钥匙（GitHub令牌）。右下角<a href="https://github.com/settings/tokens" target="_blank" style="color:#8a5a3a">这儿</a>造一个（只勾repo读写），然后点右上角「令牌」贴进来。';
+    tip.textContent='还没有钥匙。贴一把，你写的就钉上去了——';
+    miniPrompt('贴令牌（GitHub PAT，只存这台设备）','粘贴令牌……','',tok=>{
+      NPC_TOKEN=tok;localStorage.setItem('jldh_token',tok);rawMode=false;
+      tip.textContent='钥匙收好了，这就钉——';
+      writeBoard();
+    });
     return;
   }
   tip.textContent='写上了，钉牢……';
-  boardMsgs.push({id:'m'+Date.now(),name:ME?ME.name:'客',text,t:Date.now()});
+  const mine={id:'m'+Date.now(),name:ME?ME.name:'客',text,t:Date.now()};
+  boardMsgs.push(mine);renderBoard();          // 本地先上墙
   ghPut('board.json',{msgs:boardMsgs.slice(-60)},boardSha,'留言板：'+ME.name)
-    .then(()=>{inp.value='';tip.textContent='钉上了。';syncBoard();})
-    .catch(()=>{boardMsgs.pop();tip.textContent='没钉上——风大，再试一次。';});
+    .then(r=>{boardSha=r.content.sha;inp.value='';localStorage.removeItem('hetan_draft');tip.textContent='钉上了。';syncBoard();})
+    .catch(()=>{boardMsgs=boardMsgs.filter(m=>m!==mine);renderBoard();tip.textContent='没钉上——风大，再试一次。';});
 }
 function boardDist(){return Math.hypot(p.x-BOARD_POS[0]-0.5,p.z-BOARD_POS[2]);}
 document.getElementById('boardClose').onclick=()=>document.getElementById('boardUI').classList.remove('on');
 document.getElementById('boardUI').addEventListener('click',e=>{if(e.target.id==='boardUI')document.getElementById('boardUI').classList.remove('on');});
 document.getElementById('boardGo').onclick=writeBoard;
+document.getElementById('tokBtn2').onclick=()=>{
+  miniPrompt('贴令牌（GitHub PAT，只存这台设备）','',NPC_TOKEN||'',tok=>{
+    NPC_TOKEN=tok;localStorage.setItem('jldh_token',tok);rawMode=false;
+    document.getElementById('boardTip').textContent='钥匙收好了——留言和留NPC都通了。';
+    syncBoard();
+  });
+};
 document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');syncBoard();};
 /* 令牌入口 */
 document.getElementById('tokBtn').onclick=()=>{
