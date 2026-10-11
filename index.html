@@ -148,6 +148,7 @@ const STX=34,STZ=20;
 const SKEY='hetan_save_v1';
 let diffs={r:[],a:{}};
 try{const s=localStorage.getItem(SKEY);if(s)diffs=JSON.parse(s);}catch(e){}
+if(diffs.r.length||Object.keys(diffs.a).length)worldDirty=true;   // 存量的搭也上云
 diffs.r.forEach(([x,y,z])=>{if(inW(x,y,z))world[idx(x,y,z)]=AIR;});
 for(const k in diffs.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z))world[idx(x,y,z)]=diffs.a[k];}
 function saveDiff(x,y,z,t){
@@ -195,15 +196,21 @@ function pushWorld(){
       .then(()=>{worldBusy=false;worldDirty=false;});
   }).catch(()=>{worldBusy=false;});
 }
-function pullWorld(){
+let worldPulled=false;
+function pullWorld(attempt){
+  attempt=attempt||0;
   return ghGet('world.json').then(({data})=>{
+    worldPulled=true;
     const rd=remoteDiffs(data);
     let n=0;
     rd.r.forEach(p=>{const[x,y,z]=p;if(inW(x,y,z)&&world[idx(x,y,z)]!==AIR){world[idx(x,y,z)]=AIR;n++;}});
     for(const k in rd.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z)&&world[idx(x,y,z)]!==rd.a[k]){world[idx(x,y,z)]=rd.a[k];n++;}}
     if(n)rebuild();
     return n;
-  }).catch(()=>0);
+  }).catch(()=>{
+    if(attempt<5){setTimeout(()=>pullWorld(attempt+1),(attempt+1)*5000);return 0;}   // 够不着就等会儿再够——花台最终必达
+    return 0;
+  });
 }
 
 /* ================= 来客NPC =================
