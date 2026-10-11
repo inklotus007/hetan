@@ -216,8 +216,8 @@ function physics(dt){
   const len=Math.hypot(ix,iz);
   if(len>1){ix/=len;iz/=len;}
   const sp=4.4, sin=Math.sin(p.yaw),cos=Math.cos(p.yaw);
-  p.vx=(ix*cos - iz*sin)*sp;
-  p.vz=(ix*sin + iz*cos)*sp;
+  p.vx=(ix*cos + iz*sin)*sp;
+  p.vz=(-ix*sin + iz*cos)*sp;
   p.vy-=22*dt;
   if(p.vy<-40)p.vy=-40;
   if(keys.jump&&p.ground){p.vy=8.2;p.ground=false;}
