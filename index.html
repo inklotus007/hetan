@@ -15,6 +15,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 #xhair:after{left:0;top:8px;width:18px;height:2px}
 /* 顶栏 */
 #top{position:fixed;top:calc(8px + env(safe-area-inset-top));left:0;right:0;text-align:center;color:#f4efe2;font-size:13px;letter-spacing:4px;text-shadow:0 1px 3px rgba(40,50,60,.5);pointer-events:none;z-index:4}
+#mute,#tokBtn{pointer-events:auto}   /* 顶栏穿透但这两个要点得动 */
 #top small{display:block;font-size:11px;letter-spacing:2px;opacity:.85;margin-top:2px}
 /* 热栏 */
 #hot{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:6px;z-index:6}
