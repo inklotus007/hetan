@@ -679,6 +679,19 @@ function makeTex(kind){
     dot(50,'#75583c');dot(30,'#9a7a54');
     g.fillStyle='#7aa25c';g.fillRect(0,0,64,14);
     g.strokeStyle='#688f4c';for(let x=0;x<64;x+=3){g.beginPath();g.moveTo(x,14);g.lineTo(x+1,14+(x*7%9));g.stroke();}
+  }else if(kind==='water'){
+    g.fillStyle='#4d8fae';g.fillRect(0,0,64,64);
+    // 三条浅色波纹：x方向取整周期（2πk/64），相邻格子的纹理首尾对齐，不再一格一格
+    g.strokeStyle='rgba(215,238,248,.45)';g.lineWidth=2;
+    for(let i=0;i<3;i++){
+      g.beginPath();
+      for(let x=0;x<=64;x+=4){
+        const y=11+i*20+Math.sin(x/64*Math.PI*4+i*2.1)*3.2;
+        x===0?g.moveTo(x,y):g.lineTo(x,y);
+      }
+      g.stroke();
+    }
+    dot(24,'rgba(230,246,252,.22)',3);
   }else if(kind==='dirt'){
     g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
     dot(60,'#75583c');dot(35,'#9a7a54');dot(8,'#6a6a66');
@@ -741,7 +754,8 @@ const geo=new THREE.BoxGeometry(1,1,1);
 const meshes={};
 for(const t in TYPES){
   const T=TYPES[t];let m;
-  if(T.water){m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}   // v25：透明实例无排序，关深度写入才不会互相剔面
+  if(T.water){waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
+    m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}   // v25：透明实例无排序，关深度写入才不会互相剔面
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5});}
   else if(T.mats){
     const side=new THREE.MeshLambertMaterial({map:texOf(T.mats[0])});
@@ -831,7 +845,7 @@ function physics(dt){
     if(keys.jump)p.vy+=30*dt;                  // 划水上升
     p.vy=Math.max(-1.1,Math.min(2.4,p.vy));
     const headOut=get(Math.floor(p.x),Math.floor(p.y+1.75),Math.floor(p.z))!==8;
-    if(keys.jump&&headOut&&get(Math.floor(p.x),Math.floor(p.y+0.3),Math.floor(p.z))===8){p.vy=5.2;keys.jump=false;}  // 出水一跃
+    if(keys.jump&&headOut&&get(Math.floor(p.x),Math.floor(p.y+0.3),Math.floor(p.z))===8){p.vy=7.5;keys.jump=false;}  // 出水一跃（v26：5.2跳0.6格上不了1格的岸——7.5跳1.28格）
   }else{
     p.vy-=22*dt;
     if(p.vy<-40)p.vy=-40;
@@ -1098,6 +1112,7 @@ function loop(now){
   camera.rotation.set(0,0,0);
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
+  if(waterTex){waterTex.offset.x=(now*0.00003)%1;waterTex.offset.y=(now*0.000016)%1;}   // 水在流
   checkStele();
   tickHighlight();
   if((now|0)%7===0)diag();
