@@ -119,7 +119,9 @@ const TYPES={
   9:{n:'玻', c:0xcfe0e6, tex:'glass', glass:true},
   10:{n:'板', c:0xb08a54, tex:'plank'},
   11:{n:'石砖', c:0x9a9a96, tex:'stonebrick'},
-  12:{n:'瓦', c:0x7a4a42, tex:'roof'}
+  12:{n:'瓦', c:0x7a4a42, tex:'roof'},
+  13:{n:'阶', c:0x9a9a96, tex:'stonebrick', stair:true},
+  14:{n:'炬', c:0xffb040, torch:true}
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -162,7 +164,7 @@ trees.forEach(([tx,tz])=>{
   }
 });
 // 碑：出生点旁
-const STX=34,STZ=20;
+const STX=38,STZ=22;   // v29：碑和出生点移到同志的广场上（TA亲手削山铺砖那块）——牌子立在广场中央
 {const h=height(STX,STZ);
  world[idx(STX,h+1,STZ)]=3;world[idx(STX,h+2,STZ)]=3;world[idx(STX-1,h+1,STZ)]=3;world[idx(STX+1,h+1,STZ)]=3;}
 
@@ -879,8 +881,11 @@ function texOf(n){if(!TEXC[n])TEXC[n]=makeTex(n);return TEXC[n];}
 // 几何：普通方块 + 水稍矮半透明
 const geo=new THREE.BoxGeometry(1,1,1);
 const meshes={};
+const stairGeo=new THREE.BoxGeometry(1,0.5,1);stairGeo.translate(0,-0.25,0);   // 台阶：半块躺在格子下半
+const torchGeo=new THREE.BoxGeometry(0.18,0.95,0.18);torchGeo.translate(0,-0.02,0);   // 火把：细杆立着
 for(const t in TYPES){
   const T=TYPES[t];let m;
+  const geo=T.stair?stairGeo:(T.torch?torchGeo:geo);
   if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
     m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
     catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
@@ -895,7 +900,7 @@ for(const t in TYPES){
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
 }
-const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8;};
+const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14;};   // 火把不算墙
 const exposed=(x,y,z)=>{
   return get(x,y+1,z)===AIR||get(x,y-1,z)===AIR||get(x+1,y,z)===AIR||get(x-1,y,z)===AIR||get(x,y,z+1)===AIR||get(x,y,z-1)===AIR;
 };
@@ -1030,7 +1035,7 @@ for(const t in TYPES){
 }
 function dig(){
   const h=raycast();if(!h)return;
-  if(h.x===STX&&h.z===STZ&&h.y>=height(STX,STZ)+1){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}
+  if(h.x===STX&&h.z===STZ&&h.y>=8){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}   // 广场面y=7顶=8
   if(Math.abs(h.x-BOARD_POS[0]-0.5)<2&&Math.abs(h.z-BOARD_POS[2])<2){showStele('留言板的腿立在这儿。\n地别挖，板要站。');return;}
   AU.dig(world[idx(h.x,h.y,h.z)]);
   world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
