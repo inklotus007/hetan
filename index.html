@@ -562,11 +562,7 @@ function fallbackCopy(text,done){
   ta.remove();
 }
 document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');renderBoard();syncBoard();};
-/* 令牌入口 */
-document.getElementById('tokBtn').onclick=()=>{
-  const t=prompt('GitHub令牌（和《家里都好》用同一把）。粘进来，留言和留NPC就都能写了。只存这台设备的浏览器里。');
-  if(t&&t.trim()){localStorage.setItem('jldh_token',t.trim());location.reload();}
-};
+/* 令牌入口：抽屉mTok + 板上tokBtn2（tokBtn元素v28删了，它的死绑定曾把整页炸白——删UI必须grep全部引用） */
 /* NPC小人渲染 */
 const NPC_ONLINE_TTL=20000, NPC_MAX=32;
 function nameSprite(txt,color){
