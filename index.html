@@ -83,7 +83,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <script src="three.min.js"></script>
 <script>
 /* ================= 基础 ================= */
-const W=90, D=90, H=14;               // 世界尺寸
+const W=90, D=90, H=40;               // 世界尺寸（v24：天空从14加高到40——最高处能搭28格，塔、树、烟囱随你）
 const AIR=0;
 // 方块类型: 1草 2土 3石 4沙 5木 6叶 7砖 8水 9玻璃 10木板 11石砖 12瓦
 const TYPES={
@@ -544,7 +544,7 @@ function makeNPCBody(npc){
 }
 let npcObjs={};   // id -> THREE.Group
 function surfaceY(x,z){
-  for(let y=13;y>=0;y--){const b=get(x,y,z);if(b!==AIR&&b!==8)return y+1;}
+  for(let y=H-2;y>=0;y--){const b=get(x,y,z);if(b!==AIR&&b!==8)return y+1;}
   return 7;
 }
 /* 离线漫游：确定性——同一时刻所有人算出同一位置 */
