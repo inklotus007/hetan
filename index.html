@@ -276,7 +276,7 @@ try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 /* 抽屉：点☰展开，点外收起。顶栏从此只有三样：河滩、时辰、☰ */
 function refreshMenu(){
   try{
-    document.getElementById('mWorld').textContent=worldCells+'格'+((worldSpaces&&Object.keys(worldSpaces).length>1)?' · '+Object.keys(worldSpaces).length+'份':'');
+    document.getElementById('mWorld').textContent=worldCells+'格';
     document.getElementById('mName').textContent=ME?ME.name:'客';
     const local=diffs.r.length+Object.keys(diffs.a).length;
     document.getElementById('mSync').textContent=worldDirty?(local+'格待传'):'已同步';
