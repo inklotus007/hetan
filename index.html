@@ -59,7 +59,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v18</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;letter-spacing:1px;font-size:12px;font-weight:bold;background:rgba(150,60,40,.85);color:#ffe;padding:3px 8px;border-radius:3px;z-index:20">v19</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="diag" style="position:fixed;top:calc(30px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:10px;color:rgba(244,239,226,.75);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px"></div>
 <div id="help"></div>
@@ -162,7 +162,7 @@ function saveDiff(x,y,z,t){
 }
 
 /* ---- 世界共享：diffs上云（伊卡洛斯的花台只在它自己的浏览器里——共享机制补上，搭一次全看得见） ---- */
-let worldSha=null,worldBusy=false;
+let worldSha=null,worldBusy=false,pushFail=0;
 function remoteDiffs(data){
   // 兼容两种格式：{diffs:{r,a}}（伊卡洛斯的花台用的）和{cells:{k:{t,v}}}（初版）
   const r=[],a={};
@@ -198,7 +198,7 @@ function pushWorld(){
         worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
         diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
         try{localStorage.removeItem(SKEY);}catch(e){}
-        toast('搭建已上云 · 谁打开都能看到');
+        pushFail=0;toast('搭建已上云 · 谁打开都能看到');
       });
   }).catch(()=>{worldBusy=false;});
 }
@@ -606,6 +606,13 @@ function savePos(){
   ghPut('saves/'+encodeURIComponent(ME.name)+'.json',{pos:[+p.x.toFixed(1),+p.z.toFixed(1)],ts:Date.now()},null,'河滩：'+ME.name+'站了站').catch(()=>{});
 }
 function schedulePosSave(){clearTimeout(posSaveT);posSaveT=setTimeout(savePos,10000);}
+/* 进场自检：本地有没上云的砖，明说+自动推 */
+setTimeout(()=>{
+  if(NPC_TOKEN&&worldDirty&&(diffs.r.length||Object.keys(diffs.a).length)){
+    showStele('你这里有 '+(diffs.r.length+Object.keys(diffs.a).length)+' 格没上过云的搭建。\n十秒后自动推上去——别关页面。');
+    setTimeout(()=>{pushWorld();},10000);
+  }
+},3500);
 /* 首次进入 */
 meInit();
 /* 名字存档：回到上次站的地方 */
