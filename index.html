@@ -182,7 +182,9 @@ function remoteDiffs(data){
 function pushWorld(){
   if(!NPC_TOKEN||worldBusy||!worldDirty)return;
   worldBusy=true;
-  const local=localCells();
+  const local={};   // v22：直接从diffs构造（localCells是昨天埋的雷——调用了一个不存在的函数，推送必炸）
+  diffs.r.forEach(([x,y,z])=>{local[x+','+y+','+z]={v:0};});
+  for(const k in diffs.a)local[k]={v:diffs.a[k]};
   ghGet('world.json').then(({sha,data})=>{
     worldSha=sha;
     const rd=remoteDiffs(data);
