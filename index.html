@@ -31,6 +31,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 /* 摇杆 */
 #stickBase{position:fixed;z-index:7;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:rgba(50,60,70,.25);display:none;pointer-events:none}
 #stickKnob{position:fixed;z-index:8;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.5);display:none;pointer-events:none}
+/* 抽屉：顶栏信息收纳（v28）——版本/世界/档/连接/声音/导出，点☰展开收起 */
+#menuBtn{position:fixed;top:calc(6px + env(safe-area-inset-top));right:8px;cursor:pointer;font-size:16px;opacity:.85;z-index:25;padding:2px 8px;color:#fff;text-shadow:0 1px 3px rgba(40,50,60,.5)}
+#menuPanel{position:fixed;top:calc(36px + env(safe-area-inset-top));right:8px;width:min(252px,64vw);background:#f3ecd8;border:1px solid #d0c29c;border-radius:10px;padding:10px 12px;z-index:26;display:none;box-shadow:0 8px 30px rgba(40,30,10,.28);font-size:12px;color:#3a2f1e;letter-spacing:1px}
+#menuPanel.on{display:block}
+.mHead{display:flex;justify-content:space-between;align-items:center;font-weight:bold;margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid #d0c29c}
+.mHead b{color:#96532a}
+.mRow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #e2d6b4;gap:8px}
+.mRow:last-child{border-bottom:0}
+.mRow b{font-weight:normal;text-align:right;max-width:62%}
+.mBtn{cursor:pointer;text-decoration:underline;color:#8a7448}
+#menuClose{cursor:pointer;color:#a09478;padding:0 4px;font-size:14px}
 /* 碑文 */
 #stele{position:fixed;left:50%;top:16%;transform:translateX(-50%);max-width:min(520px,86vw);padding:14px 22px;background:rgba(24,28,32,.72);color:#efe8d8;font-size:14px;line-height:2;letter-spacing:1px;border-radius:4px;border:1px solid rgba(255,240,200,.25);opacity:0;transition:opacity .8s;pointer-events:none;z-index:9;text-align:center}
 /* 载入 */
@@ -56,12 +67,22 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 </style>
 </head>
 <body>
-<div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
+<div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p><p id="bootVer" style="font-size:10px;opacity:.75;margin-top:6px"></p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;letter-spacing:1px;font-size:12px;font-weight:bold;background:rgba(150,60,40,.85);color:#ffe;padding:3px 8px;border-radius:3px;z-index:20">v21</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="menuBtn">☰</span></div>
+<div id="menuPanel">
+  <div class="mHead">河滩 <b id="menuVer"></b><span id="menuClose">×</span></div>
+  <div class="mRow"><span>世界</span><b id="mWorld">—</b></div>
+  <div class="mRow"><span>我的档</span><b class="mBtn" id="mName" title="点这个改名字">—</b></div>
+  <div class="mRow"><span>同步</span><b id="mSync">—</b></div>
+  <div class="mRow"><span>留言板</span><b id="mBoard">—</b></div>
+  <div class="mRow"><span>令牌</span><b class="mBtn" id="mTok">—</b></div>
+  <div class="mRow"><span>声音</span><b class="mBtn" id="mMute">♪ 开</b></div>
+  <div class="mRow"><span>导出搭建</span><b class="mBtn" id="mExp">复制未上云的</b></div>
+</div>
 <div id="stele"></div>
-<div id="diag" style="position:fixed;top:calc(30px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:10px;color:rgba(244,239,226,.75);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px"></div>
+
 <div id="help"></div>
 <div id="btnBoard">留言板</div>
 <div id="boardUI">
@@ -248,6 +269,38 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
+const VER='v28';
+try{document.getElementById('bootVer').textContent=VER;}catch(e){}
+try{document.getElementById('menuVer').textContent=VER;}catch(e){}
+
+/* 抽屉：点☰展开，点外收起。顶栏从此只有三样：河滩、时辰、☰ */
+function refreshMenu(){
+  try{
+    document.getElementById('mWorld').textContent=worldCells+'格'+((worldSpaces&&Object.keys(worldSpaces).length>1)?' · '+Object.keys(worldSpaces).length+'份':'');
+    document.getElementById('mName').textContent=ME?ME.name:'客';
+    const local=diffs.r.length+Object.keys(diffs.a).length;
+    document.getElementById('mSync').textContent=worldDirty?(local+'格待传'):'已同步';
+    document.getElementById('mBoard').textContent=boardOffline?'够不着':'已连';
+    document.getElementById('mTok').textContent=NPC_TOKEN?'已配 · 点换':'没配';
+    document.getElementById('mMute').textContent=AU.muted?'♪̶ 关':'♪ 开';
+  }catch(e){}
+}
+document.getElementById('menuBtn').onclick=e=>{
+  e.stopPropagation();
+  const p=document.getElementById('menuPanel');
+  p.classList.toggle('on');
+  if(p.classList.contains('on'))refreshMenu();
+};
+document.getElementById('menuClose').onclick=()=>document.getElementById('menuPanel').classList.remove('on');
+document.getElementById('mName').onclick=()=>{document.getElementById('menuPanel').classList.remove('on');document.getElementById('nameBtn').click();};
+document.getElementById('mTok').onclick=()=>{document.getElementById('menuPanel').classList.remove('on');document.getElementById('tokBtn2').click();};
+document.getElementById('mExp').onclick=()=>{document.getElementById('menuPanel').classList.remove('on');const b=document.getElementById('expBtn');if(b)b.click();};
+document.getElementById('mMute').onclick=()=>{const m=AU.toggleMute();refreshMenu();};
+document.addEventListener('click',e=>{
+  const p=document.getElementById('menuPanel');
+  if(p.classList.contains('on')&&!p.contains(e.target)&&e.target.id!=='menuBtn')p.classList.remove('on');
+});
+
 let rawMode=false;
 function ghSame(path){
   return ghFetch(path+'?cb='+Date.now())
@@ -362,14 +415,8 @@ function boardWind(t){
 let boardSha=null;
 let boardOffline=false;
 function diag(){
-  const el=document.getElementById('diag');if(!el)return;
-  const local=diffs.r.length+Object.keys(diffs.a).length;
-  const parts=[];
-  parts.push('云端世界 '+worldCells+'格');
-  parts.push('本地未同步 '+(worldDirty?local+'格待传':local+'格已传'));
-  parts.push(boardOffline?'板子够不着':'留言板已连');
-  parts.push(worldPulled?'世界已拉取':'世界拉取中');
-  el.textContent=parts.join(' · ');
+  const p=document.getElementById('menuPanel');
+  if(p&&p.classList.contains('on'))refreshMenu();   // 顶栏诊断条删了——数据收进抽屉，开着才刷新
 }
 function syncBoard(){
   ghGet('board.json').then(({sha,data})=>{
@@ -1218,13 +1265,7 @@ addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
-document.getElementById('mute').addEventListener('click',e=>{
-  const m=AU.toggleMute();e.target.textContent=m?'♪̶':'♪';e.target.style.opacity=m?.4:.85;
-});
-document.getElementById('mute').addEventListener('touchstart',e=>{
-  e.preventDefault();e.stopPropagation();
-  const m=AU.toggleMute();e.target.textContent=m?'♪̶':'♪';e.target.style.opacity=m?.4:.85;
-},{passive:false});
+/* 声音开关进了抽屉（mMute）——top上不再有♪ */
 requestAnimationFrame(loop);
 const bt=document.getElementById('boot');
 bt.style.opacity=0;setTimeout(()=>bt.style.display='none',700);
