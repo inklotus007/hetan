@@ -127,7 +127,7 @@ for(let x=0;x<W;x++)for(let z=0;z<D;z++){
     if(dz<7&&y===h) t=4;                                // 水边全沙
     world[idx(x,y,z)]=t;
   }
-  if(dz>=6&&dz<8.5&&h>=3) world[idx(x,h,z)]=8;          // 浅水
+  if(h<5)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;    // 水位线5：低于水位的全部灌满——河心不再露底（v25修「水没填满」）
 }
 // 老柳树：岸上几棵
 const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26]];
@@ -741,7 +741,7 @@ const geo=new THREE.BoxGeometry(1,1,1);
 const meshes={};
 for(const t in TYPES){
   const T=TYPES[t];let m;
-  if(T.water){m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.55});}
+  if(T.water){m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}   // v25：透明实例无排序，关深度写入才不会互相剔面
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5});}
   else if(T.mats){
     const side=new THREE.MeshLambertMaterial({map:texOf(T.mats[0])});
