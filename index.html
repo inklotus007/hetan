@@ -271,7 +271,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v28';
+const VER='v30';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -347,7 +347,7 @@ function ghPut(path,obj,sha,msg){
 /* ================= 留言板（3D实体+纸片+云端） ================= */
 let boardGroup=null,boardPapers=[];
 let boardMsgs=[];   // {id,name,text,t}
-const BOARD_POS=[STX+0.5,0,STZ+5];   // 出生点正南旱滩（碑-出生-板一线），面河（+z）
+const BOARD_POS=[STX+0.5,0,STZ+1];   // v30：广场内（z=23）——原STZ+5跟着坐标漂到水线上了，牌子插河里；现在板在碑旁广场上
 function paperTexture(msg){
   const cv=document.createElement('canvas');cv.width=128;cv.height=160;
   const g=cv.getContext('2d');
@@ -679,9 +679,14 @@ function savePos(){
 function schedulePosSave(){clearTimeout(posSaveT);posSaveT=setTimeout(savePos,10000);}
 /* 进场自检：本地有没上云的砖，明说+自动推 */
 setTimeout(()=>{
-  if(NPC_TOKEN&&worldDirty&&(diffs.r.length||Object.keys(diffs.a).length)){
-    showStele('你这里有 '+(diffs.r.length+Object.keys(diffs.a).length)+' 格没上过云的搭建。\n十秒后自动推——若弹出令牌框，贴一把新的就好。');
-    setTimeout(()=>{pushWorld();},10000);
+  if(worldDirty&&(diffs.r.length||Object.keys(diffs.a).length)){
+    const n=diffs.r.length+Object.keys(diffs.a).length;
+    if(NPC_TOKEN){
+      showStele('你这里有 '+n+' 格没上过云的搭建。\n十秒后自动推——别关页面。');
+      setTimeout(()=>{pushWorld();},10000);
+    }else{
+      showStele('你这里有 '+n+' 格没上过云的搭建，但这台设备还没有令牌。\n点右上角☰→令牌贴一把，或者点「导出搭建」把码发给清言。');
+    }
   }
 },3500);
 /* 首次进入 */
@@ -940,8 +945,8 @@ function tickFloss(t){
 
 /* ================= 玩家与物理 ================= */
 const PW=0.30, PH=1.75, EYE=1.62;
-const p={x:STX+0.5,y:height(STX,STZ+3)+3,z:STZ+3+0.5,vx:0,vy:0,vz:0,yaw:Math.PI,pitch:-0.06,ground:false};
-const spawn=()=>{p.x=STX+0.5;p.z=STZ+3+0.5;p.y=height(STX,STZ+3)+3;p.vy=0;};
+const p={x:STX+0.5,y:10,z:STZ-0.5,vx:0,vy:0,vz:0,yaw:Math.PI,pitch:-0.06,ground:false};   // v30：出生在广场正中碑脚下（y给10，落地物理接管）
+const spawn=()=>{p.x=STX+0.5;p.z=STZ-0.5;p.y=10;p.vy=0;};
 const boxBlocks=(minx,miny,minz,maxx,maxy,maxz,fn)=>{
   for(let x=Math.floor(minx);x<=Math.floor(maxx);x++)
   for(let y=Math.floor(miny);y<=Math.floor(maxy);y++)
