@@ -59,14 +59,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;letter-spacing:1px;font-size:12px;font-weight:bold;background:rgba(150,60,40,.85);color:#ffe;padding:3px 8px;border-radius:3px;z-index:20">v20</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;letter-spacing:1px;font-size:12px;font-weight:bold;background:rgba(150,60,40,.85);color:#ffe;padding:3px 8px;border-radius:3px;z-index:20">v21</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="diag" style="position:fixed;top:calc(30px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:10px;color:rgba(244,239,226,.75);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px"></div>
 <div id="help"></div>
 <div id="btnBoard">留言板</div>
 <div id="boardUI">
   <div id="boardCard">
-    <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <b id="boardClose">合上</b></div>
+    <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <span id="expBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">导出搭建</span> · <b id="boardClose">合上</b></div>
     <div id="boardList"></div>
     <div id="boardFoot">
       <textarea id="boardIn" maxlength="40" placeholder="写点什么。四十个字以内。"></textarea>
@@ -489,6 +489,29 @@ document.getElementById('tokBtn2').onclick=()=>{
     syncBoard();setTimeout(()=>{if(worldDirty)pushWorld();},2500);
   });
 };
+/* 导出搭建：diffs变一段码，发给清言，它写上云——零令牌的桥 */
+document.getElementById('expBtn').onclick=()=>{
+  const all={r:diffs.r,a:diffs.a};
+  const more={};
+  try{const sv=JSON.parse(localStorage.getItem('hetan_save_v1'));if(sv&&(sv.r||sv.a)){more.r=(sv.r||[]);Object.assign(more.a,sv.a||{});}}catch(e){}
+  if(more.r&&more.r.length>all.r.length)all.r=more.r;
+  if(more.a&&Object.keys(more.a).length>Object.keys(all.a).length)all.a=more.a;
+  const n=all.r.length+Object.keys(all.a).length;
+  if(!n){toast('这台设备上没有没上云的搭建');return;}
+  const code=btoa(unescape(encodeURIComponent(JSON.stringify(all))));
+  const done=()=>toast(n+' 格已复制——微信发给清言，它替你上云');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(done).catch(()=>fallbackCopy(code,done));
+  }else fallbackCopy(code,done);
+};
+function fallbackCopy(text,done){
+  const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done();}catch(e){toast('复制失败——长按下面蓝字全选复制');
+    const p=document.createElement('div');p.style.cssText='position:fixed;left:5%;right:5%;bottom:10%;background:#fff;color:#036;padding:10px;font-size:10px;word-break:break-all;max-height:40%;overflow:auto;z-index:99';
+    p.textContent=text;p.onclick=()=>p.remove();document.body.appendChild(p);}
+  ta.remove();
+}
 document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');renderBoard();syncBoard();};
 /* 令牌入口 */
 document.getElementById('tokBtn').onclick=()=>{
