@@ -59,7 +59,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v17</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(9px + env(safe-area-inset-top));left:10px;letter-spacing:0;font-size:11px;opacity:.6">v18</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="diag" style="position:fixed;top:calc(30px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:10px;color:rgba(244,239,226,.75);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px"></div>
 <div id="help"></div>
@@ -198,6 +198,7 @@ function pushWorld(){
         worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
         diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
         try{localStorage.removeItem(SKEY);}catch(e){}
+        toast('搭建已上云 · 谁打开都能看到');
       });
   }).catch(()=>{worldBusy=false;});
 }
@@ -590,8 +591,29 @@ function npcLoop(){
   setTimeout(pollNPCs,3000);
   setTimeout(npcLoop,7000);
 }
+/* 轻提示：搭建上云成功/失败，必须看得见——不再静默 */
+let toastT=0;
+function toast(s){
+  const el=document.getElementById('toast')||(()=>{const t=document.createElement('div');t.id='toast';
+    t.style.cssText='position:fixed;left:50%;bottom:22%;transform:translateX(-50%);padding:9px 18px;background:rgba(24,28,32,.78);color:#efe8d8;font-size:13px;letter-spacing:2px;border-radius:4px;border:1px solid rgba(255,240,200,.25);z-index:29;transition:opacity .4s;opacity:0;pointer-events:none';
+    document.body.appendChild(t);return t;})();
+  el.textContent=s;el.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>el.style.opacity=0,2600);
+}
+/* 名字即存档：位置跟名字走——换设备、换浏览器，进同一个名字回到原地 */
+let posSaveT=0;
+function savePos(){
+  if(!NPC_TOKEN||!ME)return;
+  ghPut('saves/'+encodeURIComponent(ME.name)+'.json',{pos:[+p.x.toFixed(1),+p.z.toFixed(1)],ts:Date.now()},null,'河滩：'+ME.name+'站了站').catch(()=>{});
+}
+function schedulePosSave(){clearTimeout(posSaveT);posSaveT=setTimeout(savePos,10000);}
 /* 首次进入 */
 meInit();
+/* 名字存档：回到上次站的地方 */
+if(NPC_TOKEN&&ME){
+  ghGet('saves/'+encodeURIComponent(ME.name)+'.json').then(({data})=>{
+    if(data&&data.pos&&isFinite(data.pos[0])){p.x=data.pos[0];p.z=data.pos[1];}
+  }).catch(()=>{});
+}
 npcLoop();                    // 无令牌也跑（读留言板+公开读NPC）
 if(NPC_TOKEN){
   setTimeout(()=>{if(!sessionStorage.getItem('hetan_greeted')){sessionStorage.setItem('hetan_greeted','1');showStele('你叫'+ME.name+'。\n河滩记下你了——走了，人也还在。');}},2600);
