@@ -186,7 +186,7 @@ function pushWorld(){
   diffs.r.forEach(([x,y,z])=>{local[x+','+y+','+z]={v:0};});
   for(const k in diffs.a)local[k]={v:diffs.a[k]};
   ghGet('world.json').then(({sha,data})=>{
-    worldSha=sha;
+    if(!sha){worldBusy=false;return;}   // 实时通道没通（读的是缓存副本）——不拿本地的盖云端，下个周期再试。够不着板子就不钉，10/11的教训长进世界了
     const rd=remoteDiffs(data);
     const a=Object.assign({},rd.a), r=rd.r.slice();
     for(const k in local){
