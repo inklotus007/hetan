@@ -881,8 +881,9 @@ const geo=new THREE.BoxGeometry(1,1,1);
 const meshes={};
 for(const t in TYPES){
   const T=TYPES[t];let m;
-  if(T.water){waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
-    m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}   // v25：透明实例无排序，关深度写入才不会互相剔面
+  if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
+    m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
+    catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5});}
   else if(T.mats){
     const side=new THREE.MeshLambertMaterial({map:texOf(T.mats[0])});
