@@ -885,7 +885,7 @@ const stairGeo=new THREE.BoxGeometry(1,0.5,1);stairGeo.translate(0,-0.25,0);   /
 const torchGeo=new THREE.BoxGeometry(0.18,0.95,0.18);torchGeo.translate(0,-0.02,0);   // 火把：细杆立着
 for(const t in TYPES){
   const T=TYPES[t];let m;
-  const geo=T.stair?stairGeo:(T.torch?torchGeo:geo);
+  const blockGeo=T.stair?stairGeo:(T.torch?torchGeo:geo);   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）
   if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
     m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
     catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
@@ -896,7 +896,7 @@ for(const t in TYPES){
     const bot=new THREE.MeshLambertMaterial({map:texOf(T.mats[3])});
     m=[side,side,top,bot,side,side];
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  meshes[t]=new THREE.InstancedMesh(geo,m,Math.ceil(W*H*D/3));
+  meshes[t]=new THREE.InstancedMesh(blockGeo,m,Math.ceil(W*H*D/3));
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
 }
