@@ -521,7 +521,7 @@ document.getElementById('tokBtn').onclick=()=>{
   if(t&&t.trim()){localStorage.setItem('jldh_token',t.trim());location.reload();}
 };
 /* NPC小人渲染 */
-const NPC_ONLINE_TTL=35000, NPC_MAX=32;   // TTL 20s→35s：心跳节流后保活间隔25s要罩得住（留10s余量）
+const NPC_ONLINE_TTL=20000, NPC_MAX=32;
 function nameSprite(txt,color){
   const cv=document.createElement('canvas');cv.width=256;cv.height=64;
   const g=cv.getContext('2d');
@@ -576,27 +576,15 @@ function renderNPCs(list,tSec){
 }
 /* 云端同步：只在配了令牌时 */
 let npcSha=null,npcList=[],npcBusy=false;
-/* 心跳节流（v27）：GET照旧每7秒拉别人；PUT只在「真动了」或「该保活」时写。
-   之前站着不动也每7秒一个commit——同志在滩上站六分钟，仓库里多十几个「NPC：同志」。
-   治法：移动>0.4格 或 距上次写>25s 才PUT。走的人更新节奏不变，站的人commit量降65%+ */
-let lastPutX=1e9,lastPutZ=1e9,lastPutTs=0;
 function syncNPCs(){
   if(!NPC_TOKEN||!ME||npcBusy)return;npcBusy=true;
   ghGet(NPCS_URL).then(({sha,data})=>{
     npcSha=sha;
     const npcs=(data&&data.npcs)||{};
     const now=Date.now();
-    const moved=Math.abs(p.x-lastPutX)+Math.abs(p.z-lastPutZ)>0.4;
-    const alive=now-lastPutTs>25000;
-    if(moved||alive){
-      // 自己写进去（心跳）
-      npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
-        home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
-      lastPutX=p.x;lastPutZ=p.z;lastPutTs=now;
-    }else if(npcs[ME.id]){
-      // 没动也没到保活点——本地把自己标在线（别人的视角靠远端lastSeen+TTL），不写云
-      npcs[ME.id].online=true;
-    }
+    // 自己写进去（心跳）
+    npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
+      home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
     // 限数：砍最老的
     const keys=Object.keys(npcs);
     if(keys.length>40){
@@ -604,7 +592,7 @@ function syncNPCs(){
       keys.slice(0,keys.length-40).forEach(k=>delete npcs[k]);
     }
     npcList=Object.values(npcs);
-    if(moved||alive)return ghPut(NPCS_URL,{npcs:npcs},sha);
+    return ghPut(NPCS_URL,{npcs:npcs},sha);
   }).then(()=>{
     // 拉最新（含别人的在线位置）——省一次GET，用刚写的全量+别人的lastSeen判断在线
     npcBusy=false;
@@ -673,9 +661,93 @@ const npcGroup=new THREE.Group();scene.add(npcGroup);   // 来客NPC容器（npc
 scene.background=new THREE.Color(0x9fc5e0);
 scene.fog=new THREE.Fog(0x9fc5e0,38,92);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.08,200);
-scene.add(new THREE.AmbientLight(0xdfeaf2,0.85));
+const amb=new THREE.AmbientLight(0xdfeaf2,0.85);scene.add(amb);
 const sun=new THREE.DirectionalLight(0xfff2dd,0.75);
 sun.position.set(40,60,20);scene.add(sun);
+
+/* ================= 昼夜（v27）：太阳月亮星星云——十分钟过一天，真实时钟驱动 =================
+   谁在什么时刻打开，河滩就是什么时辰——隔着设备看到同一个天上。 */
+const DAY_LEN=600;   // 十分钟一天
+const SKY_KEYS=[     // [t, 天色, 雾色, 环境光, 日光, 日色]
+  [0.00,0x0a1524,0x0a1524,0.30,0.06,0x8fa8cc],
+  [0.22,0x0e1c30,0x0e1c30,0.32,0.08,0x8fa8cc],
+  [0.27,0xd88a5a,0xd8a06a,0.55,0.55,0xffb27a],
+  [0.35,0x9fc5e0,0xa8c8dc,0.85,0.75,0xfff2dd],
+  [0.50,0x9fc5e0,0xa8c8dc,0.85,0.75,0xfff2dd],
+  [0.65,0x9fc5e0,0xa8c8dc,0.85,0.75,0xfff2dd],
+  [0.73,0xe8946a,0xe0a070,0.55,0.55,0xffa070],
+  [0.78,0x14203a,0x14203a,0.32,0.08,0x8fa8cc],
+  [1.00,0x0a1524,0x0a1524,0.30,0.06,0x8fa8cc]];
+const SEG_NAME=[[0.26,'夜'],[0.30,'拂晓'],[0.36,'清晨'],[0.45,'上午'],[0.55,'正午'],[0.66,'午后'],[0.72,'傍晚'],[0.80,'黄昏'],[0.86,'夜']];
+function lerpHex(a,b,t){const ar=a>>16&255,ag=a>>8&255,ab=a&255,br=b>>16&255,bg=b>>8&255,bb=b&255;
+  return Math.round(ar+(br-ar)*t)<<16|Math.round(ag+(bg-ag)*t)<<8|Math.round(ab+(bb-ab)*t);}
+function skyAt(t){
+  for(let i=0;i<SKY_KEYS.length-1;i++){
+    const A=SKY_KEYS[i],B=SKY_KEYS[i+1];
+    if(t>=A[0]&&t<=B[0]){const k=(t-A[0])/((B[0]-A[0])||1);
+      return {sky:lerpHex(A[1],B[1],k),fog:lerpHex(A[2],B[2],k),amb:A[3]+(B[3]-A[3])*k,sunI:A[4]+(B[4]-A[4])*k,sunC:lerpHex(A[5],B[5],k)};}
+  }
+  const E=SKY_KEYS[0];return {sky:E[1],fog:E[2],amb:E[3],sunI:E[4],sunC:E[5]};
+}
+function discTex(inner,outer){
+  const cv=document.createElement('canvas');cv.width=cv.height=64;
+  const g=cv.getContext('2d');
+  const gr=g.createRadialGradient(32,32,3,32,32,30);
+  gr.addColorStop(0,inner);gr.addColorStop(0.55,inner);gr.addColorStop(1,outer);
+  g.fillStyle=gr;g.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(cv);
+}
+const sunSpr=new THREE.Sprite(new THREE.SpriteMaterial({map:discTex('rgba(255,216,110,1)','rgba(255,216,110,0)'),transparent:true,depthWrite:false}));
+sunSpr.scale.set(11,11,1);scene.add(sunSpr);
+const moonSpr=new THREE.Sprite(new THREE.SpriteMaterial({map:discTex('rgba(228,236,246,1)','rgba(228,236,246,0)'),transparent:true,depthWrite:false}));
+moonSpr.scale.set(7,7,1);scene.add(moonSpr);
+const starGeo=new THREE.BufferGeometry();
+{const sp=[];
+ for(let i=0;i<420;i++){const a=Math.random()*Math.PI*2,e=Math.random()*1.35+0.12,r=130;
+   sp.push(Math.cos(a)*Math.cos(e)*r,Math.sin(e)*r,Math.sin(a)*Math.cos(e)*r);}
+ starGeo.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));}
+const starMat=new THREE.PointsMaterial({color:0xdfe8ff,size:0.8,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true});
+scene.add(new THREE.Points(starGeo,starMat));
+const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:0.88});
+const cloudGroup=new THREE.Group();
+[[14,35,18],[62,36,44],[30,37,70],[78,35,58],[8,36,76],[48,36,30]].forEach(([cx,cy,cz],i)=>{
+  const g=new THREE.Group();
+  const n=2+Math.floor(hash(i*7,i*3)*3);
+  for(let j=0;j<n;j++){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(4+hash(i,j)*5,1.1,3+hash(j,i)*4),cloudMat);
+    b.position.set((hash(j*3,i)-0.5)*6,(hash(i,j*5)-0.5)*1.1,(hash(i*2,j)-0.5)*4);
+    g.add(b);
+  }
+  g.position.set(cx,cy,cz);g.userData={x0:cx,spd:0.5+hash(i,i*9)*0.5};
+  cloudGroup.add(g);
+});
+scene.add(cloudGroup);
+let lastSeg='';
+function tickSky(now){
+  const dayT=((now/1000)%DAY_LEN)/DAY_LEN;
+  const k=skyAt(dayT);
+  scene.background.setHex(k.sky);
+  scene.fog.color.setHex(k.fog);
+  scene.fog.near=38-(0.85-k.amb)*18;
+  amb.intensity=k.amb;
+  sun.intensity=k.sunI;sun.color.setHex(k.sunC);
+  const sa=(dayT-0.25)/0.5*Math.PI;                     // 0.25日出 → 0.75日落
+  sunSpr.position.set(-Math.cos(sa)*88,Math.sin(sa)*52+2,-32);
+  sun.position.copy(sunSpr.position).multiplyScalar(0.5);
+  const ma=sa+Math.PI;
+  moonSpr.position.set(-Math.cos(ma)*88,Math.sin(ma)*52+2,34);
+  starMat.opacity=Math.max(0,Math.min(0.95,(0.35-k.sunI)*3));   // 日光越弱星越亮
+  sunSpr.material.opacity=Math.max(0,Math.min(1,(dayT>0.2&&dayT<0.8)?1:0.001));
+  moonSpr.material.opacity=starMat.opacity>0.05?0.95:0.35;
+  cloudGroup.children.forEach(c=>{
+    c.position.x=((c.userData.x0+now*0.001*c.userData.spd)%130)-15;
+  });
+  let seg=SEG_NAME[0][1];
+  for(const [tt,name] of SEG_NAME){if(dayT>=tt)seg=name;}
+  if(seg!==lastSeg){lastSeg=seg;
+    const el=document.querySelector('#top small');if(el)el.textContent=seg+' · 想搭什么搭什么';
+  }
+}
 
 // 几何：程序化canvas纹理（零外部文件）
 function makeTex(kind){
@@ -1124,6 +1196,7 @@ function loop(now){
   camera.rotation.set(0,0,0);
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
+  tickSky(now);
   if(waterTex){waterTex.offset.x=(now*0.00003)%1;waterTex.offset.y=(now*0.000016)%1;}   // 水在流
   checkStele();
   tickHighlight();
