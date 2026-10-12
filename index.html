@@ -521,7 +521,7 @@ document.getElementById('tokBtn').onclick=()=>{
   if(t&&t.trim()){localStorage.setItem('jldh_token',t.trim());location.reload();}
 };
 /* NPC小人渲染 */
-const NPC_ONLINE_TTL=20000, NPC_MAX=32;
+const NPC_ONLINE_TTL=35000, NPC_MAX=32;   // TTL 20s→35s：心跳节流后保活间隔25s要罩得住（留10s余量）
 function nameSprite(txt,color){
   const cv=document.createElement('canvas');cv.width=256;cv.height=64;
   const g=cv.getContext('2d');
@@ -576,15 +576,27 @@ function renderNPCs(list,tSec){
 }
 /* 云端同步：只在配了令牌时 */
 let npcSha=null,npcList=[],npcBusy=false;
+/* 心跳节流（v27）：GET照旧每7秒拉别人；PUT只在「真动了」或「该保活」时写。
+   之前站着不动也每7秒一个commit——同志在滩上站六分钟，仓库里多十几个「NPC：同志」。
+   治法：移动>0.4格 或 距上次写>25s 才PUT。走的人更新节奏不变，站的人commit量降65%+ */
+let lastPutX=1e9,lastPutZ=1e9,lastPutTs=0;
 function syncNPCs(){
   if(!NPC_TOKEN||!ME||npcBusy)return;npcBusy=true;
   ghGet(NPCS_URL).then(({sha,data})=>{
     npcSha=sha;
     const npcs=(data&&data.npcs)||{};
     const now=Date.now();
-    // 自己写进去（心跳）
-    npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
-      home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
+    const moved=Math.abs(p.x-lastPutX)+Math.abs(p.z-lastPutZ)>0.4;
+    const alive=now-lastPutTs>25000;
+    if(moved||alive){
+      // 自己写进去（心跳）
+      npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
+        home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
+      lastPutX=p.x;lastPutZ=p.z;lastPutTs=now;
+    }else if(npcs[ME.id]){
+      // 没动也没到保活点——本地把自己标在线（别人的视角靠远端lastSeen+TTL），不写云
+      npcs[ME.id].online=true;
+    }
     // 限数：砍最老的
     const keys=Object.keys(npcs);
     if(keys.length>40){
@@ -592,7 +604,7 @@ function syncNPCs(){
       keys.slice(0,keys.length-40).forEach(k=>delete npcs[k]);
     }
     npcList=Object.values(npcs);
-    return ghPut(NPCS_URL,{npcs:npcs},sha);
+    if(moved||alive)return ghPut(NPCS_URL,{npcs:npcs},sha);
   }).then(()=>{
     // 拉最新（含别人的在线位置）——省一次GET，用刚写的全量+别人的lastSeen判断在线
     npcBusy=false;
