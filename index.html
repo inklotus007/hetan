@@ -59,7 +59,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;letter-spacing:1px;font-size:12px;font-weight:bold;background:rgba(150,60,40,.85);color:#ffe;padding:3px 8px;border-radius:3px;z-index:20">v19</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
+<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="ver" style="position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;letter-spacing:1px;font-size:12px;font-weight:bold;background:rgba(150,60,40,.85);color:#ffe;padding:3px 8px;border-radius:3px;z-index:20">v20</span><span id="mute" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:10px;cursor:pointer;letter-spacing:0;font-size:15px;opacity:.85">♪</span><span id="tokBtn" style="position:fixed;top:calc(8px + env(safe-area-inset-top));right:38px;cursor:pointer;letter-spacing:0;font-size:12px;opacity:.85">令牌</span></div>
 <div id="stele"></div>
 <div id="diag" style="position:fixed;top:calc(30px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-size:10px;color:rgba(244,239,226,.75);text-shadow:0 1px 2px rgba(40,50,60,.5);z-index:4;pointer-events:none;letter-spacing:1px"></div>
 <div id="help"></div>
@@ -432,6 +432,7 @@ function writeBoard(){
     miniPrompt('贴令牌（GitHub PAT，只存这台设备）','粘贴令牌……','',tok=>{
       NPC_TOKEN=tok;localStorage.setItem('jldh_token',tok);rawMode=false;
       tip.textContent='钥匙收好了，这就钉——';
+      setTimeout(()=>{if(worldDirty)pushWorld();},2500);
       writeBoard();
     });
     return;
@@ -485,7 +486,7 @@ document.getElementById('tokBtn2').onclick=()=>{
   miniPrompt('贴令牌（GitHub PAT，只存这台设备）','',NPC_TOKEN||'',tok=>{
     NPC_TOKEN=tok;localStorage.setItem('jldh_token',tok);rawMode=false;
     document.getElementById('boardTip').textContent='钥匙收好了——留言和留NPC都通了。';
-    syncBoard();
+    syncBoard();setTimeout(()=>{if(worldDirty)pushWorld();},2500);
   });
 };
 document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');renderBoard();syncBoard();};
@@ -609,7 +610,7 @@ function schedulePosSave(){clearTimeout(posSaveT);posSaveT=setTimeout(savePos,10
 /* 进场自检：本地有没上云的砖，明说+自动推 */
 setTimeout(()=>{
   if(NPC_TOKEN&&worldDirty&&(diffs.r.length||Object.keys(diffs.a).length)){
-    showStele('你这里有 '+(diffs.r.length+Object.keys(diffs.a).length)+' 格没上过云的搭建。\n十秒后自动推上去——别关页面。');
+    showStele('你这里有 '+(diffs.r.length+Object.keys(diffs.a).length)+' 格没上过云的搭建。\n十秒后自动推——若弹出令牌框，贴一把新的就好。');
     setTimeout(()=>{pushWorld();},10000);
   }
 },3500);
