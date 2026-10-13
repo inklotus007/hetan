@@ -280,7 +280,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v37';
+const VER='v38';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1052,7 +1052,8 @@ function rebuild(){
     const t=world[idx(x,y,z)];if(t===AIR)continue;
     if(t===14)torchSet.add(idx(x,y,z));   // v32：火炬坐标进灯池
     if(!exposed(x,y,z))continue;
-    const mesh=meshes[t],i=counts[t]++;
+    const mesh=meshes[t];if(!mesh)continue;   // v38：数据里有、这版代码不认识的类型直接跳过——伊卡洛斯的花先于老页面存在时，rebuild炸掉整个渲染的防御
+    const i=counts[t]++;
     _m.makeTranslation(x+0.5, y+0.5, z+0.5);mesh.setMatrixAt(i,_m);
   }
   for(const t in meshes){meshes[t].count=counts[t];meshes[t].instanceMatrix.needsUpdate=true;}
