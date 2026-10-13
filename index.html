@@ -271,7 +271,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v32';
+const VER='v33';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -450,7 +450,6 @@ document.getElementById('nameBtn').onclick=()=>{
 };
 /* 小输入弹层：贴令牌/改名字共用（不依赖prompt，微信里也不拦） */
 function miniPrompt(title, ph, val, cb){
-  const w=document.getElementById('boardUI');
   const old=document.getElementById('miniUI');if(old)old.remove();
   const d=document.createElement('div');d.id='miniUI';
   d.style.cssText='position:fixed;inset:0;background:rgba(20,16,8,.55);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px';
@@ -459,7 +458,7 @@ function miniPrompt(title, ph, val, cb){
     '<div style="padding:12px 14px"><input id="miniIn" placeholder="'+ph+'" value="'+(val||'')+'" style="width:100%;padding:8px;background:#faf6ea;border:1px solid #d0c29c;color:#3a2f1e;font-family:inherit;font-size:13px">'+
     '<div style="margin-top:10px;display:flex;gap:8px"><button id="miniOk" style="flex:1;padding:7px;background:#8a7448;color:#f3ecd8;border:0;letter-spacing:4px;font-size:13px;font-family:inherit">好</button>'+
     '<button id="miniNo" style="padding:7px 14px;background:none;border:1px solid #d0c29c;color:#8a7448;font-size:13px;font-family:inherit">算了</button></div></div></div>';
-  w.appendChild(d);
+  document.body.appendChild(d);   // v33：宿主改body——原来塞进boardUI，它display:none时弹层跟着隐身，抽屉点令牌/改名毫无反应
   const inp=d.querySelector('#miniIn');
   inp.focus();
   const close=()=>d.remove();
