@@ -271,7 +271,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v30';
+const VER='v31';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -533,13 +533,16 @@ function boardDist(){return Math.hypot(p.x-BOARD_POS[0]-0.5,p.z-BOARD_POS[2]);}
 document.getElementById('boardClose').onclick=()=>document.getElementById('boardUI').classList.remove('on');
 document.getElementById('boardUI').addEventListener('click',e=>{if(e.target.id==='boardUI')document.getElementById('boardUI').classList.remove('on');});
 document.getElementById('boardGo').onclick=writeBoard;
-document.getElementById('tokBtn2').onclick=()=>{
+function bindTok(){
   miniPrompt('贴令牌（GitHub PAT，只存这台设备）','',NPC_TOKEN||'',tok=>{
     NPC_TOKEN=tok;localStorage.setItem('jldh_token',tok);rawMode=false;
     document.getElementById('boardTip').textContent='钥匙收好了——留言和留NPC都通了。';
+    toast('钥匙收好了');
     syncBoard();setTimeout(()=>{if(worldDirty)pushWorld();},2500);
   });
-};
+}
+document.getElementById('tokBtn2').onclick=bindTok;
+document.getElementById('mTok').onclick=bindTok;   // v31：抽屉里的令牌从v28起就没绑过事件——注释写了「入口：抽屉mTok+板上tokBtn2」，实际只绑了板上那个，同志点抽屉没反应的实底
 /* 导出搭建：diffs变一段码，发给清言，它写上云——零令牌的桥 */
 document.getElementById('expBtn').onclick=()=>{
   const all={r:diffs.r,a:diffs.a};
@@ -871,6 +874,13 @@ function makeTex(kind){
     g.fillStyle='#6e6e6a';
     g.fillRect(0,30,64,3);g.fillRect(30,0,3,30);g.fillRect(14,33,3,31);g.fillRect(48,33,3,31);
     dot(30,'#8a8a86',1);
+  }else if(kind==='torch'){
+    g.fillStyle='#8a5a30';g.fillRect(0,0,64,64);   // 木杆
+    g.fillStyle='#6e4522';for(let y=18;y<64;y+=11)g.fillRect(0,y,64,2);
+    g.fillStyle='#fff2a8';g.fillRect(0,0,64,16);   // 火焰亮芯
+    g.fillStyle='#ffb040';g.fillRect(0,16,64,7);   // 火焰橙
+    g.fillStyle='#ff5a20';g.fillRect(0,23,64,3);
+    dot(26,'#ffd060',3);dot(8,'#ff7a30',2);
   }else if(kind==='roof'){
     g.fillStyle='#7a4a42';g.fillRect(0,0,64,64);
     for(let y=0;y<64;y+=8){g.fillStyle='#653a33';g.fillRect(0,y,64,3);
@@ -894,6 +904,7 @@ for(const t in TYPES){
   if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
     m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
     catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
+  else if(T.torch){m=new THREE.MeshBasicMaterial({map:texOf('torch')});}   // v31：自发光——MeshBasic不吃场景光照，火把永远亮；原来tex undefined→空白透明纹理，「放在地上是透明的」的实底
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5});}
   else if(T.mats){
     const side=new THREE.MeshLambertMaterial({map:texOf(T.mats[0])});
@@ -1019,7 +1030,7 @@ function raycast(maxDist=5.2){
   let tmx=((d.x>0?x+1-o.x:o.x-x))*tdx, tmy=((d.y>0?y+1-o.y:o.y-y))*tdy, tmz=((d.z>0?z+1-o.z:o.z-z))*tdz;
   let nx=0,ny=0,nz=0,t=0;
   while(t<=maxDist){
-    if(solid(x,y,z))return{x,y,z,nx,ny,nz};
+    {const b=get(x,y,z);if(b!==AIR&&b!==8)return{x,y,z,nx,ny,nz};}   // v31：火把可点中可删除（solid不算火把是走路碰撞的事；raycast共用solid导致火把永远选不中删不掉）
     if(tmx<tmy&&tmx<tmz){x+=stepX;t=tmx;tmx+=tdx;nx=-stepX;ny=0;nz=0;}
     else if(tmy<tmz){y+=stepY;t=tmy;tmy+=tdy;nx=0;ny=-stepY;nz=0;}
     else{z+=stepZ;t=tmz;tmz+=tdz;nx=0;ny=0;nz=-stepZ;}
