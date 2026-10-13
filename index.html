@@ -271,7 +271,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v31';
+const VER='v32';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -916,15 +916,38 @@ for(const t in TYPES){
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
 }
+/* v32 火光：6盏PointLight的池子，动态分给离玩家最近的火炬——真光照，
+   每盏带火苗抖动（两路sin不同频率，火焰呼吸感）；远处火炬靠自发光材质自己亮 */
+const torchLights=[];
+for(let i=0;i<6;i++){const L=new THREE.PointLight(0xffa54f,0,8,2);scene.add(L);torchLights.push(L);}
+const _i2x=i=>{const y=i%H,t=(i-y)/H,z=t%D;return[t/D+0.5,y+0.78,z%D+0.5];};
+let _lastTorch=0;
+function tickTorch(now){
+  if(now-_lastTorch<200)return;_lastTorch=now;
+  const arr=[];
+  for(const i of torchSet){const c=_i2x(i);const d=Math.hypot(c[0]-p.x,c[1]-p.y-EYE,c[2]-p.z);
+    if(d<15)arr.push([d,i,c]);}
+  arr.sort((a,b)=>a[0]-b[0]);
+  for(let k=0;k<6;k++){
+    const L=torchLights[k];
+    if(k<arr.length){const c=arr[k][2];
+      L.position.set(c[0],c[1],c[2]);
+      L.intensity=1.35+0.35*Math.sin(now/95+c[0]*13)+0.18*Math.sin(now/41+c[0]*7);
+    }else L.intensity=0;
+  }
+}
 const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14;};   // 火把不算墙
 const exposed=(x,y,z)=>{
   return get(x,y+1,z)===AIR||get(x,y-1,z)===AIR||get(x+1,y,z)===AIR||get(x-1,y,z)===AIR||get(x,y,z+1)===AIR||get(x,y,z-1)===AIR;
 };
 const _m=new THREE.Matrix4();
+const torchSet=new Set();   // 火炬位置集（idx）——rebuild顺手收集，灯池读
 function rebuild(){
   const counts={};for(const t in meshes)counts[t]=0;
+  torchSet.clear();
   for(let x=0;x<W;x++)for(let z=0;z<D;z++)for(let y=0;y<H;y++){
     const t=world[idx(x,y,z)];if(t===AIR)continue;
+    if(t===14)torchSet.add(idx(x,y,z));   // v32：火炬坐标进灯池
     if(!exposed(x,y,z))continue;
     const mesh=meshes[t],i=counts[t]++;
     _m.makeTranslation(x+0.5, y+0.5, z+0.5);mesh.setMatrixAt(i,_m);
@@ -1262,6 +1285,7 @@ function loop(now){
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
   tickSky(now);
+  tickTorch(now);
   if(waterTex){waterTex.offset.x=(now*0.00003)%1;waterTex.offset.y=(now*0.000016)%1;}   // 水在流
   checkStele();
   tickHighlight();
