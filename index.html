@@ -122,7 +122,11 @@ const TYPES={
   11:{n:'石砖', c:0x9a9a96, tex:'stonebrick'},
   12:{n:'瓦', c:0x7a4a42, tex:'roof'},
   13:{n:'阶', c:0x9a9a96, tex:'stonebrick', stair:true},
-  14:{n:'炬', c:0xffb040, torch:true}
+  14:{n:'炬', c:0xffb040, torch:true},
+  15:{n:'红花', plant:'flower_red'},
+  16:{n:'黄花', plant:'flower_yellow'},
+  17:{n:'草', plant:'grass'},
+  18:{n:'凳', c:0x8a6a48, tex:'plank', bench:true}
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -276,7 +280,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v36';
+const VER='v37';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -311,10 +315,11 @@ document.getElementById('mMove').onclick=function(){
   moveMode=true;this.textContent='放下 · 到这儿就行';
   toast('牌子跟着你了——走到想放的地方，再点这里放下');
 };
+function topY(x,z){for(let y=H-1;y>=0;y--){const b=get(x,y,z);if(b!==AIR&&b!==8)return y+1;}return 6;}   // v37：含搭建物的实际顶面——height()只看地形，牌子在同志的砖上会沉地
 function tickBoardMove(){
   if(!moveMode||!boardGroup)return;
   const bx=Math.floor(p.x+Math.sin(p.yaw)*2.5),bz=Math.floor(p.z+Math.cos(p.yaw)*2.5);
-  boardGroup.position.set(bx+0.5,height(bx,bz)+1,bz+0.5);
+  boardGroup.position.set(bx+0.5,topY(bx,bz)+0.02,bz+0.5);
   boardGroup.rotation.y=p.yaw+Math.PI;
 }
 function saveBoardPos(){
@@ -325,7 +330,7 @@ function saveBoardPos(){
     return ghPut('board.json',{msgs:m,boardPos:[bx,bz]},sha,'河滩：牌子挪到'+bx+','+bz).then(()=>{
       boardBusySave=false;
       BOARD_POS[0]=bx+0.5;BOARD_POS[2]=bz+0.5;
-      boardGroup.position.set(bx+0.5,height(bx,bz)+1,bz+0.5);
+      boardGroup.position.set(bx+0.5,topY(bx,bz)+0.02,bz+0.5);
       toast('牌子钉好了——谁打开都在这儿');
       refreshMenu();
     });
@@ -440,7 +445,7 @@ function ensureBoard(){
     p.userData.baseZ=p.rotation.z;p.userData.i=i;
     boardGroup.add(p);boardPapers.push(p);
   }
-  boardGroup.position.set(BOARD_POS[0],height(Math.floor(BOARD_POS[0]),Math.floor(BOARD_POS[2]))+1,BOARD_POS[2]);   // 钉在生成地形的地表——diffs挖不动它站的地方
+  boardGroup.position.set(BOARD_POS[0],topY(Math.floor(BOARD_POS[0]),Math.floor(BOARD_POS[2]))+0.02,BOARD_POS[2]);   // 钉在生成地形的地表——diffs挖不动它站的地方
   boardGroup.rotation.y=Math.PI+0.18;   // 纸面朝北——朝人来的方向；微侧，像随手立的
   scene.add(boardGroup);
 }
@@ -933,6 +938,19 @@ function makeTex(kind){
     g.fillStyle='#6e6e6a';
     g.fillRect(0,30,64,3);g.fillRect(30,0,3,30);g.fillRect(14,33,3,31);g.fillRect(48,33,3,31);
     dot(30,'#8a8a86',1);
+  }else if(kind==='flower_red'||kind==='flower_yellow'||kind==='grass'){
+    const petal=kind==='flower_red'?'#d84434':(kind==='flower_yellow'?'#e8c832':null);
+    g.fillStyle='#4e7a3a';                                  // 茎和叶底色
+    g.fillRect(30,28,4,36);g.fillRect(22,44,8,3);g.fillRect(34,52,8,3);   // 茎+两片叶
+    if(petal){
+      g.fillStyle=petal;
+      [[20,8],[40,8],[12,16],[48,16],[20,24],[40,24],[30,4],[12,8],[48,8],[30,28]].forEach(([x,y])=>g.fillRect(x,y,10,10));
+      g.fillStyle=kind==='flower_red'?'#f0d060':'#a05a20';g.fillRect(28,14,10,10);   // 花心
+    }else{
+      g.fillStyle='#5d8a4a';
+      [[8,20],[18,10],[28,2],[38,14],[48,6],[56,22],[14,34],[46,36],[6,44],[54,46]].forEach(([x,y])=>{g.fillRect(x,y,5,26);g.fillRect(x+2,y-6,3,8);});
+      g.fillStyle='#688f4c';[[23,18],[43,26],[3,28]].forEach(([x,y])=>g.fillRect(x,y,4,20));
+    }
   }else if(kind==='torch'){
     g.fillStyle='#8a5a30';g.fillRect(0,0,64,64);   // 木杆
     g.fillStyle='#6e4522';for(let y=18;y<64;y+=11)g.fillRect(0,y,64,2);
@@ -957,13 +975,39 @@ const geo=new THREE.BoxGeometry(1,1,1);
 const meshes={};
 const stairGeo=new THREE.BoxGeometry(1,0.5,1);stairGeo.translate(0,-0.25,0);   // 台阶：半块躺在格子下半
 const torchGeo=new THREE.BoxGeometry(0.18,0.95,0.18);torchGeo.translate(0,-0.02,0);   // 火把：细杆立着
+/* v37 装饰植物：两片十字交叉面片，像素纹理（透明底），不吃光照（Basic）——花该是亮的 */
+const benchGeo=new THREE.BoxGeometry(1,0.42,0.55);benchGeo.translate(0,-0.5+0.21,0);   // 凳：矮台贴格底
+function mergePlanes(a,b){
+  const g=new THREE.BufferGeometry();
+  const na=a.attributes.position.array,nb=b.attributes.position.array;
+  const pos=new Float32Array(na.length+nb.length);pos.set(na,0);pos.set(nb,na.length);
+  const ua=a.attributes.uv.array,ub=b.attributes.uv.array;
+  const uv=new Float32Array(ua.length+ub.length);uv.set(ua,0);uv.set(ub,ua.length);
+  const ia=a.index.array,ib=b.index.array;
+  const ix=new Uint16Array(ia.length+ib.length);ix.set(ia,0);
+  for(let i=0;i<ib.length;i++)ix[ia.length+i]=ib[i]+a.attributes.position.count;
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+  g.setIndex(new THREE.BufferAttribute(ix,1));
+  return g;
+}
+let plantGeoCache=null;
+function plantGeo(){
+  if(plantGeoCache)return plantGeoCache;
+  const p1=new THREE.PlaneGeometry(0.85,0.85);p1.translate(0,-0.5+0.425,0);   // 底对格底
+  const p2=new THREE.PlaneGeometry(0.85,0.85);p2.rotateY(Math.PI/2);p2.translate(0,-0.5+0.425,0);
+  plantGeoCache=mergePlanes(p1,p2);
+  return plantGeoCache;
+}
 for(const t in TYPES){
   const T=TYPES[t];let m;
-  const blockGeo=T.stair?stairGeo:(T.torch?torchGeo:geo);   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）
+  const blockGeo=T.stair?stairGeo:(T.torch?torchGeo:(T.plant?plantGeo():(T.bench?benchGeo:geo)));   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）
   if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
     m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
     catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
-  else if(T.torch){m=new THREE.MeshBasicMaterial({map:texOf('torch')});}   // v31：自发光——MeshBasic不吃场景光照，火把永远亮；原来tex undefined→空白透明纹理，「放在地上是透明的」的实底
+  else if(T.torch){m=new THREE.MeshBasicMaterial({map:texOf('torch')});}
+  else if(T.plant){m=new THREE.MeshBasicMaterial({map:texOf(T.plant),transparent:true,alphaTest:0.4,side:THREE.DoubleSide});}   // v37：植物不吃光照，花是亮的；透明底像素纹理
+  else if(T.bench){m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}   // v31：自发光——MeshBasic不吃场景光照，火把永远亮；原来tex undefined→空白透明纹理，「放在地上是透明的」的实底
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5});}
   else if(T.mats){
     const side=new THREE.MeshLambertMaterial({map:texOf(T.mats[0])});
@@ -995,7 +1039,7 @@ function tickTorch(now){
     }else L.intensity=0;
   }
 }
-const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14;};   // 火把不算墙
+const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18;};   // 火把/花/草/凳不算墙
 const exposed=(x,y,z)=>{
   return get(x,y+1,z)===AIR||get(x,y-1,z)===AIR||get(x+1,y,z)===AIR||get(x-1,y,z)===AIR||get(x,y,z+1)===AIR||get(x,y,z-1)===AIR;
 };
