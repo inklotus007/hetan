@@ -43,7 +43,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 .mBtn{cursor:pointer;text-decoration:underline;color:#8a7448}
 #menuClose{cursor:pointer;color:#a09478;padding:0 4px;font-size:14px}
 /* 碑文 */
-#stele{position:fixed;left:50%;top:16%;transform:translateX(-50%);max-width:min(520px,86vw);padding:14px 22px;background:rgba(24,28,32,.72);color:#efe8d8;font-size:14px;line-height:2;letter-spacing:1px;border-radius:4px;border:1px solid rgba(255,240,200,.25);opacity:0;transition:opacity .8s;pointer-events:none;z-index:9;text-align:center}
+#stele{position:fixed;left:10px;bottom:calc(64px + env(safe-area-inset-bottom));max-width:min(300px,52vw);padding:8px 12px;background:rgba(24,28,32,.66);color:#efe8d8;font-size:12px;line-height:1.7;letter-spacing:1px;border-radius:6px;border:1px solid rgba(255,240,200,.22);opacity:0;transition:opacity .8s;pointer-events:none;z-index:9;text-align:left;max-height:38vh;overflow:hidden}
 /* 载入 */
 #boot{position:fixed;inset:0;background:#9fc5e0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;transition:opacity .6s}
 #boot h1{color:#f4efe2;font-size:26px;letter-spacing:8px;font-weight:normal;text-shadow:0 2px 6px rgba(40,50,60,.4)}
@@ -76,6 +76,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
   <div class="mRow"><span>世界</span><b id="mWorld">—</b></div>
   <div class="mRow"><span>我的档</span><b class="mBtn" id="mName" title="点这个改名字">—</b></div>
   <div class="mRow"><span>同步</span><b id="mSync">—</b></div>
+  <div class="mRow"><span>牌子</span><b class="mBtn" id="mMove" style="cursor:pointer">搬 · 点了跟着你</b></div>
   <div class="mRow"><span>留言板</span><b id="mBoard">—</b></div>
   <div class="mRow"><span>令牌</span><b class="mBtn" id="mTok">—</b></div>
   <div class="mRow"><span>声音</span><b class="mBtn" id="mMute">♪ 开</b></div>
@@ -275,7 +276,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v35';
+const VER='v36';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -303,6 +304,33 @@ document.getElementById('mTok').onclick=()=>{document.getElementById('menuPanel'
 document.getElementById('mExp').onclick=()=>{document.getElementById('menuPanel').classList.remove('on');const b=document.getElementById('expBtn');if(b)b.click();};
 document.getElementById('mMute').onclick=()=>{const m=AU.toggleMute();refreshMenu();};
 document.getElementById('mSync').onclick=syncDiag;   // v34：同步行点了出诊断——卡在哪一步直接说
+/* v36 搬牌子：点「搬」进入搬运模式，牌子跟着你走；再点「放下」落定并上云——位置存board.json，谁打开都在你放的地方 */
+document.getElementById('mMove').onclick=function(){
+  if(boardBusySave){toast('上一块还没钉稳，等等');return;}
+  if(moveMode){moveMode=false;this.textContent='搬 · 点了跟着你';saveBoardPos();return;}
+  moveMode=true;this.textContent='放下 · 到这儿就行';
+  toast('牌子跟着你了——走到想放的地方，再点这里放下');
+};
+function tickBoardMove(){
+  if(!moveMode||!boardGroup)return;
+  const bx=Math.floor(p.x+Math.sin(p.yaw)*2.5),bz=Math.floor(p.z+Math.cos(p.yaw)*2.5);
+  boardGroup.position.set(bx+0.5,height(bx,bz)+1,bz+0.5);
+  boardGroup.rotation.y=p.yaw+Math.PI;
+}
+function saveBoardPos(){
+  if(boardBusySave)return;boardBusySave=true;
+  const bx=Math.floor(p.x+Math.sin(p.yaw)*2.5),bz=Math.floor(p.z+Math.cos(p.yaw)*2.5);
+  ghGet('board.json').then(({sha,data})=>{
+    const m=(data&&data.msgs)||[];
+    return ghPut('board.json',{msgs:m,boardPos:[bx,bz]},sha,'河滩：牌子挪到'+bx+','+bz).then(()=>{
+      boardBusySave=false;
+      BOARD_POS[0]=bx+0.5;BOARD_POS[2]=bz+0.5;
+      boardGroup.position.set(bx+0.5,height(bx,bz)+1,bz+0.5);
+      toast('牌子钉好了——谁打开都在这儿');
+      refreshMenu();
+    });
+  }).catch(()=>{boardBusySave=false;toast('没钉上——网络抖了，再点一次放下');});
+}
 document.addEventListener('click',e=>{
   const p=document.getElementById('menuPanel');
   if(p.classList.contains('on')&&!p.contains(e.target)&&e.target.id!=='menuBtn')p.classList.remove('on');
@@ -368,7 +396,8 @@ function ghPut(path,obj,sha,msg){
 /* ================= 留言板（3D实体+纸片+云端） ================= */
 let boardGroup=null,boardPapers=[];
 let boardMsgs=[];   // {id,name,text,t}
-const BOARD_POS=[STX+0.5,0,STZ+1];   // v30：广场内（z=23）——原STZ+5跟着坐标漂到水线上了，牌子插河里；现在板在碑旁广场上
+const BOARD_POS=[STX+0.5,0,STZ+1];   // 默认位置——v36起可搬：位置存在board.json的boardPos，所有端共享
+let moveMode=false,boardBusySave=false;
 function paperTexture(msg){
   const cv=document.createElement('canvas');cv.width=128;cv.height=160;
   const g=cv.getContext('2d');
@@ -448,6 +477,13 @@ function syncBoard(){
       if(data.msgs.length>=boardMsgs.length||!boardMsgs.length)boardMsgs=data.msgs;  // 防竞态回退
       try{localStorage.setItem('hetan_board_cache',JSON.stringify(boardMsgs));}catch(e){}
       renderBoard();
+    }
+    if(data&&data.boardPos&&Array.isArray(data.boardPos)&&!moveMode&&boardGroup){   // v36：牌子的位置跟云端走
+      const[bx,bz]=data.boardPos;
+      if(Math.abs(boardGroup.position.x-(bx+0.5))>0.1||Math.abs(boardGroup.position.z-(bz+0.5))>0.1){
+        BOARD_POS[0]=bx+0.5;BOARD_POS[2]=bz+0.5;
+        boardGroup.position.set(bx+0.5,height(bx,bz)+1,bz+0.5);
+      }
     }
   }).catch(()=>{
     boardOffline=true;   // 够不着板子：缓存里上次看到的还在，别把空当没有
@@ -1315,6 +1351,7 @@ function loop(now){
   if((now|0)%7===0)diag();
   renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
   ensureBoard();boardWind(now/1000);
+  tickBoardMove();
   if((now|0)%3===0)pushWorld();   // 三秒一查，搭了就上云
   const nearBoard=boardDist()<4.5;
   document.getElementById('btnBoard').style.display=nearBoard?'block':'none';
