@@ -217,6 +217,8 @@ function pushWorld(){
   const local={};   // v22：直接从diffs构造（localCells是昨天埋的雷——调用了一个不存在的函数，推送必炸）
   diffs.r.forEach(([x,y,z])=>{local[x+','+y+','+z]={v:0};});
   for(const k in diffs.a)local[k]={v:diffs.a[k]};
+  const snapR=diffs.r.map(p=>p.slice());          // v43：本次推送的快照——成功后只清这些
+  const snapA=Object.assign({},diffs.a);          // GET/PUT窗口内（1-2秒）TA还在搭的新操作不在快照里，不能跟着清
   ghGet('world.json').then(({sha,data})=>{
     if(!sha){worldBusy=false;syncErr=apiStat;refreshMenu();return;}   // v34：够不着云端的原因写抽屉——以前静默return，同志334格卡着什么都看不到
     const rd=remoteDiffs(data);
@@ -284,7 +286,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v42';
+const VER='v43';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
