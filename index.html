@@ -1067,7 +1067,7 @@ function tickTorch(now){
 }
 const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22;};   // 火把/花/草/凳/路/灯不算墙；篱和桌挡人
 const exposed=(x,y,z)=>{
-  return get(x,y+1,z)===AIR||get(x,y-1,z)===AIR||get(x+1,y,z)===AIR||get(x-1,y,z)===AIR||get(x,y,z+1)===AIR||get(x,y,z-1)===AIR;
+  return !solid(x,y+1,z)||!solid(x,y-1,z)||!solid(x+1,y,z)||!solid(x-1,y,z)||!solid(x,y,z+1)||!solid(x,y,z-1);   // v41：邻居非实心（水/花/草/炬/路/灯/凳）即暴露——原来只认AIR，挨着花的地面侧面不渲染，透过花的镂空看到空洞=「花下面/台阶侧面透明」的根。MC正解：非实心方块不遮挡邻面
 };
 const _m=new THREE.Matrix4();
 const torchSet=new Set();   // 火炬位置集（idx）——rebuild顺手收集，灯池读
