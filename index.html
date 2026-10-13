@@ -105,7 +105,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <script src="three.min.js"></script>
 <script>
 /* ================= 基础 ================= */
-const W=90, D=90, H=40;               // 世界尺寸（v24：天空从14加高到40——最高处能搭28格，塔、树、烟囱随你）
+const W=160, D=130, H=40;             // 世界尺寸（v39：90×90→160×130——广场后面要盖；地形函数参数化，新区自动生成同类滩岸；坐标系不动，已有搭建原地不变）
 const AIR=0;
 // 方块类型: 1草 2土 3石 4沙 5木 6叶 7砖 8水 9玻璃 10木板 11石砖 12瓦
 const TYPES={
@@ -158,7 +158,7 @@ for(let x=0;x<W;x++)for(let z=0;z<D;z++){
   if(h<5)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;    // 水位线5：低于水位的全部灌满——河心不再露底（v25修「水没填满」）
 }
 // 老柳树：岸上几棵
-const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26]];
+const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26],[68,38],[96,56]];   // v39：新区东西滩各添一棵
 trees.forEach(([tx,tz])=>{
   const h=height(tx,tz); if(h<5)return;
   const th=3+Math.floor(hash(tx,tz)*2);
@@ -280,7 +280,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v38';
+const VER='v39';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -776,7 +776,7 @@ renderer.setSize(innerWidth,innerHeight);
 const scene=new THREE.Scene();
 const npcGroup=new THREE.Group();scene.add(npcGroup);   // 来客NPC容器（npcs在NPC模块定义）
 scene.background=new THREE.Color(0x9fc5e0);
-scene.fog=new THREE.Fog(0x9fc5e0,38,92);
+scene.fog=new THREE.Fog(0x9fc5e0,45,110);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,0.08,200);
 const amb=new THREE.AmbientLight(0xdfeaf2,0.85);scene.add(amb);
 const sun=new THREE.DirectionalLight(0xfff2dd,0.75);
@@ -1015,7 +1015,7 @@ for(const t in TYPES){
     const bot=new THREE.MeshLambertMaterial({map:texOf(T.mats[3])});
     m=[side,side,top,bot,side,side];
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  meshes[t]=new THREE.InstancedMesh(blockGeo,m,Math.ceil(W*H*D/3));
+  meshes[t]=new THREE.InstancedMesh(blockGeo,m,Math.ceil(W*H*D/30));   // v39：/3→/30——预分配按exposed表面占比（实测4-8%），内存125MB→30MB；越界有warn兜底
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
 }
@@ -1053,6 +1053,7 @@ function rebuild(){
     if(t===14)torchSet.add(idx(x,y,z));   // v32：火炬坐标进灯池
     if(!exposed(x,y,z))continue;
     const mesh=meshes[t];if(!mesh)continue;   // v38：数据里有、这版代码不认识的类型直接跳过——伊卡洛斯的花先于老页面存在时，rebuild炸掉整个渲染的防御
+    if(counts[t]>=mesh.instanceMatrix.count){if(!mesh._warned){console.warn('实例池满：类型'+t);mesh._warned=true;}continue;}   // v39：超预分配截断+只警告一次
     const i=counts[t]++;
     _m.makeTranslation(x+0.5, y+0.5, z+0.5);mesh.setMatrixAt(i,_m);
   }
