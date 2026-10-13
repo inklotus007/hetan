@@ -284,7 +284,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v40';
+const VER='v41';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -986,14 +986,16 @@ const meshes={};
 const stairGeo=new THREE.BoxGeometry(1,0.47,1);stairGeo.translate(0,-0.235,0);   // 台阶：半块躺在格子下半；v40：底面抬离格底0.03——原共面z-fighting远看闪烁
 const torchGeo=new THREE.BoxGeometry(0.18,0.9,0.18);torchGeo.translate(0,0.03,0);   // 火把：细杆立着；v40：底面离格底0.08——原0.005远距离z-fighting
 /* v37 装饰植物：两片十字交叉面片，像素纹理（透明底），不吃光照（Basic）——花该是亮的 */
-const benchGeo=new THREE.BoxGeometry(1,0.42,0.55);benchGeo.translate(0,-0.5+0.21,0);   // 凳：矮台贴格底
+const benchGeo=new THREE.BoxGeometry(1,0.42,1);benchGeo.translate(0,-0.5+0.21,0);   // 凳：满格半砖台——v41同志拿凳拼平台，0.55深的缝太大
 /* v40 四件：篱（围院）路（铺径）桌（配凳）灯（灯池夜光） */
 const fenceGeo=(()=>{const post=new THREE.BoxGeometry(0.14,1,0.14);post.translate(0,0,0);
-  const r1=new THREE.BoxGeometry(0.94,0.09,0.05);r1.translate(0,0.28,0);
-  const r2=new THREE.BoxGeometry(0.94,0.09,0.05);r2.translate(0,0.62,0);
-  return mergeGeo(mergeGeo(post,r1),r2);})();
+  const e1=new THREE.BoxGeometry(1.04,0.09,0.05);e1.translate(0,0.28,0);   // 伸过格边0.02——相邻杆杆相接
+  const e2=new THREE.BoxGeometry(1.04,0.09,0.05);e2.translate(0,0.62,0);
+  const s1=new THREE.BoxGeometry(0.05,0.09,1.04);s1.translate(0,0.28,0);
+  const s2=new THREE.BoxGeometry(0.05,0.09,1.04);s2.translate(0,0.62,0);
+  return mergeGeo(mergeGeo(mergeGeo(mergeGeo(post,e1),e2),s1),s2);})();   // v41：四向十字——连排时杆杆相接成整排栅栏
 const pathGeo=new THREE.BoxGeometry(1,0.09,1);pathGeo.translate(0,-0.5+0.045,0);
-const tableGeo=(()=>{const top=new THREE.BoxGeometry(0.95,0.09,0.95);top.translate(0,0.28,0);
+const tableGeo=(()=>{const top=new THREE.BoxGeometry(1.0,0.09,1.0);top.translate(0,0.28,0);   // v41：满格——相邻桌拼大桌无缝
   const leg=new THREE.BoxGeometry(0.16,0.62,0.16);leg.translate(0,-0.06,0);
   return mergeGeo(top,leg);})();
 const lanternGeo=(()=>{const body=new THREE.BoxGeometry(0.34,0.56,0.34);body.translate(0,0.02,0);
@@ -1038,7 +1040,8 @@ for(const t in TYPES){
     const bot=new THREE.MeshLambertMaterial({map:texOf(T.mats[3])});
     m=[side,side,top,bot,side,side];
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  meshes[t]=new THREE.InstancedMesh(blockGeo,m,Math.ceil(W*H*D/30));   // v39：/3→/30——预分配按exposed表面占比（实测4-8%），内存125MB→30MB；越界有warn兜底
+  const cap=(+t<=3||+t===11||+t===12)?60000:12000;   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
 }
