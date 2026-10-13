@@ -209,7 +209,7 @@ function pushWorld(){
   diffs.r.forEach(([x,y,z])=>{local[x+','+y+','+z]={v:0};});
   for(const k in diffs.a)local[k]={v:diffs.a[k]};
   ghGet('world.json').then(({sha,data})=>{
-    if(!sha){worldBusy=false;syncErr=apiStat;refreshMenu();return;}   // v34：够不着云端的原因写抽屉——以前静默return，同志334格卡着什么都看不到
+    if(!sha){worldBusy=false;return;}   // 实时通道没通（读的是缓存副本）——不拿本地的盖云端，下个周期再试。够不着板子就不钉，10/11的教训长进世界了
     const rd=remoteDiffs(data);
     const a=Object.assign({},rd.a), r=rd.r.slice();
     for(const k in local){
@@ -223,7 +223,7 @@ function pushWorld(){
         worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
         diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
         try{localStorage.removeItem(SKEY);}catch(e){}
-        pushFail=0;syncErr='';refreshMenu();toast('搭建已上云 · 谁打开都能看到');
+        pushFail=0;toast('搭建已上云 · 谁打开都能看到');
       });
   }).catch(()=>{worldBusy=false;});
 }
@@ -281,7 +281,7 @@ function refreshMenu(){
     document.getElementById('mWorld').textContent=worldCells+'格';
     document.getElementById('mName').textContent=ME?ME.name:'客';
     const local=diffs.r.length+Object.keys(diffs.a).length;
-    document.getElementById('mSync').textContent=worldDirty?(local+'格待传'+(syncErr?' · 卡':'')):(syncErr?'异常 · '+syncErr.slice(0,10):'已同步');
+    document.getElementById('mSync').textContent=worldDirty?(local+'格待传'):'已同步';
     document.getElementById('mBoard').textContent=boardOffline?'够不着':'已连';
     document.getElementById('mTok').textContent=NPC_TOKEN?'已配 · 点换':'没配';
     document.getElementById('mMute').textContent=AU.muted?'♪̶ 关':'♪ 开';
@@ -298,13 +298,12 @@ document.getElementById('mName').onclick=()=>{document.getElementById('menuPanel
 document.getElementById('mTok').onclick=()=>{document.getElementById('menuPanel').classList.remove('on');document.getElementById('tokBtn2').click();};
 document.getElementById('mExp').onclick=()=>{document.getElementById('menuPanel').classList.remove('on');const b=document.getElementById('expBtn');if(b)b.click();};
 document.getElementById('mMute').onclick=()=>{const m=AU.toggleMute();refreshMenu();};
-document.getElementById('mSync').onclick=syncDiag;   // v34：同步行点了出诊断——卡在哪一步直接说
 document.addEventListener('click',e=>{
   const p=document.getElementById('menuPanel');
   if(p.classList.contains('on')&&!p.contains(e.target)&&e.target.id!=='menuBtn')p.classList.remove('on');
 });
 
-let rawMode=false,syncErr='';
+let rawMode=false;
 function ghSame(path){
   return ghFetch(path+'?cb='+Date.now())
     .then(r=>{
@@ -314,19 +313,16 @@ function ghSame(path){
     })
     .then(t=>typeof t==='string'?{sha:null,data:JSON.parse(t)}:t);
 }
-/* 读世界数据：实时通道优先，断了自动换同源兜底（Pages副本——能打开页面就够得着）
-   v34：apiStat记录通道状态——pushWorld的失败以前全是静默的，同志334格待传卡着什么都看不见 */
-let apiStat='';
+/* 读世界数据：实时通道优先，断了自动换同源兜底（Pages副本——能打开页面就够得着） */
 function ghGet(path){
   if(!NPC_TOKEN||rawMode){
-    rawMode=true;apiStat='同源模式（无令牌或令牌失效）';
+    rawMode=true;
     return ghSame(path);
   }
   return ghFetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
     .then(r=>{
-      if(r.status===404){apiStat='404——GitHub把hetan装作不存在，多半是令牌没勾hetan仓库';return {sha:null, data:{npcs:{},msgs:[]}};}
-      if(!r.ok){apiStat='HTTP '+r.status;throw new Error('get '+r.status);}
-      apiStat='通';
+      if(r.status===404)return {sha:null, data:{npcs:{},msgs:[]}};   // 文件还不存在=真空板
+      if(!r.ok)throw new Error('get '+r.status);
       return r.json();
     })
     .then(m=>{
@@ -334,17 +330,7 @@ function ghGet(path){
       const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{},msgs:[]};
       return {sha:m.sha||null, data:(data&&(data.npcs||data.msgs||data.diffs))?data:{npcs:{},msgs:[]}};
     })
-    .catch(()=>{if(!apiStat||apiStat==='通')apiStat='不通·超时或被拒';return ghSame(path);});
-}
-function syncDiag(){
-  const why={
-    '404——GitHub把hetan装作不存在，多半是令牌没勾hetan仓库':'fine-grained令牌建的时候只勾了别的仓库，GitHub对没授权的仓库一律装作不存在（404）。重建：GitHub→Settings→Developer settings→Fine-grained tokens，Repository access选上jialiandouhao和hetan两个，Permissions→Contents→Read and write',
-    '同源模式（无令牌或令牌失效）':'令牌没贴上或贴的时候空了。点抽屉「令牌」重新贴',
-    'HTTP 401':'令牌被GitHub拒了——多半是复制不全、过期、或已被撤销。去GitHub重新生成一把，重新贴',
-    'HTTP 403':'令牌权限不够——Contents权限要选Read and write',
-    '不通·超时或被拒':'API通道到不了GitHub——网络问题或令牌被拒。留言板「已连」只证明公开通道通，不代表API通'
-  }[apiStat]||'API状态：'+(apiStat||'还没测——搭一格东西再等几秒回来看');
-  showStele('同步诊断\n'+(apiStat||'还没测')+'\n\n'+why);
+    .catch(()=>ghSame(path));   // 实时通道断了→备用路
 }
 function ghPut(path,obj,sha,msg){
   const body={message:msg||('NPC：'+ME.name), content:btoa(unescape(encodeURIComponent(JSON.stringify(obj))))};
@@ -549,12 +535,9 @@ document.getElementById('boardGo').onclick=writeBoard;
 function bindTok(){
   miniPrompt('贴令牌（GitHub PAT，只存这台设备）','',NPC_TOKEN||'',tok=>{
     NPC_TOKEN=tok;localStorage.setItem('jldh_token',tok);rawMode=false;
-    toast('钥匙收好了，试一试……');
-    ghGet('world.json').then(()=>{
-      if(apiStat==='通'){toast('钥匙好用——搭的东西马上上云');if(worldDirty)setTimeout(pushWorld,1200);}
-      else setTimeout(syncDiag,600);   // 钥匙不对——当场告诉你哪里不对、怎么修
-      refreshMenu();
-    });
+    document.getElementById('boardTip').textContent='钥匙收好了——留言和留NPC都通了。';
+    toast('钥匙收好了');
+    syncBoard();setTimeout(()=>{if(worldDirty)pushWorld();},2500);
   });
 }
 document.getElementById('tokBtn2').onclick=bindTok;
@@ -585,7 +568,7 @@ function fallbackCopy(text,done){
 document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');renderBoard();syncBoard();};
 /* 令牌入口：抽屉mTok + 板上tokBtn2（tokBtn元素v28删了，它的死绑定曾把整页炸白——删UI必须grep全部引用） */
 /* NPC小人渲染 */
-const NPC_ONLINE_TTL=20000, NPC_MAX=32;
+const NPC_ONLINE_TTL=20000, NPC_MAX=32, NPC_ADOPT_MS=15*60*1000;
 function nameSprite(txt,color){
   const cv=document.createElement('canvas');cv.width=256;cv.height=64;
   const g=cv.getContext('2d');
@@ -646,6 +629,24 @@ function syncNPCs(){
     npcSha=sha;
     const npcs=(data&&data.npcs)||{};
     const now=Date.now();
+    // 同名收敛：一名字一身体。新浏览器（自己不在表里）或刚改名（表里那行还挂着旧名字）时，
+    // 认领最新鲜的一具走了的同名旧身体接着用——样子、家都跟着身体走，别人看滩上还是那个人；
+    // 其余走了的同名幽灵（超过15分钟没心跳）吸收掉。还在线的不动：两人同名同时在线，滩上允许。
+    if(!npcs[ME.id]||npcs[ME.id].name!==ME.name){
+      let best=null;
+      for(const k in npcs){
+        const n=npcs[k];
+        if(k!==ME.id&&n.name===ME.name&&now-(n.lastSeen||0)>NPC_ADOPT_MS&&(!best||(n.lastSeen||0)>(best.lastSeen||0)))best=n;
+      }
+      if(best){
+        delete npcs[ME.id];                  // 旧id这具下线（新来的本来就不在表里，删不着）
+        ME.id=best.id;ME.seed=best.seed;ME.coat=best.coat;ME.skin=best.skin;ME.home=best.home;
+        try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}   // 这台设备从此就是这具身体
+      }
+    }
+    for(const k in npcs){                    // 吸收：走了的同名幽灵
+      if(k!==ME.id&&npcs[k].name===ME.name&&now-(npcs[k].lastSeen||0)>NPC_ADOPT_MS)delete npcs[k];
+    }
     // 自己写进去（心跳）
     npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
       home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
