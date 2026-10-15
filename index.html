@@ -286,7 +286,7 @@ function meInit(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v44';
+const VER='v45';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -836,31 +836,69 @@ function makeDog(){const g=new THREE.Group();
   const tp=new THREE.Group();tp.position.set(0,0.52,-0.32);
   const tail=aBox(0.06,0.06,0.24,a6(dogBodyS));tail.position.set(0,0.07,-0.11);tail.rotation.x=0.6;tp.add(tail);g.add(tp);
   g.userData={head,tail:tp};return g;}
-/* 摆位：鸭沿河漂（河道中心线数值解，dz≈0必在水上）；鸡在东滩（离水线留足干地）；狗看碑 */
+function makeGoose(){const g=new THREE.Group();   // 鹅：比鸭大一号，长脖子额瘤
+  const body=aBox(0.55,0.38,0.72,a6(duckBodyS,duckBodyT));body.position.y=0.19;g.add(body);
+  const neck=aBox(0.13,0.4,0.13,a6(duckBodyS));neck.position.set(0,0.52,0.22);g.add(neck);
+  const head=aBox(0.16,0.16,0.2,a6(duckBodyS,null,duckFace));head.position.set(0,0.78,0.24);g.add(head);
+  const knob=aBox(0.07,0.07,0.07,aM(duckBill));knob.position.set(0,0.86,0.31);g.add(knob);   // 额瘤
+  const bill=aBox(0.09,0.06,0.14,aM(duckBill));bill.position.set(0,0.76,0.36);g.add(bill);
+  const tail=aBox(0.2,0.06,0.22,a6(duckBodyS));tail.position.set(0,0.3,-0.42);tail.rotation.x=0.5;g.add(tail);
+  g.userData={head};return g;}
+/* 摆位：鸭一小群沿河漂；鹅混群但更淡定；鸡东滩啄食；狗看碑（亲人，会迎上来） */
 const ANIMAL_DEFS=[
-  {type:'duck',seed:11,cx:32},{type:'duck',seed:29,cx:39},{type:'duck',seed:47,cx:46},
-  {type:'hen',seed:41,x:48,z:14,r:1.7},{type:'hen',seed:59,x:50,z:16.5,r:1.6},
+  {type:'duck',seed:11,cx:26},{type:'duck',seed:29,cx:32},{type:'duck',seed:47,cx:38},{type:'duck',seed:71,cx:44},{type:'duck',seed:97,cx:50},{type:'duck',seed:113,cx:35},{type:'duck',seed:131,cx:42},
+  {type:'goose',seed:83,cx:36},
+  {type:'hen',seed:41,x:48,z:14,r:1.7},{type:'hen',seed:59,x:50,z:16.5,r:1.6},{type:'hen',seed:73,x:46.5,z:12.5,r:1.5},{type:'hen',seed:89,x:51,z:18,r:1.6},
   {type:'dog',seed:67,x:35.5,z:18,r:3.2}
 ];
-for(const a of ANIMAL_DEFS){a.obj=a.type==='duck'?makeDuck():(a.type==='hen'?makeHen():makeDog());animalGroup.add(a.obj);}
+for(const a of ANIMAL_DEFS){a.obj=a.type==='duck'?makeDuck():(a.type==='goose'?makeGoose():(a.type==='hen'?makeHen():makeDog()));a.esc={x:0,z:0};a.wasScared=false;animalGroup.add(a.obj);}
 function riverZAt(x){let z=34;for(let i=0;i<4;i++)z=34+Math.sin(x*0.09)*6+Math.cos(z*0.07)*4;return z;}
 function animalPos(a,t){
-  if(a.type==='duck'){const x=a.cx+Math.sin(t*0.026+a.seed)*6.5+Math.sin(t*0.011+a.seed*1.7)*3;return[x,riverZAt(x)+Math.sin(t*0.043+a.seed*1.3)*1.1];}
+  if(a.type==='duck'||a.type==='goose'){const x=a.cx+Math.sin(t*0.026+a.seed)*6.5+Math.sin(t*0.011+a.seed*1.7)*3;return[x,riverZAt(x)+Math.sin(t*0.043+a.seed*1.3)*1.1];}
   const sp=a.type==='dog'?0.05:0.034;
   return[a.x+Math.sin(t*sp+a.seed)*a.r+Math.sin(t*sp*2.3+a.seed*1.7)*a.r*0.35,
          a.z+Math.cos(t*sp*0.83+a.seed*1.3)*a.r*0.8+Math.cos(t*sp*1.9+a.seed*0.6)*a.r*0.3];
 }
-function renderAnimals(t){
+/* v45生机：受惊四散（鸡咯鸭拍水）、狗亲人迎上来、鱼影跃起、蜻蜓点水 */
+const FISH=[];for(let i=0;i<4;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(0.55,0.24),new THREE.MeshBasicMaterial({color:0x14283a,transparent:true,opacity:0.42,depthWrite:false}));m.rotation.x=-Math.PI/2;m.rotation.z=hash(i,7)*6.28;scene.add(m);FISH.push({m,seed:17+i*29,cx:28+i*8});}
+const DRGN=[];for(let i=0;i<3;i++){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.2),new THREE.MeshBasicMaterial({color:0x3a7a9a}));g.add(body);
+  for(const sx of[-1,1]){const w=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.004,0.05),new THREE.MeshBasicMaterial({color:0xdfeaf2,transparent:true,opacity:0.55}));w.position.set(sx*0.1,0.012,0);w.userData.sx=sx;g.add(w);}
+  scene.add(g);DRGN.push({g,seed:31+i*41,ax:31+i*9});
+}
+function renderAnimals(t,dt){
+  const dtn=dt||0.016, k=Math.min(0.5,dtn*3.5);
   for(const a of ANIMAL_DEFS){
     const g=a.obj;if(!g)continue;
     const p0=animalPos(a,t-0.12),p1=animalPos(a,t);
-    const vx=p1[0]-p0[0],vz=p1[1]-p0[1];
-    if(Math.hypot(vx,vz)>0.0004)g.rotation.y=Math.atan2(vx,vz);
-    if(a.type==='duck'){
-      g.position.set(p1[0],5.9+Math.sin(t*2.1+a.seed)*0.045,p1[1]);   // 水面y=6，身子没水三分之一
+    /* 受惊：玩家靠近就四散（本地反应，各端各算——动物是环境，不必跨端一致）；狗反着来，亲人，迎上来 */
+    const dxw=p1[0]-p.x,dzw=p1[1]-p.z,dw=Math.hypot(dxw,dzw)||0.001;
+    const R=a.type==='duck'?4.2:(a.type==='goose'?2.6:(a.type==='hen'?3.4:2.6));
+    let tx=0,tz=0,scared=false;
+    if(a.type==='dog'){
+      if(dw>1.6&&dw<7){const kk=(dw-1.6)*0.22;tx=-dxw/dw*kk;tz=-dzw/dw*kk;}
+    }else if(dw<R){
+      scared=true;
+      const kk=Math.pow(1-dw/R,1.5)*(a.type==='hen'?2.6:2.2);
+      tx=dxw/dw*kk;tz=dzw/dw*kk;
+    }
+    a.esc.x+=(tx-a.esc.x)*k;a.esc.z+=(tz-a.esc.z)*k;
+    if(scared&&!a.wasScared){
+      if(a.type==='hen')AU.henCluck(Math.max(0.02,1-dw/10)*0.1);
+      else if(a.type==='duck')AU.duckFlap(Math.max(0.02,1-dw/9)*0.11);
+      else if(a.type==='goose')AU.duckFlap(Math.max(0.02,1-dw/8)*0.07);
+    }
+    a.wasScared=scared;
+    const fx=p1[0]+a.esc.x,fz=p1[1]+a.esc.z;
+    const mvx=fx-(a.lx===undefined?fx:a.lx),mvz=fz-(a.lz===undefined?fz:a.lz);
+    if(Math.hypot(mvx,mvz)>0.002)g.rotation.y=Math.atan2(mvx,mvz);
+    a.lx=fx;a.lz=fz;
+    if(a.type==='duck'||a.type==='goose'){
+      g.position.set(fx,(a.type==='goose'?5.86:5.9)+Math.sin(t*2.1+a.seed)*0.045,fz);
       g.userData.head.rotation.y=Math.sin(t*0.5+a.seed)*0.18;
     }else{
-      g.position.set(p1[0],topY(Math.floor(p1[0]),Math.floor(p1[1])),p1[1]);
+      g.position.set(fx,topY(Math.floor(fx),Math.floor(fz)),fz);
       if(a.type==='hen'){
         g.userData.head.rotation.x=Math.max(0,Math.sin(t*0.9+a.seed*2.3)-0.72)*2.4;   // 啄食
         g.position.y+=Math.abs(Math.sin(t*5+a.seed))*0.02;
@@ -870,7 +908,26 @@ function renderAnimals(t){
       }
     }
   }
+  for(const f of FISH){
+    const x=f.cx+Math.sin(t*0.05+f.seed)*5,z=riverZAt(x)+Math.sin(t*0.09+f.seed*2)*0.8;
+    const T=17+(f.seed%13),jc=t%T;
+    let y=5.62,tilt=0;
+    if(jc<0.9){const ph=jc/0.9;y=5.62+Math.sin(ph*Math.PI)*1.25;tilt=Math.sin(ph*Math.PI)*0.9;}   // 跃起：抛物线+立身
+    f.m.position.set(x,y,z);f.m.rotation.x=-Math.PI/2+tilt;
+    f.m.rotation.z+=0.002;
+  }
+  for(const d of DRGN){
+    const x=d.ax+Math.sin(t*1.1+d.seed)*2.5+Math.sin(t*4.3+d.seed*2)*0.7;
+    const z=riverZAt(x)-3.2+Math.sin(t*0.7+d.seed)*1.2;
+    const y=6.35+Math.sin(t*2.7+d.seed)*0.35;
+    const px=d.g.position, vx=x-px.x,vz=z-px.z;
+    if(Math.hypot(vx,vz)>0.0005)d.g.rotation.y=Math.atan2(vx,vz);
+    d.g.position.set(x,y,z);
+    for(const w of d.g.children)if(w.userData.sx)w.rotation.z=w.userData.sx*(0.3+Math.sin(t*42+d.seed)*0.25);   // 振翅
+  }
 }
+function dayIsUp(){const dayT=((performance.now()/1000)%DAY_LEN)/DAY_LEN;return dayT>0.28&&dayT<0.78;}   // 拂晓到黄昏——夜里鸟不叫
+let nextChirp=0;
 
 /* ================= 昼夜（v27）：太阳月亮星星云——十分钟过一天，真实时钟驱动 =================
    谁在什么时刻打开，河滩就是什么时辰——隔着设备看到同一个天上。 */
@@ -1388,8 +1445,39 @@ const AU=(function(){
     src.connect(f);f.connect(rg);rg.connect(master);src.start();
   }
   function riverSet(v){ if(rg)rg.gain.setTargetAtTime(muted?0:v,ctx.currentTime,0.4); }
+  /* v45生机三音：鸟鸣（白天啁啾）、鸡咯（受惊炸群）、鸭拍水（受惊扑棱）——都合成，音量小 */
+  function birdChirp(){
+    if(!ensure())return;const now=ctx.currentTime;
+    const n=2+(Math.random()*3|0);
+    for(let i=0;i<n;i++){
+      const t0=now+i*(0.09+Math.random()*0.07);
+      const o=ctx.createOscillator();o.type='sine';
+      const f=2900+Math.random()*1300;
+      o.frequency.setValueAtTime(f,t0);o.frequency.exponentialRampToValueAtTime(f*1.35,t0+0.03);o.frequency.exponentialRampToValueAtTime(f*0.8,t0+0.07);
+      const g=ctx.createGain();g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.05,t0+0.012);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.08);
+      o.connect(g);g.connect(master);o.start(t0);o.stop(t0+0.1);
+    }
+  }
+  function henCluck(vol){
+    if(!ensure())return;const now=ctx.currentTime;const v=Math.min(0.12,vol||0.08);
+    for(let i=0;i<2;i++){
+      const t0=now+i*0.11;
+      const o=ctx.createOscillator();o.type='square';
+      o.frequency.setValueAtTime(880-i*140,t0);o.frequency.exponentialRampToValueAtTime(480-i*100,t0+0.06);
+      const g=ctx.createGain();g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.07);
+      const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=1800;
+      o.connect(f);f.connect(g);g.connect(master);o.start(t0);o.stop(t0+0.08);
+    }
+  }
+  function duckFlap(vol){
+    if(!ensure())return;const now=ctx.currentTime;
+    const src=ctx.createBufferSource();src.buffer=noiseBuf(0.22);
+    const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=1900;
+    const g=ctx.createGain();g.gain.setValueAtTime(Math.min(0.14,vol||0.09),now);g.gain.exponentialRampToValueAtTime(0.005,now+0.22);
+    src.connect(f);f.connect(g);g.connect(master);src.start(now);
+  }
   function toggleMute(){ muted=!muted; if(master)master.gain.value=muted?0:0.55; return muted; }
-  return {ensure,dig,put,jump,land,step,click,riverSet,toggleMute};
+  return {ensure,dig,put,jump,land,step,click,riverSet,birdChirp,henCluck,duckFlap,toggleMute};
 })();
 // 解锁：手机上AudioContext要在用户手势里激活
 ['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev,()=>AU.ensure(),{passive:true}));
@@ -1518,7 +1606,8 @@ function loop(now){
   tickHighlight();
   if((now|0)%7===0)diag();
   renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
-  renderAnimals(now/1000);   // v44：鸭漂鸡啄狗摇尾——确定性，谁打开同一群
+  renderAnimals(now/1000,dt);   // v45：鸭漂鸡啄狗迎客，受惊四散有叫声；鱼影蜻蜓
+  if(now>nextChirp){if(dayIsUp())AU.birdChirp();nextChirp=now+3500+Math.random()*9000;}   // 白天鸟鸣，夜里停
   ensureBoard();boardWind(now/1000);
   tickBoardMove();
   if((now|0)%3===0)pushWorld();   // 三秒一查，搭了就上云
