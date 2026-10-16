@@ -212,7 +212,7 @@ function saveDiff(x,y,z,t){
 }
 
 /* ---- 世界共享：diffs上云（伊卡洛斯的花台只在它自己的浏览器里——共享机制补上，搭一次全看得见） ---- */
-let worldSha=null,worldBusy=false,pushFail=0;
+let worldSha=null,worldBusy=false,pushFail=0,lastPushT=0;   // v50.2：最近一次成功推送的时刻——拉取的刹车
 function remoteDiffs(data){
   // 兼容两种格式：{diffs:{r,a}}（伊卡洛斯的花台用的）和{cells:{k:{t,v}}}（初版）
   const r=[],a={};
@@ -250,6 +250,7 @@ function pushWorld(){
     return ghPut('world.json',{diffs:{r:r,a:a}},sha,'河滩：'+ME.name+'动了'+Object.keys(local).length+'格')   // v35：用ghGet刚拿到的sha——worldSha从v22起就是没赋过值的死变量，PUT永远不带sha，对已有world.json一律422
       .then(()=>{
         worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
+        lastPushT=Date.now();   // v50.2：推完记时刻——GitHub对刚写完的文件读缓存约2分钟，这段时间拉到的是旧的，不能让它刷画面
         diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
         try{localStorage.removeItem(SKEY);}catch(e){}
         pushFail=0;syncErr='';refreshMenu();toast('搭建已上云 · 谁打开都能看到');
@@ -263,13 +264,18 @@ function pushWorld(){
 let worldPulled=false,worldCells=0;
 function pullWorld(attempt){
   attempt=attempt||0;
+  if(Date.now()-lastPushT<120000)return Promise.resolve(0);   // v50.2：推完2分钟内不拉——GitHub contents读缓存还没过期，拉到的是推之前的旧世界，会把刚搭好的刷掉（「已上云但没了」的根）
   return ghGet('world.json').then(({data})=>{
     worldPulled=true;
     const rd=remoteDiffs(data);
-    worldCells=rd.r.length+Object.keys(rd.a).length;
+    worldCells=Math.max(worldCells,rd.r.length+Object.keys(rd.a).length);   // v50.2：取max——缓存旧版格数偏少，别让计数倒退
+    /* v50.2：本地还没推上去的改动是权威——diffs里的格一律不被云端数据覆盖（推前防刷，和推后刹车配对） */
+    const pending={};
+    diffs.r.forEach(pp=>{pending[pp[0]+','+pp[1]+','+pp[2]]=1;});
+    for(const kk in diffs.a)pending[kk]=1;
     let n=0;
-    rd.r.forEach(p=>{const[x,y,z]=p;if(inW(x,y,z)&&world[idx(x,y,z)]!==AIR){world[idx(x,y,z)]=AIR;n++;}});
-    for(const k in rd.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z)&&world[idx(x,y,z)]!==rd.a[k]){world[idx(x,y,z)]=rd.a[k];n++;}}
+    rd.r.forEach(p=>{const[x,y,z]=p;if(inW(x,y,z)&&!pending[x+','+y+','+z]&&world[idx(x,y,z)]!==AIR){world[idx(x,y,z)]=AIR;n++;}});
+    for(const k in rd.a){if(pending[k])continue;const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z)&&world[idx(x,y,z)]!==rd.a[k]){world[idx(x,y,z)]=rd.a[k];n++;}}
     if(n)rebuild();
     return n;
   }).catch(()=>{
