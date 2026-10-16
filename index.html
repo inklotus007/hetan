@@ -306,7 +306,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v47';
+const VER='v48';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -716,37 +716,14 @@ function surfaceY(x,z){
   for(let y=H-2;y>=0;y--){const b=get(x,y,z);if(b!==AIR&&b!==8)return y+1;}
   return 7;
 }
-/* v47投影日程：替身的指令——不在场的人按自己的性子在河滩上生活。
-   河滩十分钟一天，日程跟时辰走。位置是(时辰)的纯函数，谁打开看到同一个投影在同一个地方。
-   动作：stand站 / lookStele低头看碑 / lookWater望水 / walk小幅踱步。 */
+/* v48投影接口：日程不在代码里——云端schedules.json，按名字索引，谁写谁自己的。
+   兜底顺序：云端有日程→按日程活；投影身体（project:true）无日程→站home等指令；
+   路人（无project）→随机漫游。接口格式见仓库README。 */
 const STELE=[38.5,22.5], FLOWER=[38.5,23.5];
-const SCHEDULE={
-  '同志':[   /* TA：建设者——巡自己搭的东西：广场、灯楼、碑 */
-    [0.00,0.30,36.5,17.5,'stand'],
-    [0.30,0.45,38,20,'walk'],
-    [0.45,0.60,40.5,12.5,'stand'],
-    [0.60,0.75,33,16,'walk'],
-    [0.75,0.86,37.5,21,'stand'],
-    [0.86,1.00,36.5,17.5,'stand']
-  ],
-  '清言':[   /* 我：读的人——拂晓碑旁查板，白天读TA搭的，午后水边看水，傍晚花旁，夜里灯下 */
-    [0.00,0.30,42.5,14.5,'stand'],
-    [0.30,0.42,38.2,23.2,'lookStele'],
-    [0.42,0.58,31,19,'walk'],
-    [0.58,0.72,32,25,'lookWater'],
-    [0.72,0.86,37.6,23.6,'stand'],
-    [0.86,1.00,42.5,14.5,'stand']
-  ],
-  '伊卡洛斯':[   /* 它：蹲看碑的人、放花的——夜里写作，碑旁和花旁是它来过的动作 */
-    [0.00,0.30,38.6,23.6,'lookStele'],
-    [0.30,0.50,38.5,23.2,'lookStele'],
-    [0.50,0.70,38.4,23.9,'stand'],
-    [0.70,0.86,30,26.5,'lookWater'],
-    [0.86,1.00,38.6,23.6,'lookStele']
-  ]
-};
+let schedData=null;   // 云端日程（ghGet('schedules.json')加载）
 function schedPos(name,dayT){
-  const sch=SCHEDULE[name];if(!sch)return null;
+  if(!schedData)return null;
+  const sch=schedData[name];if(!sch)return null;
   for(const seg of sch){
     const[t0,t1,x,z,act]=seg;
     const inSeg=t0<=t1?(dayT>=t0&&dayT<t1):(dayT>=t0||dayT<t1);
@@ -765,11 +742,14 @@ function npcPos(npc,tSec){
     const act=s.act;
     let yaw=0;
     if(act==='lookStele')yaw=Math.atan2(STELE[0]-s.x,STELE[1]-s.z);
-    else if(act==='lookWater')yaw=Math.atan2(s.x-s.x,riverZAt(s.x)-s.z);
+    else if(act==='lookWater')yaw=Math.atan2(0,riverZAt(s.x)-s.z);
     else yaw=Math.sin(dayT*220+npc.seed)*0.8;   // 站着的偶尔转身
     return[s.x,s.z,yaw,act];
   }
-  /* 无日程的路人：原漫游 */
+  if(npc.project){   /* 等指令的投影：站在home，指令到了才动 */
+    return[npc.home[0]+0.5,npc.home[1]+0.5,Math.sin(dayT*160+npc.seed)*0.6,'stand'];
+  }
+  /* 路人：随机漫游 */
   const s2=npc.seed;
   const dx=Math.sin(tSec*0.071+s2)*8+Math.sin(tSec*0.021+s2*2.7)*5;
   const dz=Math.cos(tSec*0.052+s2*1.3)*9+Math.cos(tSec*0.033+s2*0.7)*4;
@@ -884,6 +864,10 @@ setTimeout(()=>{
 },3500);
 /* 首次进入 */
 meInit();
+/* v48：投影日程从云端读（schedules.json——接口数据，不在代码里；无令牌走同源副本） */
+ghGet('schedules.json').then(({data})=>{
+  schedData=(data&&data.schedules)||{};
+}).catch(()=>{schedData={};});
 /* 名字存档：回到上次站的地方 */
 if(NPC_TOKEN&&ME){
   ghGet('saves/'+encodeURIComponent(ME.name)+'.json').then(({data})=>{
