@@ -251,6 +251,7 @@ function pushWorld(){
       .then(()=>{
         worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
         lastPushT=Date.now();   // v50.2：推完记时刻——GitHub对刚写完的文件读缓存约2分钟，这段时间拉到的是旧的，不能让它刷画面
+        try{localStorage.setItem('hetan_cells',String(worldCells));}catch(e){}   // v50.3：记住云端应有的格数——重进拉到旧缓存时对账用
         diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
         try{localStorage.removeItem(SKEY);}catch(e){}
         pushFail=0;syncErr='';refreshMenu();toast('搭建已上云 · 谁打开都能看到');
@@ -277,6 +278,15 @@ function pullWorld(attempt){
     rd.r.forEach(p=>{const[x,y,z]=p;if(inW(x,y,z)&&!pending[x+','+y+','+z]&&world[idx(x,y,z)]!==AIR){world[idx(x,y,z)]=AIR;n++;}});
     for(const k in rd.a){if(pending[k])continue;const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z)&&world[idx(x,y,z)]!==rd.a[k]){world[idx(x,y,z)]=rd.a[k];n++;}}
     if(n)rebuild();
+    /* v50.3：重进对账——上次推送成功的格数记在localStorage，拉回来的明显偏少=撞上读缓存旧版，15秒后再拉（重进「只剩残的」的根） */
+    try{
+      var rc=parseInt(localStorage.getItem('hetan_cells')||'0',10);
+      var cur=rd.r.length+Object.keys(rd.a).length;
+      if(rc>10&&cur<rc-5&&attempt<20){
+        toast('云端还在补齐刚才的搭建……');
+        return new Promise(function(res){setTimeout(function(){res(pullWorld(attempt+1));},15000);});
+      }
+    }catch(e){}
     return n;
   }).catch(()=>{
     if(attempt<5){setTimeout(()=>pullWorld(attempt+1),(attempt+1)*5000);return 0;}   // 够不着就等会儿再够——花台最终必达
