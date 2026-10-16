@@ -306,7 +306,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v48';
+const VER='v49';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -662,14 +662,33 @@ document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardU
 /* 令牌入口：抽屉mTok + 板上tokBtn2（tokBtn元素v28删了，它的死绑定曾把整页炸白——删UI必须grep全部引用） */
 /* NPC小人渲染 */
 const NPC_ONLINE_TTL=180000, NPC_MAX=32;   /* v46：20秒→3分钟——心跳从7秒一跳降到分钟级，在线依然连续 */
-function nameSprite(txt,color){
+function nameSprite(txt,color,shadowMode){
   const cv=document.createElement('canvas');cv.width=256;cv.height=64;
   const g=cv.getContext('2d');
   g.font='28px Songti SC,serif';g.textAlign='center';g.textBaseline='middle';
-  g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=5;g.strokeText(txt,128,32);
-  g.fillStyle=color;g.fillText(txt,128,32);
+  const label=shadowMode?txt+' ·影':txt;
+  g.globalAlpha=shadowMode?0.75:1;
+  g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=5;g.strokeText(label,128,32);
+  g.fillStyle=color;g.globalAlpha=shadowMode?0.62:1;g.fillText(label,128,32);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
   sp.scale.set(1.7,0.42,1);return sp;
+}
+/* v49话牌：投影身上挂的当日一句话——走近才展开。深底圆角，最多两行 */
+function roundRectPath(g,x,y,w,h,r){
+  g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
+}
+function wordsSprite(text){
+  const cv=document.createElement('canvas');cv.width=512;cv.height=112;
+  const g=cv.getContext('2d');
+  g.fillStyle='rgba(24,20,12,0.84)';roundRectPath(g,4,4,504,104,10);g.fill();
+  g.strokeStyle='rgba(208,194,156,0.5)';g.lineWidth=2;roundRectPath(g,4,4,504,104,10);g.stroke();
+  g.fillStyle='#f4efe2';g.font='27px Songti SC,serif';g.textAlign='center';g.textBaseline='middle';
+  const chars=text.slice(0,36);
+  const lines=[];
+  for(let i=0;i<chars.length;i+=18)lines.push(chars.slice(i,i+18));
+  lines.slice(0,2).forEach((l,i)=>g.fillText(l,256,36+i*44));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));
+  sp.scale.set(3.4,0.75,1);sp.visible=false;return sp;
 }
 /* v47投影贴图：不再是两个色块——衣领门襟口袋线、脸上眉眼嘴、头顶头发。颜色参数化，一人一张 */
 function npcClothSide(base){
@@ -706,9 +725,11 @@ function makeNPCBody(npc){
   const head=new THREE.Mesh(new THREE.BoxGeometry(0.48,0.48,0.48),
     [aM(npcFace(npc.skin)),aM(npcFace(npc.skin)),aM(top),aM(npcFace(npc.skin)),aM(face),aM(npcFace(npc.skin))]);
   head.position.y=1.28;
-  const tag=nameSprite(npc.name,'#f4efe2');tag.position.y=1.95;
-  g.add(body);g.add(head);g.add(tag);
-  g.userData={tag,head};
+  /* v49：两版名字牌——亮版（真人在场）/影版（投影：名字+·影，半透明）。renderNPCs按在线态切换 */
+  const tag=nameSprite(npc.name,'#f4efe2',false);tag.position.y=1.95;
+  const tagS=nameSprite(npc.name,'#cfc8b8',true);tagS.position.y=1.95;tagS.visible=false;
+  g.add(body);g.add(head);g.add(tag);g.add(tagS);
+  g.userData={tag,tagS,head};
   return g;
 }
 let npcObjs={};   // id -> THREE.Group
@@ -784,7 +805,20 @@ function renderNPCs(list,tSec){
     }
     const y=surfaceY(Math.floor(x),Math.floor(z));
     const bob=(!isOnline&&Math.sin(tSec*2.3+npc.seed)>0.92)?Math.abs(Math.sin(tSec*7))*0.12:0;
-    g.position.set(x,y+bob,z);g.rotation.y=yaw;
+    const breath=Math.sin(tSec*2.1+npc.seed)*0.012;   // v49呼吸：三秒周期，静止里也有活气
+    g.position.set(x,y+bob+breath,z);g.rotation.y=yaw;
+    /* v49：名字牌亮/影随在线态切换；话牌走近两格半展开——投影身上挂的当日一句话 */
+    if(g.userData.tagOn!==isOnline){
+      g.userData.tagOn=isOnline;
+      g.userData.tag.visible=isOnline;
+      g.userData.tagS.visible=!isOnline;
+    }
+    if(!g.userData.words&&wordData&&wordData[npc.name]&&wordData[npc.name].text){
+      const ws=wordsSprite(wordData[npc.name].text);ws.position.y=2.52;g.add(ws);g.userData.words=ws;
+    }
+    if(g.userData.words){
+      g.userData.words.visible=Math.hypot(p.x-g.position.x,p.z-g.position.z)<2.5;
+    }
     g.visible=true;
   });
   for(const id in npcObjs)if(!seen[id]){npcGroup.remove(npcObjs[id]);delete npcObjs[id];}
@@ -868,6 +902,11 @@ meInit();
 ghGet('schedules.json').then(({data})=>{
   schedData=(data&&data.schedules)||{};
 }).catch(()=>{schedData={};});
+/* v49：投影的当日一句话（words.json——谁的名字谁写；走近身体的访客能看到） */
+let wordData=null;
+ghGet('words.json').then(({data})=>{
+  wordData=(data&&data.words)||{};
+}).catch(()=>{wordData={};});
 /* 名字存档：回到上次站的地方 */
 if(NPC_TOKEN&&ME){
   ghGet('saves/'+encodeURIComponent(ME.name)+'.json').then(({data})=>{
