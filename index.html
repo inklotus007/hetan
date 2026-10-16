@@ -105,7 +105,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="stickBase"></div><div id="stickKnob"></div>
 <div id="signModal" style="display:none;position:fixed;inset:0;background:rgba(10,14,18,.55);z-index:30;align-items:center;justify-content:center">
  <div style="background:#f3ecd8;border:1px solid #d0c29c;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(40,30,10,.4)">
-  <div style="font-weight:bold;color:#3a2f1e;letter-spacing:2px;margin-bottom:10px;font-size:14px">招牌题字（最多六字，竖排）</div>
+  <div style="font-weight:bold;color:#3a2f1e;letter-spacing:2px;margin-bottom:10px;font-size:14px">招牌题字（最多六字；拆除=连点两下）</div>
   <input id="signInput" maxlength="6" placeholder="写几个字，立在牌上" autocomplete="off" style="width:100%;box-sizing:border-box;font-family:'KaiTi','STKaiti','楷体',serif;font-size:19px;letter-spacing:4px;padding:9px 10px;border:1px solid #c9b98c;border-radius:6px;background:#fffdf6;color:#3a2f1e;text-align:center;outline:none">
   <div style="display:flex;gap:10px;margin-top:14px">
    <button id="signOk" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #b89b5e;border-radius:6px;background:#e8d9a8;color:#4a3a1a;cursor:pointer">刻 上 去</button>
@@ -192,7 +192,7 @@ trees.forEach(([tx,tz])=>{
 });
 // 碑：出生点旁
 try{document.getElementById('verTag').textContent=VER+' · 想搭什么搭什么';}catch(e){}
-const STX=38,STZ=22;   // v29：碑和出生点移到同志的广场上（TA亲手削山铺砖那块）——牌子立在广场中央
+const STX=42,STZ=18;   // v50.6：碑从(38,22)挪到(42,18)广场东北——原位在桥轴线正中挡视线（同志提的）；spawn=(42.5,16.5)平砖上
 {const h=height(STX,STZ);
  world[idx(STX,h+1,STZ)]=3;world[idx(STX,h+2,STZ)]=3;world[idx(STX-1,h+1,STZ)]=3;world[idx(STX+1,h+1,STZ)]=3;}
 
@@ -348,7 +348,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v50.5';   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v50.6';   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1451,16 +1451,17 @@ function signTexFor(k,text,mode){
   const chars=(text||'').split('');
   if(chars.length){
     const n=chars.length;
-    g.font='bold '+(horiz?Math.min(40,Math.floor((cv.width-40)/n)):((n<=2?36:(n<=4?27:20))))+'px "KaiTi","STKaiti","楷体","Noto Serif SC",serif';
+    const size=horiz?Math.min(40,Math.floor((cv.width-40)/n)):(n<=2?36:(n<=4?27:20));
+    g.font='bold '+size+'px "KaiTi","STKaiti","楷体","Noto Serif SC",serif';
     if(horiz){
       g.fillText(text,cv.width/2,cv.height/2+1);   // 横排一行居中
     }else{
-      const step=parseInt(g.font)*1.22,total=n*step;
+      const step=size*1.22,total=n*step;   // v50.6：不用parseInt(g.font)——"bold 36px…"解析成NaN，竖排字画飞（「牌不显示字」的根）
       chars.forEach((c,i)=>{g.fillText(c,48,64-total/2+step/2+i*step);});   // 竖排，居中
     }
   }else{
     g.fillStyle='rgba(242,230,200,.4)';
-    g.fillText(horiz?'（点我题字）':'（点我题字）',cv.width/2,cv.height/2);
+    g.fillText('（点我题字）',cv.width/2,cv.height/2);
   }
   const tx=new THREE.CanvasTexture(cv);tx.magFilter=THREE.LinearFilter;   // 字要平滑，不用像素风
   signCache[ck]=new THREE.MeshLambertMaterial({map:tx});
@@ -1482,7 +1483,7 @@ function refreshSign(x,y,z){
 }
 function setBedSpawn(x,y,z){
   try{localStorage.setItem('hetan_spawn',JSON.stringify({x:x,y:y,z:z}));}catch(e){}
-  toast('这张床成了你的出生点');
+  toast('出生点设在这张床了（连点两下拆床）');
 }
 function rebuild(){
   const counts={};for(const t in meshes)counts[t]=0;
@@ -1553,15 +1554,27 @@ const boxBlocks=(minx,miny,minz,maxx,maxy,maxz,fn)=>{
   return false;
 };
 const hitAny=(minx,miny,minz,maxx,maxy,maxz)=>boxBlocks(minx,miny,minz,maxx,maxy,maxz,solid);
+const HALF_H={13:0.47,18:0.42,20:0.045,21:0.37};   // v50.6：半格家具的支撑面高度（阶/凳/路/桌）
 function moveAxis(dx,dy,dz){
   p.x+=dx;p.z+=dz;
   const y0=p.y, y1=p.y+PH;
   if(hitAny(p.x-PW,y0+0.02,p.z-PW,p.x+PW,y1-0.02,p.z+PW)){
-    p.x-=dx;p.z-=dz;
+    /* v50.6 半格自动上阶：被挡且挡的是半格家具、上方净空——抬到半格顶继续走，不再「一跳一跳」 */
+    let stepped=false;
+    const fh=HALF_H[get(Math.floor(p.x),Math.floor(y0+0.05),Math.floor(p.z))];
+    if(fh){const ny=Math.floor(y0)+fh+0.002;
+      if(ny>y0-0.01&&ny-y0<0.62&&!hitAny(p.x-PW,ny+0.02,p.z-PW,p.x+PW,ny+PH-0.02,p.z+PW)){p.y=ny;stepped=true;}}
+    if(!stepped){p.x-=dx;p.z-=dz;}
   }
   p.y+=dy;
   if(hitAny(p.x-PW+0.02,p.y,p.z-PW+0.02,p.x+PW-0.02,p.y+PH,p.z+PW-0.02)){
-    if(dy<0){p.y=Math.floor(p.y)+1.0001;p.ground=true;}
+    if(dy<0){
+      /* v50.6：支撑面落到半格实高——站阶上脚在0.47不再浮空0.53 */
+      const bg=get(Math.floor(p.x),Math.floor(p.y),Math.floor(p.z));
+      const hh=HALF_H[bg];
+      p.y=hh!==undefined?Math.floor(p.y)+hh+0.001:Math.floor(p.y)+1.0001;
+      p.ground=true;
+    }
     else{p.y=Math.ceil(p.y+PH)-PH-0.0001;}
     p.vy=0;
   }else if(dy<-0.001)p.ground=false;
@@ -1642,7 +1655,7 @@ function dig(){
   const tt=world[idx(h.x,h.y,h.z)];
   const hk=h.x+','+h.y+','+h.z, now=Date.now();
   /* v50：床和牌是交互方块——点=功能，2秒内再点同块=拆（MC的床/告示牌语义） */
-  const again=lastHitK===hk+':'+tt&&now-lastHitT<2200;
+  const again=lastHitK===hk+':'+tt&&now-lastHitT<1200;   // v50.6：窗口收紧防误拆
   if(tt===23){
     if(again){lastHitK=null;}
     else{lastHitK=hk+':'+tt;lastHitT=now;setBedSpawn(h.x,h.y,h.z);return;}
