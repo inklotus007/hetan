@@ -71,7 +71,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="boot"><h1>河 滩</h1><p>一九九五年四月 · 县城外</p><p id="bootTip">正在铺开河滩……</p><p id="bootVer" style="font-size:10px;opacity:.75;margin-top:6px"></p></div>
 <canvas id="c"></canvas>
 <div id="xhair"></div>
-<div id="top">河 滩<small>杨棉起来了 · 想搭什么搭什么</small><span id="menuBtn">☰</span></div>
+<div id="top">河 滩<small id="verTag">…</small><span id="menuBtn">☰</span></div>
 <div id="menuPanel">
   <div class="mHead">河滩 <b id="menuVer"></b><span id="menuClose">×</span></div>
   <div class="mRow"><span>世界</span><b id="mWorld">—</b></div>
@@ -191,6 +191,7 @@ trees.forEach(([tx,tz])=>{
   }
 });
 // 碑：出生点旁
+try{document.getElementById('verTag').textContent=VER+' · 想搭什么搭什么';}catch(e){}
 const STX=38,STZ=22;   // v29：碑和出生点移到同志的广场上（TA亲手削山铺砖那块）——牌子立在广场中央
 {const h=height(STX,STZ);
  world[idx(STX,h+1,STZ)]=3;world[idx(STX,h+2,STZ)]=3;world[idx(STX-1,h+1,STZ)]=3;world[idx(STX+1,h+1,STZ)]=3;}
@@ -265,7 +266,7 @@ function pushWorld(){
 let worldPulled=false,worldCells=0;
 function pullWorld(attempt){
   attempt=attempt||0;
-  if(Date.now()-lastPushT<120000)return Promise.resolve(0);   // v50.2：推完2分钟内不拉——GitHub contents读缓存还没过期，拉到的是推之前的旧世界，会把刚搭好的刷掉（「已上云但没了」的根）
+  if(Date.now()-lastPushT<60000)return Promise.resolve(0);   // v50.2推后刹车（v50.4加cb后缓存已绕开，留60秒防抖）；v50.2原2分钟
   return ghGet('world.json').then(({data})=>{
     worldPulled=true;
     const rd=remoteDiffs(data);
@@ -340,7 +341,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v50';   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v50.4';   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -419,7 +420,7 @@ function ghGet(path){
     rawMode=true;apiStat='同源模式（无令牌或令牌失效）';
     return ghSame(path);
   }
-  return ghFetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path,{headers:ghHeaders()})
+  return ghFetch('https://api.github.com/repos/inklotus007/hetan/contents/'+path+'?cb='+Date.now(),{headers:ghHeaders()})   // v50.4：cb时间戳绕读缓存——之前推完2分钟内GET拿的是旧文件（缓存按URL命中），pullWorld拿旧世界刷掉刚搭的
     .then(r=>{
       if(r.status===404){apiStat='404——GitHub把hetan装作不存在，多半是令牌没勾hetan仓库';return {sha:null, data:{npcs:{},msgs:[]}};}
       if(!r.ok){apiStat='HTTP '+r.status;throw new Error('get '+r.status);}
