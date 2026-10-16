@@ -147,7 +147,8 @@ const TYPES={
   24:{n:'柜', c:0x8a6a48, cab:true, mats:['wood_side','wood_side','wood_top','wood_top','cab_front','wood_side']},
   25:{n:'幌', c:0x31538a, plant:'banner'},
   26:{n:'石凳', c:0x9a9a96, tex:'stone', bench:true},
-  27:{n:'牌', c:0x8a6a48, sign:true}   // 点牌=题字（写什么汉字牌上显示什么），2秒内再点=拆；文字存signs.json全端共享
+  27:{n:'牌', c:0x8a6a48, sign:true},   // 点牌=题字（写什么汉字牌上显示什么），2秒内再点=拆；文字存signs.json全端共享
+  28:{n:'匾', c:0x8a6a48, sign:true, plaque:true}   // v50.1：横匾——横排题字（旅馆门楣那块），交互同牌
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -1315,6 +1316,7 @@ const benchGeo=new THREE.BoxGeometry(1,0.42,1);benchGeo.translate(0,-0.5+0.21,0)
 const bedGeo=new THREE.BoxGeometry(0.95,0.42,0.68);bedGeo.translate(0,-0.5+0.21,0.14);   // 床：低台靠格南（+z=床头板那端）
 const cabGeo=new THREE.BoxGeometry(0.85,1.15,0.5);cabGeo.translate(0,-0.5+0.575,0.2);    // 柜：高身贴地靠格南
 const signGeo=new THREE.BoxGeometry(0.72,0.92,0.09);signGeo.translate(0,-0.04,0);        // 牌：立式木牌，+z面是字
+const plaqueGeo=new THREE.BoxGeometry(1.0,0.42,0.1);   // v50.1匾：满格横匾悬格中（门楣高度），+z面横排字
 /* v40 四件：篱（围院）路（铺径）桌（配凳）灯（灯池夜光） */
 const fenceGeo=(()=>{const post=new THREE.BoxGeometry(0.14,1,0.14);post.translate(0,0.01,0);return post;})();   // v42：独杆（MC式），底面抬0.01防z-fighting；横杆是独立实例，按邻居自动生成
 const railGeo=new THREE.BoxGeometry(1.06,0.09,0.05);   // 横杆：两格间距1.0+两端各搭0.03进柱子
@@ -1387,7 +1389,7 @@ function tickTorch(now){
     }else L.intensity=0;
   }
 }
-const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27;};   // 火把/花/草/凳/路/灯/幌/牌不算墙；床柜篱桌挡人
+const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28;};   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人
 /* v42：只有满格方块遮挡邻面——篱笆柱0.14宽/桌腿0.16宽盖不住那格的地面，但solid遮挡让地面顶面不渲染，从矮处看=空洞（「篱笆桌子下面透明」根）。玻璃透明也要透邻面 */
 const FULLT=new Set([1,2,3,4,5,6,7,8,10,11,12,13]);
 const covers=(x,y,z)=>{const b=get(x,y,z);return FULLT.has(b);};
@@ -1408,25 +1410,33 @@ function pullSigns(){
 function pushSigns(msg){
   return ghPut('signs.json',SIGNS,signsSha,msg).then(({sha})=>{signsSha=sha;}).catch(()=>{});
 }
-function signTexFor(k,text){
-  const ck=k+'|'+(text||'');
+function signTexFor(k,text,mode){
+  const ck=k+'|'+(text||'')+'|'+(mode||'v');
   if(signCache[ck])return signCache[ck];
-  const cv=document.createElement('canvas');cv.width=96;cv.height=128;
+  const horiz=(mode==='h');   // v50.1：匾=横排，牌=竖排
+  const cv=document.createElement('canvas');
+  cv.width=horiz?160:96;cv.height=horiz?64:128;
   const g=cv.getContext('2d');
-  g.fillStyle='#6a4e30';g.fillRect(0,0,96,128);
-  for(let x=4;x<96;x+=11){g.fillStyle='rgba(56,40,22,.45)';g.fillRect(x,0,2,128);}   // 木纹
-  g.strokeStyle='#4a3620';g.lineWidth=4;g.strokeRect(2,2,92,124);   // 边框
+  g.fillStyle='#6a4e30';g.fillRect(0,0,cv.width,cv.height);
+  if(horiz){for(let y=4;y<64;y+=9){g.fillStyle='rgba(56,40,22,.45)';g.fillRect(0,y,cv.width,2);}}   // 横匾横木纹
+  else{for(let x=4;x<96;x+=11){g.fillStyle='rgba(56,40,22,.45)';g.fillRect(x,0,2,128);}}   // 竖牌竖木纹
+  g.strokeStyle='#4a3620';g.lineWidth=4;g.strokeRect(2,2,cv.width-4,cv.height-4);
+  g.fillStyle='#f2e6c8';
+  g.font='bold 20px "KaiTi","STKaiti","楷体","Noto Serif SC",serif';
+  g.textAlign='center';g.textBaseline='middle';
   const chars=(text||'').split('');
   if(chars.length){
-    const n=chars.length,size=n<=2?36:(n<=4?27:20);
-    g.fillStyle='#f2e6c8';
-    g.font='bold '+size+'px "KaiTi","STKaiti","楷体","Noto Serif SC",serif';
-    g.textAlign='center';g.textBaseline='middle';
-    const step=size*1.22,total=n*step;
-    chars.forEach((c,i)=>{g.fillText(c,48,64-total/2+step/2+i*step);});   // 竖排，居中
+    const n=chars.length;
+    g.font='bold '+(horiz?Math.min(40,Math.floor((cv.width-40)/n)):((n<=2?36:(n<=4?27:20))))+'px "KaiTi","STKaiti","楷体","Noto Serif SC",serif';
+    if(horiz){
+      g.fillText(text,cv.width/2,cv.height/2+1);   // 横排一行居中
+    }else{
+      const step=parseInt(g.font)*1.22,total=n*step;
+      chars.forEach((c,i)=>{g.fillText(c,48,64-total/2+step/2+i*step);});   // 竖排，居中
+    }
   }else{
-    g.fillStyle='rgba(242,230,200,.4)';g.font='15px serif';g.textAlign='center';
-    g.fillText('（点我题字）',48,64);
+    g.fillStyle='rgba(242,230,200,.4)';
+    g.fillText(horiz?'（点我题字）':'（点我题字）',cv.width/2,cv.height/2);
   }
   const tx=new THREE.CanvasTexture(cv);tx.magFilter=THREE.LinearFilter;   // 字要平滑，不用像素风
   signCache[ck]=new THREE.MeshLambertMaterial({map:tx});
@@ -1435,11 +1445,13 @@ function signTexFor(k,text){
 function refreshSign(x,y,z){
   const k=x+','+y+','+z;
   if(signMeshes[k]){scene.remove(signMeshes[k]);delete signMeshes[k];}
-  if(get(x,y,z)!==27)return;
+  const tt=get(x,y,z);
+  if(tt!==27&&tt!==28)return;
+  const isPlq=(tt===28);
   const data=(SIGNS.signs||{})[k]||{};
   const wood=new THREE.MeshLambertMaterial({map:texOf('wood_side')});
   const woodTop=new THREE.MeshLambertMaterial({map:texOf('wood_top')});
-  const mesh=new THREE.Mesh(signGeo,[wood,wood,woodTop,woodTop,signTexFor(k,data.text),wood]);   // +z面=字
+  const mesh=new THREE.Mesh(isPlq?plaqueGeo:signGeo,[wood,wood,woodTop,woodTop,signTexFor(k,data.text,isPlq?'h':'v'),wood]);   // +z面=字
   mesh.rotation.y=(data.dir||0)*Math.PI/2;
   mesh.position.set(x+0.5,y+0.5,z+0.5);
   scene.add(mesh);signMeshes[k]=mesh;
@@ -1460,7 +1472,7 @@ function rebuild(){
   for(let x=0;x<W;x++)for(let z=0;z<D;z++)for(let y=0;y<H;y++){
     const t=world[idx(x,y,z)];if(t===AIR)continue;
     if(t===14||t===22)torchSet.add(idx(x,y,z));   // v32：火炬进灯池；v40：灯笼也进
-    else if(t===27)signKeys.push(idx(x,y,z));   // v50：牌进独立队列，末尾逐块refreshSign
+    else if(t===27||t===28)signKeys.push(idx(x,y,z));   // v50：牌和匾进独立队列，末尾逐块refreshSign
     else if(t===19&&railN<47000){   // v42：篱笆横杆——查+x和+z邻居，是篱笆就在两格间放两根杆（独杆无杆，连排自动成栅栏）
       if(get(x+1,y,z)===19)for(const ry of [y+0.78,y+1.12]){_m.makeRotationY(0);_m.setPosition(x+1.0,ry,z+0.5);railMesh.setMatrixAt(railN++,_m);}
       if(get(x,y,z+1)===19)for(const ry of [y+0.78,y+1.12]){_m.makeRotationY(Math.PI/2);_m.setPosition(x+0.5,ry,z+1.0);railMesh.setMatrixAt(railN++,_m);}
@@ -1610,7 +1622,7 @@ function dig(){
   if(tt===23){
     if(again){lastHitK=null;}
     else{lastHitK=hk+':'+tt;lastHitT=now;setBedSpawn(h.x,h.y,h.z);return;}
-  }else if(tt===27){
+  }else if(tt===27||tt===28){
     if(again){lastHitK=null;
       if(SIGNS.signs[hk]){delete SIGNS.signs[hk];pushSigns('河滩：一块招牌收走了');}
     }
@@ -1630,7 +1642,7 @@ function put(){
   if(curType!==8&&x+1>p.x-PW&&x<p.x+PW&&z+1>p.z-PW&&z<p.z+PW&&y+1>p.y&&y<p.y+PH)return;
   AU.put();
   world[idx(x,y,z)]=curType;saveDiff(x,y,z,curType);rebuild();
-  if(curType===27)editSign(x,y,z);   // v50：牌子一放下就请你题字
+  if(curType===27||curType===28)editSign(x,y,z);   // v50：牌和匾一放下就请你题字
 }
 /* v50 招牌照面朝向：文字面转向玩家（放置/题字那一刻），按水平方位取整到90° */
 function signDirToPlayer(x,z){
