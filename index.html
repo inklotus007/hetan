@@ -1187,7 +1187,7 @@ function tickSky(now){
   let seg=SEG_NAME[0][1];
   for(const [tt,name] of SEG_NAME){if(dayT>=tt)seg=name;}
   if(seg!==lastSeg){lastSeg=seg;
-    const el=document.querySelector('#top small');if(el)el.textContent=seg+' · 想搭什么搭什么';
+    const el=document.querySelector('#top small');if(el)el.textContent=VER+' · '+seg;   // v50.4：版本号常驻顶栏——同志一眼看到页面新旧
   }
 }
 
