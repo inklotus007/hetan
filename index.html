@@ -250,11 +250,18 @@ function pushWorld(){
     }
     return ghPut('world.json',{diffs:{r:r,a:a}},sha,'河滩：'+ME.name+'动了'+Object.keys(local).length+'格')   // v35：用ghGet刚拿到的sha——worldSha从v22起就是没赋过值的死变量，PUT永远不带sha，对已有world.json一律422
       .then(()=>{
-        worldBusy=false;worldDirty=false;worldCells=Object.keys(a).length;
+        worldBusy=false;worldCells=Object.keys(a).length;
         lastPushT=Date.now();   // v50.2：推完记时刻——GitHub对刚写完的文件读缓存约2分钟，这段时间拉到的是旧的，不能让它刷画面
         try{localStorage.setItem('hetan_cells',String(worldCells));}catch(e){}   // v50.3：记住云端应有的格数——重进拉到旧缓存时对账用
-        diffs={r:[],a:{}};   // 上云成功，本地不留副本——云端是唯一的一份
-        try{localStorage.removeItem(SKEY);}catch(e){}
+        /* v50.5 真根修复：v43构造了快照（snapR/snapA）却清了整个diffs——GET/PUT窗口（1-3秒）内同志新放的格被整批蒸发，连localStorage都清了，永不上云。
+           现在只清「快照里且没有被新改动」的部分，窗口内的新搭保留等下轮推送 */
+        Object.keys(snapA).forEach(k=>{if(diffs.a[k]===snapA[k])delete diffs.a[k];});   // 值没变的=已推走，清；被新改过的=留着
+        const snapRK={};
+        snapR.forEach(p=>{snapRK[p[0]+','+p[1]+','+p[2]]=1;});
+        diffs.r=diffs.r.filter(p=>{const k=p[0]+','+p[1]+','+p[2];return !(snapRK[k]&&!diffs.a[k]&&!diffs.r.some(q=>q!==p&&q[0]===p[0]&&q[1]===p[1]&&q[2]===p[2]));});   // 快照里的删除记录且格仍空=已推走，清；有新变化=留
+        worldDirty=!!(Object.keys(diffs.a).length||diffs.r.length);   // 有残留（窗口内新搭）→保持dirty下轮接着推
+        if(worldDirty){try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}toast('还有新搭的在队列，马上再传');}
+        else{try{localStorage.removeItem(SKEY);}catch(e){}}
         pushFail=0;syncErr='';refreshMenu();toast('搭建已上云 · 谁打开都能看到');
       });
   }).catch(err=>{
