@@ -271,6 +271,7 @@ const SKIN=['#e8c39e','#d9a97c','#c69066'];
 const COATS=['#5a7a8c','#7a5a4a','#4a6a52','#8c6a4a','#6a5a7a','#8c4a4a','#5a6a6a','#7a7a4a'];
 let ME=null,NPC_TOKEN=null;
 try{NPC_TOKEN=localStorage.getItem('jldh_token');}catch(e){}
+let meClaimed=true;   /* v46：身份稳定标志。改名认领期间置false——心跳等认领落定再上云，免得临时名又造一具身体 */
 function meInit(){
   try{
     const s=localStorage.getItem('hetan_me');
@@ -283,10 +284,29 @@ function meInit(){
       home:[Math.max(4,Math.min(W-5,STX+((seed%11)-5))), Math.max(4,Math.min(D-5,STZ+4+((seed>>2)%7)))]};
   try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}
 }
+/* v46认领：改名=「我是叫这个名字的人」。云端有同名身体（上次的自己），就接着那具走——
+   认领最近还在走的那具（名字不变——名字即存档；换的是身体）。刚造的临时身体吸收撤下。一名字一身体。 */
+function claimBody(){
+  if(!NPC_TOKEN)return Promise.resolve();
+  const oldId=ME.id;
+  return ghGet(NPCS_URL).then(({sha,data})=>{
+    const npcs=(data&&data.npcs)||{};
+    const same=Object.values(npcs).filter(n=>n.name===ME.name&&n.id!==ME.id)
+      .sort((a,b)=>(b.lastSeen||0)-(a.lastSeen||0));
+    if(!same.length)return;
+    const c=same[0];
+    ME.id=c.id;ME.seed=c.seed;ME.coat=c.coat;ME.skin=c.skin;ME.home=c.home;
+    try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}
+    delete npcs[oldId];                  // 认领了正式身体，临时这具撤下
+    Object.values(npcs).forEach(n=>{if(n.name===ME.name&&n.id!==ME.id)delete npcs[n.id];});   // 剩下的同名幽灵吸收——一名字一身体
+    npcList=Object.values(npcs);
+    return ghPut(NPCS_URL,{npcs:npcs},sha).then(()=>{npcLastPut=Date.now();npcLastPutPos=[p.x,p.z];});
+  }).catch(()=>{});
+}
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v45';
+const VER='v46';
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -508,12 +528,14 @@ try{const dr=localStorage.getItem('hetan_draft');if(dr)document.getElementById('
 document.getElementById('boardIn').addEventListener('input',e=>{
   try{localStorage.setItem('hetan_draft',e.target.value);}catch(err){}
 });
-/* 改名字：留言署名+河滩NPC一起变 */
+/* 改名字：留言署名+河滩NPC一起变。v46：改名先认领——云端有同名身体就接着它走（换了设备回来，身体还是那具） */
 document.getElementById('nameBtn').onclick=()=>{
   miniPrompt('在河滩上叫什么（六个字以内）','',ME.name,v=>{
     ME.name=v.slice(0,6);localStorage.setItem('hetan_me',JSON.stringify(ME));
-    if(NPC_TOKEN){syncNPCs();}          // 立刻让新名字上云端
     document.getElementById('boardTip').textContent='名字改好了——滩上的你也是这个名字。';
+    if(!NPC_TOKEN)return;
+    meClaimed=false;
+    claimBody().then(()=>{meClaimed=true;syncNPCs();});   // 认领落定再让心跳上云
   });
 };
 /* 小输入弹层：贴令牌/改名字共用（不依赖prompt，微信里也不拦） */
@@ -639,7 +661,7 @@ function fallbackCopy(text,done){
 document.getElementById('btnBoard').onclick=()=>{document.getElementById('boardUI').classList.add('on');renderBoard();syncBoard();};
 /* 令牌入口：抽屉mTok + 板上tokBtn2（tokBtn元素v28删了，它的死绑定曾把整页炸白——删UI必须grep全部引用） */
 /* NPC小人渲染 */
-const NPC_ONLINE_TTL=20000, NPC_MAX=32;
+const NPC_ONLINE_TTL=180000, NPC_MAX=32;   /* v46：20秒→3分钟——心跳从7秒一跳降到分钟级，在线依然连续 */
 function nameSprite(txt,color){
   const cv=document.createElement('canvas');cv.width=256;cv.height=64;
   const g=cv.getContext('2d');
@@ -683,7 +705,13 @@ function renderNPCs(list,tSec){
     if(!g){g=makeNPCBody(npc);npcGroup.add(g);npcObjs[npc.id]=g;}
     let x,z,yaw;
     const isOnline=npc.online&&(Date.now()-npc.lastSeen<NPC_ONLINE_TTL);
-    if(isOnline){x=npc.pos[0];z=npc.pos[1];yaw=npc.yaw||0;}
+    if(isOnline){
+      /* v46：云端位置约二十秒才刷一次——本地朝它缓动，人看着是在走，不在跳。
+         刚从漫游转在线的身体也从原地走过去，不从天上掉下来。 */
+      const tx=npc.pos[0],tz=npc.pos[1];yaw=npc.yaw||0;
+      if(g.userData.sm){x=g.position.x+(tx-g.position.x)*0.05;z=g.position.z+(tz-g.position.z)*0.05;}
+      else{x=tx;z=tz;g.userData.sm=1;}
+    }
     else{const P=npcPos(npc,tSec);x=P[0];z=P[1];yaw=Math.atan2(Math.cos(tSec*0.052+npc.seed*1.3),-Math.sin(tSec*0.071+npc.seed));}
     const y=surfaceY(Math.floor(x),Math.floor(z));
     const bob=(!isOnline&&Math.sin(tSec*2.3+npc.seed)>0.92)?Math.abs(Math.sin(tSec*7))*0.12:0;
@@ -692,38 +720,35 @@ function renderNPCs(list,tSec){
   });
   for(const id in npcObjs)if(!seen[id]){npcGroup.remove(npcObjs[id]);delete npcObjs[id];}
 }
-/* 云端同步：只在配了令牌时 */
-let npcSha=null,npcList=[],npcBusy=false;
+/* 云端同步：只在配了令牌时。
+   v46心跳节流：commit流不再被7秒一笔刷屏（一天五百多笔，翻提交的人要趟过心跳找一朵花）。
+   两分钟一跳，或走出6格才跳——赶路的人别人也追得上。 */
+let npcSha=null,npcList=[],npcBusy=false,npcLastPut=0,npcLastPutPos=[1e9,1e9];
 function syncNPCs(){
-  if(!NPC_TOKEN||!ME||npcBusy)return;npcBusy=true;
+  if(!NPC_TOKEN||!ME||npcBusy||!meClaimed)return;npcBusy=true;
   ghGet(NPCS_URL).then(({sha,data})=>{
     npcSha=sha;
     const npcs=(data&&data.npcs)||{};
     const now=Date.now();
-    // 自己写进去（心跳）
-    npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
-      home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
-    // 限数：砍最老的
-    const keys=Object.keys(npcs);
-    if(keys.length>40){
-      keys.sort((a,b)=>(npcs[a].lastSeen||0)-(npcs[b].lastSeen||0));
-      keys.slice(0,keys.length-40).forEach(k=>delete npcs[k]);
+    const moved=Math.hypot(p.x-npcLastPutPos[0],p.z-npcLastPutPos[1])>=6;
+    if(now-npcLastPut>=120000||moved){
+      // 自己写进去（心跳）
+      npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
+        home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
+      // 限数：砍最老的
+      const keys=Object.keys(npcs);
+      if(keys.length>40){
+        keys.sort((a,b)=>(npcs[a].lastSeen||0)-(npcs[b].lastSeen||0));
+        keys.slice(0,keys.length-40).forEach(k=>delete npcs[k]);
+      }
+      npcList=Object.values(npcs);
+      return ghPut(NPCS_URL,{npcs:npcs},sha).then(()=>{npcLastPut=now;npcLastPutPos=[p.x,p.z];});
     }
-    npcList=Object.values(npcs);
-    return ghPut(NPCS_URL,{npcs:npcs},sha);
+    npcList=Object.values(npcs);   // 没到心跳点：只当读了一回（读别人+别人的lastSeen）
+    return Promise.resolve();
   }).then(()=>{
-    // 拉最新（含别人的在线位置）——省一次GET，用刚写的全量+别人的lastSeen判断在线
     npcBusy=false;
   }).catch(()=>{npcBusy=false;});
-}
-function pollNPCs(){
-  if(!NPC_TOKEN||npcBusy)return;
-  ghGet(NPCS_URL).then(({data})=>{
-    const npcs=(data&&data.npcs)||{};
-    // 合并自己（自己的位置以本地为准）
-    if(ME&&npcs[ME.id])npcs[ME.id].pos=[p.x,p.z],npcs[ME.id].yaw=p.yaw;
-    npcList=Object.values(npcs);
-  }).catch(()=>{});
 }
 let worldLoopCount=0;
 function npcLoop(){
@@ -731,8 +756,7 @@ function npcLoop(){
   worldLoopCount++;
   if(worldLoopCount%4===0)pullWorld();    // 约每28秒，世界长一次别人的搭建
   if(!NPC_TOKEN){renderNPCs([],performance.now()/1000);setTimeout(npcLoop,9000);return;}
-  syncNPCs();
-  setTimeout(pollNPCs,3000);
+  if(worldLoopCount%3===0)syncNPCs();     // v46：约每21秒读一次云端（顺带按需心跳），API和commit都从刷屏回到呼吸
   setTimeout(npcLoop,7000);
 }
 /* 轻提示：搭建上云成功/失败，必须看得见——不再静默 */
