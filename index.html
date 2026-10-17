@@ -229,6 +229,21 @@ function fbm01(x,z){   /* v57 fBm：6 octave，redblobgames偏移采样 */
   for(const [f,ox,oz] of OC){ e+=amp*vnoise(x*0.013*f+ox, z*0.013*f+oz); norm+=amp; amp*=0.5; }
   return e/1.9375;
 }
+function moist01(x,z){   /* v58 湿度场：4 octave低频噪声=大气候带 */
+  let e=0, amp=1;
+  const OC=[[1,101.7,7.3],[2,33.1,51.9],[4,7.7,13.1],[8,51.7,3.3]];
+  for(const [f,ox,oz] of OC){ e+=amp*vnoise(x*0.009*f+ox, z*0.009*f+oz); amp*=0.5; }
+  return e/1.875;
+}
+function plantTree(x,z,h,cone){   /* v58：cone=雪原针叶（窄高冠），默认阔叶 */
+  const th=cone?4+Math.floor(hash(x,z)*2):3+Math.floor(hash(x,z)*2);
+  for(let y=h+1;y<=h+th;y++)world[idx(x,y,z)]=5;
+  const R=cone?1:2;
+  for(let dx=-R;dx<=R;dx++)for(let dz2=-R;dz2<=R;dz2++)for(let dy=0;dy<=2;dy++){
+    const r=Math.abs(dx)+Math.abs(dz2)+dy*(cone?1.0:1.4);
+    if(r<=(cone?2.2:3.4)&&!(dx===0&&dz2===0&&dy<1)){const X=x+dx,Z=z+dz2,Y=h+th+dy-1;if(inW(X,Y,Z)&&!world[idx(X,Y,Z)])world[idx(X,Y,Z)]=6;}
+  }
+}
 function height(x,z,e){
   // 河从东北向西南弯过去，滩地沿河
   const river=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4; // 河道中心线的z偏移
@@ -263,6 +278,38 @@ for(let x=0;x<W;x++)for(let z=0;z<D;z++){
   if(h<5)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;    // 水位线5：低于水位的全部灌满——河心不再露底（v25修「水没填满」）
   /* v57 远域河带：河床已挖到4/5，灌到水位5——干流支流与近河同一水位 */
   if(dz>90&&h<=4){const e2=eC||fbm01(x,z);if(Math.abs(e2-0.28)<0.011||Math.abs(e2-0.44)<0.009)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;}
+}
+/* v58 生物群系：湿度场分群系，远域播植被——森林27%/草原41%/荒地/雪原/水泽；近景（dz≤90）是同志领地不动；清言滩城台亭周边一圈不长 */
+for(let x=0;x<W;x++)for(let z=0;z<D;z++){
+  const riv2=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4, dz2=Math.abs(z-(34+riv2));
+  if(dz2<=90)continue;
+  if(x>=453&&x<=461&&z>=446&&z<=461)continue;   /* 城台+忘言亭+一圈：不长树 */
+  const farD=Math.min(1,(dz2-90)/40);           /* 90-130格渐入 */
+  let top=0;for(let y=H-2;y>=0;y--){const b=world[idx(x,y,z)];if(b&&b!==8){top=y;break;}}
+  if(!top)continue;
+  const h=top, ground=world[idx(x,h,z)];
+  if(ground===8)continue;
+  const mo=moist01(x,z), hv=hash(x,z);
+  if(h>=30){                                    /* 雪原：针叶+雪斑 */
+    if(hv<0.010*farD)plantTree(x,z,h,true);
+    else if(hv<0.30*farD&&ground===1)world[idx(x,h,z)]=30;
+    continue;
+  }
+  if(h<10&&world[idx(x,h-1,z)]===8){            /* 水泽：顶格下方是水=真水岸 */
+    if(hv<0.12*farD){world[idx(x,h+1,z)]=17;world[idx(x,h+2,z)]=17;}
+    continue;
+  }
+  if(ground!==1)continue;                       /* 只长在草皮上（河床沙/雪顶跳过） */
+  if(mo>0.55){                                  /* 森林：密树+林下花 */
+    if(hv<0.055*farD)plantTree(x,z,h,false);
+    else if(hv<0.062*farD)world[idx(x,h+1,z)]=(hv*10000%1<0.5)?15:16;
+  }else if(mo>0.36){                            /* 草原：草+花点缀 */
+    if(hv<0.040*farD)world[idx(x,h+1,z)]=17;
+    else if(hv<0.052*farD)world[idx(x,h+1,z)]=(hv*10000%1<0.5)?15:16;
+  }else{                                        /* 荒地：沙斑+孤树 */
+    if(hv<0.16*farD)world[idx(x,h,z)]=4;
+    else if(hv<0.164*farD)plantTree(x,z,h,false);
+  }
 }
 // 老柳树：岸上几棵
 const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26],[68,38],[96,56]];   // v39：新区东西滩各添一棵
@@ -434,7 +481,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v57.4';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v58';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1563,7 +1610,7 @@ for(const t in TYPES){
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  const cap=(t==='1')?320000:(t==='3')?400000:(t==='2')?35000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v57.2：土node实测30393 */   /* v54：cap给足——JS实际count等同志端实测再收 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  const cap=(t==='1')?320000:(t==='3')?400000:(t==='2')?35000:(t==='6')?80000:(t==='5')?30000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v58：node实测叶71198——cap80000 */   /* v54：cap给足——JS实际count等同志端实测再收 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
   meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
