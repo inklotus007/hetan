@@ -1464,7 +1464,7 @@ for(const t in TYPES){
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  const cap=(t==='1')?280000:(t==='3')?100000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v54：numpy实测512²暴露（草25.4万/石y0排除后5万/土1.2万）按真实数字给池 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  const cap=(t==='1')?320000:(t==='3')?400000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v54：cap给足——JS实际count等同志端实测再收 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
   meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
