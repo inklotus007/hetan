@@ -344,6 +344,7 @@ function claimBody(){
     try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}
     delete npcs[oldId];                  // 认领了正式身体，临时这具撤下
     Object.values(npcs).forEach(n=>{if(n.name===ME.name&&n.id!==ME.id)delete npcs[n.id];});   // 剩下的同名幽灵吸收——一名字一身体
+    if(npcs[ME.id])npcs[ME.id].lastSeen=Date.now();   /* 体检修：认领即刷存活——心跳窗口内关页不被40具清理误删 */
     npcList=Object.values(npcs);
     return ghPut(NPCS_URL,{npcs:npcs},sha).then(()=>{npcLastPut=Date.now();npcLastPutPos=[p.x,p.z];});
   }).catch(()=>{});
@@ -351,7 +352,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v51';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v51.1';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -859,7 +860,14 @@ function renderNPCs(list,tSec){
       g.userData.tagS.visible=!isOnline;
     }
     if(!g.userData.words&&wordData&&wordData[npc.name]&&wordData[npc.name].text){
-      const ws=wordsSprite(wordData[npc.name].text);ws.position.y=2.52;g.add(ws);g.userData.words=ws;
+      const wtxt=wordData[npc.name].text;
+      /* 体检修：话牌带日期戳（MM/DD）且不是今天——摘。话是「今日」的，过了今天就不挂在身上 */
+      const dm=wtxt.match(/(\d{1,2})\/(\d{1,2})/);
+      const today=new Date();
+      const expired=dm&&( +dm[1]!==today.getMonth()+1 || +dm[2]!==today.getDate() );
+      if(!expired){
+        const ws=wordsSprite(wtxt);ws.position.y=2.52;g.add(ws);g.userData.words=ws;
+      }
     }
     if(g.userData.words){
       g.userData.words.visible=Math.hypot(p.x-g.position.x,p.z-g.position.z)<2.5;
@@ -1117,8 +1125,11 @@ function renderAnimals(t,dt){
 function dayIsUp(){const dayT=((performance.now()/1000)%DAY_LEN)/DAY_LEN;return dayT>0.28&&dayT<0.78;}   // 拂晓到黄昏——夜里鸟不叫
 let nextChirp=0;
 
-/* ================= 昼夜（v27）：太阳月亮星星云——十分钟过一天，真实时钟驱动 =================
-   谁在什么时刻打开，河滩就是什么时辰——隔着设备看到同一个天上。 */
+/* ================= 昼夜（v27）：太阳月亮星星云——十分钟过一天 =================
+   时钟用performance.now（页面加载起算，全端同源：天空/顶栏/投影/鸟鸣一套时钟）。
+   注意：不是真实时钟——不同时刻打开看到不同时辰，投影每10分钟过完一生。
+   「按真实时辰活」是另一个设计选项（体检时记下，等同志定）：改 dayT=(Date.now()/1000%86400)/86400，
+   天色会慢得看不见走，但「拂晓碑旁」变成真·拂晓。 */
 const DAY_LEN=600;   // 十分钟一天
 const SKY_KEYS=[     // [t, 天色, 雾色, 环境光, 日光, 日色]
   [0.00,0x0a1524,0x0a1524,0.30,0.06,0x8fa8cc],
@@ -1435,7 +1446,9 @@ function pullSigns(){
   }).catch(()=>{});
 }
 function pushSigns(msg){
-  return ghPut('signs.json',SIGNS,signsSha,msg).then(({sha})=>{signsSha=sha;}).catch(()=>{});
+  return ghPut('signs.json',SIGNS,signsSha,msg).then(({sha})=>{signsSha=sha;}).catch(()=>{
+    return pullSigns().then(()=>ghPut('signs.json',SIGNS,signsSha,msg)).then(({sha})=>{signsSha=sha;}).catch(()=>{});
+  });   /* 体检修：422（别人先写）不再是静默丢——拉最新合并重推一次 */
 }
 function signTexFor(k,text,mode){
   const ck=k+'|'+(text||'')+'|'+(mode||'v');
@@ -1715,6 +1728,8 @@ function editSign(x,y,z){
 function signCommit(){
   if(!signEditPos)return;
   const [x,y,z]=signEditPos,k=x+','+y+','+z;
+  /* 体检修：pull未完成时SIGNS是空壳——此刻提交会把云端旧牌全冲掉（v43蒸发同族）——先等pull落地 */
+  if(signsSha===null){pullSigns().then(()=>signCommit());return;}
   const text=document.getElementById('signInput').value.trim().slice(0,6);
   SIGNS.signs=SIGNS.signs||{};
   if(text){SIGNS.signs[k]={text:text,dir:signDirToPlayer(x,z),t:Date.now()};
