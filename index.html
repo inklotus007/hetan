@@ -140,7 +140,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <script src="three.min.js"></script>
 <script>
 /* ================= 基础 ================= */
-const W=240, D=200, H=40;             // 世界尺寸（v52：160×130→240×200——同志的混合多元世界，远程开地；地形函数无限延展，坐标系不动）
+const W=512, D=512, H=40;             // 世界尺寸（v53：240×200→512×512——同志要的城间尺度：广场到清言滩601格，旧世界整个对角线才312格；传送门是城间唯一合理交通）
 const AIR=0;
 // 方块类型: 1草 2土 3石 4沙 5木 6叶 7砖 8水 9玻璃 10木板 11石砖 12瓦
 const TYPES={
@@ -189,7 +189,14 @@ function height(x,z){
   let h;
   if(dz<5)      h=2+Math.round(dz*0.3);               // 河床
   else if(dz<11) h=4+Math.round((dz-5)*0.5);          // 滩
-  else          h=6+Math.round((dz-11)*0.35+hash(x,z)*1.6); // 岸上缓坡
+  else if(dz<=90) h=6+Math.round((dz-11)*0.35+hash(x,z)*1.6); // 岸上缓坡——v53：dz≤90严格旧式（现有搭建零错位）
+  else{
+    /* v53 远域：海拔饱和在26附近，叠加双频远山（大陆起伏+丘陵）——城与城之间的荒野有起伏 */
+    const oldH=6+(dz-11)*0.35, sat=6+20*(1-Math.exp(-(dz-11)*0.018));
+    const blend=Math.min(1,(dz-90)/90), far=Math.min(1,(dz-90)/120);
+    const mounts=far*(Math.sin(x*0.013+1.7)*Math.cos(z*0.011+0.4)*4+Math.sin(x*0.031+0.6)*Math.cos(z*0.027+1.2)*2.5);
+    h=Math.round(oldH+(sat-oldH)*blend+mounts+hash(x,z)*1.6);
+  }
   return Math.max(1,Math.min(H-3,h));
 }
 for(let x=0;x<W;x++)for(let z=0;z<D;z++){
@@ -374,7 +381,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v52.4';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v53';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1448,7 +1455,7 @@ for(const t in TYPES){
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  const cap=(+t<=3||+t===11||+t===12)?60000:12000;   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  const cap=(+t<=3||+t===11||+t===12)?150000:25000;   /* v53：512²世界暴露面~4.5倍，池同步加大 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
   meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
