@@ -434,7 +434,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v57.2';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v57.4';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1327,6 +1327,7 @@ function tickSky(now){
 
 let weather='clear',weatherUntil=0,rainPts=null,snowPts=null;
 function tickWeather(now){
+  if(!rainPts)initWeatherPts();   /* v57.4：惰性创建——rAF内p已就绪 */
   if(!weatherUntil){weatherUntil=now+90000+Math.random()*150000;return;}
   if(now>weatherUntil){
     const r=Math.random();
@@ -1356,7 +1357,7 @@ function tickWeather(now){
     fall(snowPts,0.22,true,now);
   }else if(snowPts)snowPts.visible=false;
 }
-(function initWeatherPts(){
+function initWeatherPts(){   /* v57.4：IIFE在p声明前立即执行=TDZ（v56.1修过但replay基线丢失复燃——hotfix必须进基线） */
   const mk=(n,color,size)=>{
     const g=new THREE.BufferGeometry();
     const arr=new Float32Array(n*3);
@@ -1367,7 +1368,7 @@ function tickWeather(now){
   };
   rainPts=mk(900,0x9fc4e8,0.16);
   snowPts=mk(600,0xffffff,0.22);
-})();
+}
 // 几何：程序化canvas纹理（零外部文件）
 function makeTex(kind){
   const cv=document.createElement('canvas');cv.width=64;cv.height=64;
