@@ -29,6 +29,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 #btnDig{right:calc(18px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom))}
 #btnPut{right:calc(88px + env(safe-area-inset-right));bottom:calc(160px + env(safe-area-inset-bottom))}
 #btnJmp{right:calc(18px + env(safe-area-inset-right));bottom:calc(180px + env(safe-area-inset-bottom))}
+#btnSneak{right:calc(88px + env(safe-area-inset-right));bottom:calc(96px + env(safe-area-inset-bottom))}
+.mbtn.on{background:rgba(240,230,200,.62);border-color:#fff8e0;color:#3a2f1e}
 /* 摇杆 */
 #stickBase{position:fixed;z-index:7;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,255,255,.4);background:rgba(50,60,70,.25);display:none;pointer-events:none}
 #stickKnob{position:fixed;z-index:8;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.5);display:none;pointer-events:none}
@@ -102,6 +104,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div class="mbtn" id="btnDig">挖</div>
 <div class="mbtn" id="btnPut">放</div>
 <div class="mbtn" id="btnJmp">跳</div>
+<div class="mbtn" id="btnSneak">潜</div>
 <div id="stickBase"></div><div id="stickKnob"></div>
 <div id="signModal" style="display:none;position:fixed;inset:0;background:rgba(10,14,18,.55);z-index:30;align-items:center;justify-content:center">
  <div style="background:#f3ecd8;border:1px solid #d0c29c;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(40,30,10,.4)">
@@ -348,7 +351,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v50.6';   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v51';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1566,6 +1569,10 @@ function moveAxis(dx,dy,dz){
       if(ny>y0-0.01&&ny-y0<0.62&&!hitAny(p.x-PW,ny+0.02,p.z-PW,p.x+PW,ny+PH-0.02,p.z+PW)){p.y=ny;stepped=true;}}
     if(!stepped){p.x-=dx;p.z-=dz;}
   }
+  /* v51 潜行贴边不掉：水平移动后脚下没支撑（3~16cm内无实体）就退回来 */
+  if(isSneak()&&p.ground&&!hitAny(p.x-PW+0.02,p.y-0.16,p.z-PW+0.02,p.x+PW-0.02,p.y-0.03,p.z+PW-0.02)){
+    p.x-=dx;p.z-=dz;
+  }
   p.y+=dy;
   if(hitAny(p.x-PW+0.02,p.y,p.z-PW+0.02,p.x+PW-0.02,p.y+PH,p.z+PW-0.02)){
     if(dy<0){
@@ -1586,7 +1593,7 @@ function physics(dt){
   ix+=stick.x; iz+=stick.y;
   const len=Math.hypot(ix,iz);
   if(len>1){ix/=len;iz/=len;}
-  const sp=4.4, sin=Math.sin(p.yaw),cos=Math.cos(p.yaw);
+  const sp=isSneak()?2.0:4.4, sin=Math.sin(p.yaw),cos=Math.cos(p.yaw);   /* v51：潜行慢走 */
   p.vx=(ix*cos + iz*sin)*sp;
   p.vz=(-ix*sin + iz*cos)*sp;
   const inWater=get(Math.floor(p.x),Math.floor(p.y+0.3),Math.floor(p.z))===8||get(Math.floor(p.x),Math.floor(p.y+1.1),Math.floor(p.z))===8;
@@ -1650,21 +1657,32 @@ for(const t in TYPES){
   s.onclick=()=>{curType=+t;[...hot.children].forEach(c=>c.classList.remove('on'));s.classList.add('on');};
   hot.appendChild(s);
 }
+/* v51 潜行：按钮锁定(toggle)+Shift按住——潜行时贴边不掉、点床/牌/匾直接拆 */
+let sneakLock=false,shiftHeld=false;
+const isSneak=()=>sneakLock||shiftHeld;
+function digBlock(h,msg){
+  AU.dig(world[idx(h.x,h.y,h.z)]);
+  world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
+  refreshSign(h.x,h.y,h.z);   /* 牌匾mesh随格清掉，普通方块无mesh无害 */
+  toast(msg);
+}
 function dig(){
   const h=raycast();if(!h)return;
   const tt=world[idx(h.x,h.y,h.z)];
-  const hk=h.x+','+h.y+','+h.z, now=Date.now();
-  /* v50：床和牌是交互方块——点=功能，2秒内再点同块=拆（MC的床/告示牌语义） */
-  const again=lastHitK===hk+':'+tt&&now-lastHitT<1200;   // v50.6：窗口收紧防误拆
+  const hk=h.x+','+h.y+','+h.z;
+  /* v51：床/牌/匾=交互方块——普通点=功能，潜行点=直接拆（MC语义）。
+     双点拆除退役：手机上两下要命中同一格，手抖一下就永远拆不掉（「拆半天拆不掉」的根） */
   if(tt===23){
-    if(again){lastHitK=null;}
-    else{lastHitK=hk+':'+tt;lastHitT=now;setBedSpawn(h.x,h.y,h.z);return;}
-  }else if(tt===27||tt===28){
-    if(again){lastHitK=null;
+    if(isSneak()){digBlock(h,'床拆了');return;}
+    setBedSpawn(h.x,h.y,h.z);toast('出生点设在这张床了（潜行着点=拆床）');return;
+  }
+  if(tt===27||tt===28){
+    if(isSneak()){
       if(SIGNS.signs[hk]){delete SIGNS.signs[hk];pushSigns('河滩：一块招牌收走了');}
+      digBlock(h,'拆了');return;
     }
-    else{lastHitK=hk+':'+tt;lastHitT=now;editSign(h.x,h.y,h.z);return;}
-  }else lastHitK=null;
+    editSign(h.x,h.y,h.z);return;
+  }
   if(h.x===STX&&h.z===STZ&&h.y>=8){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}   // 广场面y=7顶=8
   if(Math.abs(h.x-BOARD_POS[0]-0.5)<2&&Math.abs(h.z-BOARD_POS[2])<2){showStele('留言板的腿立在这儿。\n地别挖，板要站。');return;}
   AU.dig(tt);
@@ -1686,7 +1704,7 @@ function signDirToPlayer(x,z){
   const th=Math.atan2(p.x-(x+0.5),p.z-(z+0.5));
   return ((Math.round(th/(Math.PI/2))%4)+4)%4;
 }
-let signEditPos=null,lastHitK=null,lastHitT=0;
+let signEditPos=null;
 function editSign(x,y,z){
   signEditPos=[x,y,z];
   const k=x+','+y+','+z;
@@ -1844,11 +1862,13 @@ document.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{
   if(e.code==='KeyW')keys.w=true;if(e.code==='KeyS')keys.s=true;
   if(e.code==='KeyA')keys.a=true;if(e.code==='KeyD')keys.d=true;
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight')shiftHeld=true;   /* v51 */
   if(e.code==='Space'){keys.jump=true;e.preventDefault();}
 });
 document.addEventListener('keyup',e=>{
   if(e.code==='KeyW')keys.w=false;if(e.code==='KeyS')keys.s=false;
   if(e.code==='KeyA')keys.a=false;if(e.code==='KeyD')keys.d=false;
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight')shiftHeld=false;
   if(e.code==='Space')keys.jump=false;
 });
 
@@ -1899,6 +1919,9 @@ document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDef
 document.getElementById('btnPut').addEventListener('touchstart',e=>{e.preventDefault();AU.click();put();},{passive:false});
 document.getElementById('btnJmp').addEventListener('touchstart',e=>{e.preventDefault();keys.jump=true;},{passive:false});
 document.getElementById('btnJmp').addEventListener('touchend',e=>{e.preventDefault();keys.jump=false;},{passive:false});
+if(isTouch)document.getElementById('btnSneak').style.display='flex';   /* v51 */
+document.getElementById('btnSneak').addEventListener('touchstart',e=>{e.preventDefault();AU.click();sneakLock=!sneakLock;document.getElementById('btnSneak').classList.toggle('on',sneakLock);toast(sneakLock?'潜行：贴边不掉 · 点床牌直接拆':'不潜了');},{passive:false});
+document.getElementById('btnSneak').addEventListener('touchend',e=>{e.preventDefault();},{passive:false});
 
 /* ================= 碑文 ================= */
 const stele=document.getElementById('stele');
