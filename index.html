@@ -390,7 +390,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v54';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v54.1';   /* v54.1实例池实测收紧（node数exposed：草254121石43417，预分配133万→36万省62MB堆）；v54地图系统+修地形黑洞 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1464,7 +1464,7 @@ for(const t in TYPES){
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  const cap=(t==='1')?320000:(t==='3')?400000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v54：cap给足——JS实际count等同志端实测再收 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  const cap=(t==='1')?280000:(t==='3')?60000:(t==='8')?10000:(+t<=4||+t===11||+t===12)?22000:6000;   /* v54.1实测收紧：node同款V8跑全境exposed——草254121/石43417/土16039/水5080/沙2593/装饰最大篱196。原v54拍脑袋值133万实例≈85MB，收紧后36万≈23MB，手机堆省62MB */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
   meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
