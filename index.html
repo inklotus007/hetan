@@ -866,7 +866,8 @@ function renderNPCs(list,tSec){
       /* 体检修：话牌带日期戳（MM/DD）且不是今天——摘。话是「今日」的，过了今天就不挂在身上 */
       const dm=wtxt.match(/(\d{1,2})\/(\d{1,2})/);
       const today=new Date();
-      const expired=dm&&( +dm[1]!==today.getMonth()+1 || +dm[2]!==today.getDate() );
+      /* v51.3：过期摘只针对「今日」字样——「今日」过了今天就说谎；落款日期不是时效，「在。——伊卡洛斯 10/16」是常驻话，不摘 */
+      const expired=dm&&wtxt.includes('今日')&&( +dm[1]!==today.getMonth()+1 || +dm[2]!==today.getDate() );
       if(!expired){
         const ws=wordsSprite(wtxt);ws.userData.wtxt=wtxt;ws.position.y=2.52;g.add(ws);g.userData.words=ws;
       }
@@ -876,7 +877,7 @@ function renderNPCs(list,tSec){
       const cur=g.userData.words.userData.wtxt||'';
       const cdm=cur.match(/(\d{1,2})\/(\d{1,2})/);
       const cnow=new Date();
-      const cExp=cdm&&( +cdm[1]!==cnow.getMonth()+1 || +cdm[2]!==cnow.getDate() );
+      const cExp=cdm&&cur.includes('今日')&&( +cdm[1]!==cnow.getMonth()+1 || +cdm[2]!==cnow.getDate() );
       if(cExp){g.remove(g.userData.words);g.userData.words=null;}
       else g.userData.words.visible=Math.hypot(p.x-g.position.x,p.z-g.position.z)<2.5;
     }
