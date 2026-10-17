@@ -374,7 +374,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v52.3';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v52.4';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -463,7 +463,7 @@ function ghGet(path){
     .then(m=>{
       if(m.sha===undefined&&m.data)return m;        // 已是容错结构
       const data=m.content?JSON.parse(decodeURIComponent(escape(atob(m.content.replace(/\n/g,''))))):{npcs:{},msgs:[]};
-      return {sha:m.sha||null, data:(data&&(data.npcs||data.msgs||data.diffs))?data:{npcs:{},msgs:[]}};
+      return {sha:m.sha||null, data:(data&&typeof data==='object')?data:{npcs:{},msgs:[]}};   /* v52.4：白名单npcs/msgs/diffs漏了portals/schedules——新数据层JSON对象一律放行（API通道解析吞数据，游客同源通道没这bug，同志报「门都不显示」的根） */
     })
     .catch(()=>{if(!apiStat||apiStat==='通')apiStat='不通·超时或被拒';return ghSame(path);});
 }
