@@ -352,7 +352,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v51.1';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v51.2';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -724,6 +724,8 @@ function roundRectPath(g,x,y,w,h,r){
   g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
 }
 function wordsSprite(text){
+  /* v51.2：话牌记下自己的文本——渲染循环据此判过期，日期翻天自动摘 */
+
   const cv=document.createElement('canvas');cv.width=512;cv.height=112;
   const g=cv.getContext('2d');
   g.fillStyle='rgba(24,20,12,0.84)';roundRectPath(g,4,4,504,104,10);g.fill();
@@ -866,11 +868,17 @@ function renderNPCs(list,tSec){
       const today=new Date();
       const expired=dm&&( +dm[1]!==today.getMonth()+1 || +dm[2]!==today.getDate() );
       if(!expired){
-        const ws=wordsSprite(wtxt);ws.position.y=2.52;g.add(ws);g.userData.words=ws;
+        const ws=wordsSprite(wtxt);ws.userData.wtxt=wtxt;ws.position.y=2.52;g.add(ws);g.userData.words=ws;
       }
     }
     if(g.userData.words){
-      g.userData.words.visible=Math.hypot(p.x-g.position.x,p.z-g.position.z)<2.5;
+      /* v51.2：挂着的也判过期——group复用「只挂不摘」会让昨天的「今日」说谎 */
+      const cur=g.userData.words.userData.wtxt||'';
+      const cdm=cur.match(/(\d{1,2})\/(\d{1,2})/);
+      const cnow=new Date();
+      const cExp=cdm&&( +cdm[1]!==cnow.getMonth()+1 || +cdm[2]!==cnow.getDate() );
+      if(cExp){g.remove(g.userData.words);g.userData.words=null;}
+      else g.userData.words.visible=Math.hypot(p.x-g.position.x,p.z-g.position.z)<2.5;
     }
     g.visible=true;
   });
