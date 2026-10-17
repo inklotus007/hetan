@@ -149,7 +149,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <script src="three.min.js"></script>
 <script>
 /* ================= 基础 ================= */
-const W=512, D=512, H=40;             // 世界尺寸（v53：240×200→512×512——同志要的城间尺度：广场到清言滩601格，旧世界整个对角线才312格；传送门是城间唯一合理交通）
+const W=512, D=512, H=64;             // 世界尺寸（v55：H 40→64给山脉让高度——最高峰61；512×512×64=16.8MB体素）
 const AIR=0;
 // 方块类型: 1草 2土 3石 4沙 5木 6叶 7砖 8水 9玻璃 10木板 11石砖 12瓦
 const TYPES={
@@ -182,7 +182,8 @@ const TYPES={
   26:{n:'石凳', c:0x9a9a96, tex:'stone', bench:true},
   27:{n:'牌', c:0x8a6a48, sign:true},   // 点牌=题字（写什么汉字牌上显示什么），2秒内再点=拆；文字存signs.json全端共享
   28:{n:'匾', c:0x8a6a48, sign:true, plaque:true},   // v50.1：横匾——横排题字（旅馆门楣那块），交互同牌
-  29:{n:'门', c:0x8a5fbf, portal:true}   // v52：传送门——放置命名入portals.json，走近点「传」弹列表传送；潜行+点拆
+  29:{n:'门', c:0x8a5fbf, portal:true},   // v52：传送门——放置命名入portals.json，走近点「传」弹列表传送；潜行+点拆
+  30:{n:'雪', tex:'snow'}   // v55：山顶雪——海拔52+的顶格
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -198,14 +199,19 @@ function height(x,z){
   let h;
   if(dz<5)      h=2+Math.round(dz*0.3);               // 河床
   else if(dz<11) h=4+Math.round((dz-5)*0.5);          // 滩
-  else if(dz<=90) h=6+Math.round((dz-11)*0.35+hash(x,z)*1.6); // 岸上缓坡——v53：dz≤90严格旧式（现有搭建零错位）
+  else if(dz<=90) h=6+Math.round((dz-11)*0.35+hash(x,z)*1.6); // 岸上缓坡——dz≤90严格旧式（现有搭建零错位）
   else{
-    /* v53 远域：海拔饱和在26附近，叠加双频远山（大陆起伏+丘陵）——城与城之间的荒野有起伏 */
-    const oldH=6+(dz-11)*0.35, sat=6+20*(1-Math.exp(-(dz-11)*0.018));
-    const blend=Math.min(1,(dz-90)/90), far=Math.min(1,(dz-90)/120);
-    const mounts=far*(Math.sin(x*0.013+1.7)*Math.cos(z*0.011+0.4)*4+Math.sin(x*0.031+0.6)*Math.cos(z*0.027+1.2)*2.5);
-    h=Math.round(oldH+(sat-oldH)*blend+mounts+hash(x,z)*1.6);
+    /* v55 远域真山脉：基准缓升20+双脊线山（大山脉周期390格×30格振幅、丘陵200格×14格）——海拔可达61，城与城之间是山脉和谷地，不是平原 */
+    const base=6+14*(1-Math.exp(-(dz-11)*0.02));
+    const far=Math.min(1,(dz-90)/120);
+    const r1=Math.abs(Math.sin(x*0.016+1.3)*Math.cos(z*0.009+0.7));
+    const r2=Math.abs(Math.sin(x*0.031+4.2)*Math.cos(z*0.024+2.1));
+    h=Math.round(base+far*((r1**1.5)*30+(r2**1.3)*14)+hash(x,z)*1.6);
   }
+  /* v55 保形：清言滩城+忘言亭区地形凝固在建城那天（城台门凳灯亭柱碑径全在固定坐标，格不动） */
+  if(x>=455&&x<=459&&z>=448&&z<=459)h=30;
+  /* v55 南河：南北向大河 rx=200+sin(z*0.013)*40，z≥110，河床下切14、水位15 */
+  if(z>=110&&Math.abs(x-(200+Math.sin(z*0.013)*40))<4.5&&h>14)h=14;
   return Math.max(1,Math.min(H-3,h));
 }
 for(let x=0;x<W;x++)for(let z=0;z<D;z++){
@@ -216,9 +222,12 @@ for(let x=0;x<W;x++)for(let z=0;z<D;z++){
     else if(dz<9)  t=(y===h)?4:2;                       // 滩：沙面土身
     else           t=(y===h)?1:(y>h-3?2:3);             // 岸：草面土石
     if(dz<7&&y===h) t=4;                                // 水边全沙
+    if(y===h&&h>=52&&t!==8) t=30;                       // v55：海拔52+山顶雪
     world[idx(x,y,z)]=t;
   }
   if(h<5)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;    // 水位线5：低于水位的全部灌满——河心不再露底（v25修「水没填满」）
+  /* v55 南河：水位15——高原河，z≥110沿rx谷地 */
+  if(z>=110&&Math.abs(x-(200+Math.sin(z*0.013)*40))<4.5)for(let y=h+1;y<=15;y++)world[idx(x,y,z)]=8;
 }
 // 老柳树：岸上几棵
 const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26],[68,38],[96,56]];   // v39：新区东西滩各添一棵
@@ -390,7 +399,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v54.1';   /* v54.1实例池实测收紧（node数exposed：草254121石43417，预分配133万→36万省62MB堆）；v54地图系统+修地形黑洞 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+const VER='v55';   /* v54.1实例池实测收紧（node数exposed：草254121石43417，预分配133万→36万省62MB堆）；v54地图系统+修地形黑洞 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1300,6 +1309,9 @@ function makeTex(kind){
       g.stroke();
     }
     dot(24,'rgba(230,246,252,.22)',3);
+  }else if(kind==='snow'){
+    g.fillStyle='#eef2f6';g.fillRect(0,0,64,64);
+    dot(40,'#dde6ee');dot(22,'#f8fbff');dot(10,'#c8d8e6');
   }else if(kind==='dirt'){
     g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
     dot(60,'#75583c');dot(35,'#9a7a54');dot(8,'#6a6a66');
@@ -1464,7 +1476,7 @@ for(const t in TYPES){
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  const cap=(t==='1')?280000:(t==='3')?60000:(t==='8')?10000:(+t<=4||+t===11||+t===12)?22000:6000;   /* v54.1实测收紧：node同款V8跑全境exposed——草254121/石43417/土16039/水5080/沙2593/装饰最大篱196。原v54拍脑袋值133万实例≈85MB，收紧后36万≈23MB，手机堆省62MB */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  const cap=(t==='1')?280000:(t==='3')?60000:(t==='8')?10000:(t==='30')?25000:(+t<=4||+t===11||+t===12)?22000:6000;   /* v55：雪顶暴露~1.2万（H=64山带） */   /* v54.1实测收紧：node同款V8跑全境exposed——草254121/石43417/土16039/水5080/沙2593/装饰最大篱196。原v54拍脑袋值133万实例≈85MB，收紧后36万≈23MB，手机堆省62MB */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
   meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
@@ -1491,7 +1503,7 @@ function tickTorch(now){
 }
 const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28;};   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人
 /* v42：只有满格方块遮挡邻面——篱笆柱0.14宽/桌腿0.16宽盖不住那格的地面，但solid遮挡让地面顶面不渲染，从矮处看=空洞（「篱笆桌子下面透明」根）。玻璃透明也要透邻面 */
-const FULLT=new Set([1,2,3,4,5,6,7,8,10,11,12,13]);
+const FULLT=new Set([1,2,3,4,5,6,7,8,10,11,12,13,30]);
 const covers=(x,y,z)=>{const b=get(x,y,z);return FULLT.has(b);};
 const exposed=(x,y,z)=>{
   return !covers(x,y+1,z)||(y>0&&!covers(x,y-1,z))||!covers(x+1,y,z)||!covers(x-1,y,z)||!covers(x,y,z+1)||!covers(x,y,z-1);   /* v54：y=0免查下邻——底层下表面没人看，省26万实例 */
@@ -1884,7 +1896,16 @@ function generateMap(){
     const img=g.createImageData(W,D);
     for(let x=0;x<W;x++)for(let z=0;z<D;z++){
       const t=topType(x,z);
-      const hex=MAP_COLORS[t]||'#111318';
+      const elev=topY(x,z);   /* v55：等高色带——海拔改亮度+雪线白，山在地图上看得见 */
+      let hex=MAP_COLORS[t]||'#111318';
+      if(t&&t!==8){
+        if(elev>=52)hex='#f4f8fc';
+        else{
+          const lum=0.62+Math.min(0.55,(elev-2)*0.02);
+          const r=parseInt(hex.slice(1,3),16),g2=parseInt(hex.slice(3,5),16),b2=parseInt(hex.slice(5,7),16);
+          hex='#'+[r,g2,b2].map(v=>Math.min(255,Math.round(v*lum)).toString(16).padStart(2,'0')).join('');
+        }
+      }
       const i=(z*W+x)*4;
       img.data[i]=parseInt(hex.slice(1,3),16);
       img.data[i+1]=parseInt(hex.slice(3,5),16);
