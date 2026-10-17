@@ -66,6 +66,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 #boardIn{width:100%;height:52px;background:#faf6ea;border:1px solid #d0c29c;color:#3a2f1e;font-family:inherit;font-size:13px;padding:6px 8px;resize:none}
 #boardGo{margin-top:6px;width:100%;padding:7px;background:#8a7448;color:#f3ecd8;border:0;letter-spacing:6px;font-size:13px;font-family:inherit;cursor:pointer}
 #boardTip{margin-top:5px;font-size:11px;color:#a09478;line-height:1.5}
+#btnPortal{position:fixed;left:50%;bottom:34vh;transform:translateX(-50%);display:none;padding:9px 22px;background:rgba(70,50,110,.82);color:#f0e8ff;border:1px solid #b9a8e8;border-radius:3px;letter-spacing:4px;font-size:13px;font-family:inherit;z-index:8;cursor:pointer}
+#portalList{position:fixed;inset:0;background:rgba(14,10,26,.55);display:none;align-items:center;justify-content:center;z-index:21;padding:16px}
+#portalList.on{display:flex}
 #btnBoard{position:fixed;left:50%;bottom:26vh;transform:translateX(-50%);display:none;padding:9px 22px;background:rgba(58,47,30,.82);color:#f3ecd8;border:1px solid #d8caa4;border-radius:3px;letter-spacing:4px;font-size:13px;font-family:inherit;z-index:8;cursor:pointer}
 </style>
 </head>
@@ -88,7 +91,24 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="stele"></div>
 
 <div id="help"></div>
-<div id="btnBoard">留言板</div>
+<div id="btnPortal">传送</div>
+<div id="portalList">
+ <div style="background:#efe8f8;border:1px solid #b9a8e8;border-radius:10px;padding:16px 18px;width:min(340px,88vw);box-shadow:0 10px 40px rgba(30,20,60,.45)">
+  <div style="font-weight:bold;color:#3a2a5a;letter-spacing:3px;margin-bottom:10px;font-size:14px">去哪儿</div>
+  <div id="portalItems" style="max-height:46vh;overflow:auto"></div>
+  <button id="portalListClose" style="width:100%;margin-top:12px;padding:9px 0;font-family:inherit;font-size:13px;letter-spacing:3px;border:1px solid #b0a0d0;border-radius:6px;background:#e4dcf2;color:#5a4a7a;cursor:pointer">不去了</button>
+ </div>
+</div>
+<div id="portalModal" style="display:none;position:fixed;inset:0;background:rgba(10,14,18,.55);z-index:30;align-items:center;justify-content:center">
+ <div style="background:#efe8f8;border:1px solid #b9a8e8;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(30,20,60,.4)">
+  <div style="font-weight:bold;color:#3a2a5a;letter-spacing:2px;margin-bottom:10px;font-size:14px">给传送门起个名（最多六字；拆除=潜行着点）</div>
+  <input id="portalInput" maxlength="6" placeholder="比如：清言滩 / 老地方" autocomplete="off" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:18px;letter-spacing:3px;padding:9px 10px;border:1px solid #b0a0d0;border-radius:6px;background:#fdfbff;color:#3a2a5a;text-align:center;outline:none">
+  <div style="display:flex;gap:10px;margin-top:14px">
+   <button id="portalOk" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #8a76c0;border-radius:6px;background:#cfc2ec;color:#33255a;cursor:pointer">立 门</button>
+   <button id="portalNo" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #b0a0d0;border-radius:6px;background:#eee8f6;color:#6a5c8a;cursor:pointer">算了</button>
+  </div>
+ </div>
+</div>
 <div id="boardUI">
   <div id="boardCard">
     <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <span id="expBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">导出搭建</span> · <b id="boardClose">合上</b></div>
@@ -119,7 +139,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <script src="three.min.js"></script>
 <script>
 /* ================= 基础 ================= */
-const W=160, D=130, H=40;             // 世界尺寸（v39：90×90→160×130——广场后面要盖；地形函数参数化，新区自动生成同类滩岸；坐标系不动，已有搭建原地不变）
+const W=240, D=200, H=40;             // 世界尺寸（v52：160×130→240×200——同志的混合多元世界，远程开地；地形函数无限延展，坐标系不动）
 const AIR=0;
 // 方块类型: 1草 2土 3石 4沙 5木 6叶 7砖 8水 9玻璃 10木板 11石砖 12瓦
 const TYPES={
@@ -151,7 +171,8 @@ const TYPES={
   25:{n:'幌', c:0x31538a, plant:'banner'},
   26:{n:'石凳', c:0x9a9a96, tex:'stone', bench:true},
   27:{n:'牌', c:0x8a6a48, sign:true},   // 点牌=题字（写什么汉字牌上显示什么），2秒内再点=拆；文字存signs.json全端共享
-  28:{n:'匾', c:0x8a6a48, sign:true, plaque:true}   // v50.1：横匾——横排题字（旅馆门楣那块），交互同牌
+  28:{n:'匾', c:0x8a6a48, sign:true, plaque:true},   // v50.1：横匾——横排题字（旅馆门楣那块），交互同牌
+  29:{n:'门', c:0x8a5fbf, portal:true}   // v52：传送门——放置命名入portals.json，走近点「传」弹列表传送；潜行+点拆
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -720,6 +741,20 @@ function nameSprite(txt,color,shadowMode){
   sp.scale.set(1.7,0.42,1);return sp;
 }
 /* v49话牌：投影身上挂的当日一句话——走近才展开。深底圆角，最多两行 */
+function portalTex(){   /* v52：石框+紫漩涡——远看是竖石门，芯里旋着一圈圈紫 */
+  const cv=document.createElement('canvas');cv.width=cv.height=128;
+  const g=cv.getContext('2d');
+  g.fillStyle='#6b6578';g.fillRect(0,0,128,128);
+  g.fillStyle='#7d7690';g.fillRect(6,6,116,116);
+  g.fillStyle='#2a1f3d';g.fillRect(20,14,88,100);
+  for(let i=0;i<4;i++){
+    g.strokeStyle='rgba(170,120,230,'+(0.55-i*0.1)+')';
+    g.lineWidth=5-i;
+    g.beginPath();g.arc(64,64+8,44-i*11,0,Math.PI*2);g.stroke();
+  }
+  g.fillStyle='rgba(230,215,255,0.9)';g.beginPath();g.arc(64,72+8,3,0,Math.PI*2);g.fill();
+  const t=new THREE.CanvasTexture(cv);return t;
+}
 function roundRectPath(g,x,y,w,h,r){
   g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();
 }
@@ -1408,6 +1443,7 @@ for(const t in TYPES){
   else if(T.bench||T.table){m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
   else if(T.lantern){m=new THREE.MeshBasicMaterial({map:texOf('lantern')});}   // 自发光——夜里灯笼是亮的   // v31：自发光——MeshBasic不吃场景光照，火把永远亮；原来tex undefined→空白透明纹理，「放在地上是透明的」的实底
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5,depthWrite:false});}   // v40：玻璃对玻璃不剔面（同水面方）
+  else if(T.portal){try{m=new THREE.MeshBasicMaterial({map:portalTex(),transparent:true,opacity:0.94});}catch(e){m=new THREE.MeshLambertMaterial({color:0x8a5fbf});}}   // v52：自发光传送门——夜里也亮
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
@@ -1705,6 +1741,13 @@ function dig(){
     }
     editSign(h.x,h.y,h.z);return;
   }
+  if(tt===29){
+    if(isSneak()){
+      for(const k in PORTALS.portals){const q=PORTALS.portals[k];if(q.x===h.x&&q.y===h.y&&q.z===h.z){delete PORTALS.portals[k];pushPortals('河滩：传送门「'+k+'」收走了');break;}}
+      digBlock(h,'门拆了');return;
+    }
+    toast('这扇门连着别处——潜行着点才拆');return;
+  }
   if(h.x===STX&&h.z===STZ&&h.y>=8){showStele('碑上的字，是拿手凿的。\n凿不动，也别凿。');return;}   // 广场面y=7顶=8
   if(Math.abs(h.x-BOARD_POS[0]-0.5)<2&&Math.abs(h.z-BOARD_POS[2])<2){showStele('留言板的腿立在这儿。\n地别挖，板要站。');return;}
   AU.dig(tt);
@@ -1720,6 +1763,7 @@ function put(){
   AU.put();
   world[idx(x,y,z)]=curType;saveDiff(x,y,z,curType);rebuild();
   if(curType===27||curType===28)editSign(x,y,z);   // v50：牌和匾一放下就请你题字
+  if(curType===29)openPortalNaming(x,y,z);   // v52：门一放下就请你起名
 }
 /* v50 招牌照面朝向：文字面转向玩家（放置/题字那一刻），按水平方位取整到90° */
 function signDirToPlayer(x,z){
@@ -1727,6 +1771,97 @@ function signDirToPlayer(x,z){
   return ((Math.round(th/(Math.PI/2))%4)+4)%4;
 }
 let signEditPos=null;
+/* v52 传送门交互：命名 / 列表 / 吟唱传送 */
+let portalEditPos=null,teleporting=null;
+function openPortalNaming(x,y,z){
+  portalEditPos=[x,y,z];
+  document.getElementById('portalInput').value='';
+  document.getElementById('portalModal').style.display='flex';
+  setTimeout(()=>{try{document.getElementById('portalInput').focus();}catch(e){}},80);
+}
+function portalCommit(){
+  if(!portalEditPos)return;
+  const [x,y,z]=portalEditPos;
+  const name=document.getElementById('portalInput').value.trim().slice(0,6);
+  if(!name){toast('起个名才立得住');return;}
+  if(PORTALS.portals[name]){toast('这个名字有门了，换一个');return;}
+  PORTALS.portals[name]={x,y,z,owner:(ME&&ME.name)||'客'};
+  pushPortals('河滩：传送门「'+name+'」立在'+x+','+z);
+  portalEditPos=null;
+  document.getElementById('portalModal').style.display='none';
+  toast('「'+name+'」立住了——走近它点「传送」就能来去');
+}
+function portalDist(){   /* 最近的传送门距离 */
+  let m=1e9;
+  for(const k in PORTALS.portals){const q=PORTALS.portals[k];m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
+  return m;
+}
+function renderPortalList(){
+  const box=document.getElementById('portalItems');box.innerHTML='';
+  const keys=Object.keys(PORTALS.portals);
+  if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
+  keys.sort((a,b)=>{
+    const qa=PORTALS.portals[a],qb=PORTALS.portals[b];
+    return (Math.hypot(p.x-qa.x-0.5,p.z-qa.z-0.5))-(Math.hypot(p.x-qb.x-0.5,p.z-qb.z-0.5));
+  });
+  for(const k of keys){
+    const q=PORTALS.portals[k];
+    const d=Math.round(Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid #cfc2ec;border-radius:8px;margin-bottom:8px;cursor:pointer;background:#fdfbff';
+    row.innerHTML='<span style="color:#3a2a5a;font-size:15px;letter-spacing:2px;font-weight:bold">'+k+'</span><span style="color:#8a7aaa;font-size:12px">'+(q.owner||'?')+' · '+(d<1?'就在脚下':d+'步')+'</span>';
+    row.onclick=()=>{startTeleport(k,q);};
+    box.appendChild(row);
+  }
+}
+function startTeleport(name,q){
+  if(teleporting)return;
+  teleporting={name,x:q.x,y:q.y,z:q.z,px:p.x,pz:p.z,until:Date.now()+2000};
+  document.getElementById('portalList').classList.remove('on');
+  toast('去「'+name+'」……站着别动');
+}
+function tickTeleport(){   /* 主循环里调：吟唱2秒，动了就断 */
+  if(!teleporting)return;
+  const t=teleporting;
+  if(Math.hypot(p.x-t.px,p.z-t.pz)>0.8){teleporting=null;toast('走了就不传了');return;}
+  if(Date.now()<t.until)return;
+  teleporting=null;
+  /* 落点：门四周找实际地面（topY含搭建——地形层+diffs层都算数，不再犯旅馆的错） */
+  const tries=[[t.x+1,t.z],[t.x-1,t.z],[t.x,t.z+1],[t.x,t.z-1],[t.x,t.z]];
+  for(const [tx,tz] of tries){
+    if(tx<0||tz<0||tx>=W||tz>=D)continue;
+    const gy=topY(tx,tz);
+    const here=get(tx,gy,tz);
+    if(here===0||here===8||here===undefined||HALF_H[here]!==undefined){
+      AU.jump();
+      p.x=tx+0.5;p.z=tz+0.5;p.y=gy+0.02;p.vy=0;
+      savePos();
+      toast('「'+t.name+'」');
+      return;
+    }
+  }
+  toast('那边的门被堵住了，下不去脚');
+}
+document.getElementById('portalOk').onclick=portalCommit;
+document.getElementById('portalInput').addEventListener('keydown',e=>{if(e.key==='Enter')portalCommit();});
+document.getElementById('portalNo').onclick=()=>{document.getElementById('portalModal').style.display='none';portalEditPos=null;};
+document.getElementById('portalListClose').onclick=()=>document.getElementById('portalList').classList.remove('on');
+document.getElementById('portalList').addEventListener('click',e=>{if(e.target.id==='portalList')document.getElementById('portalList').classList.remove('on');});
+document.getElementById('btnPortal').onclick=()=>{document.getElementById('portalList').classList.add('on');renderPortalList();};
+/* v52 传送门数据层——portals.json，谁放谁命名；结构 {"portals":{"名字":{x,y,z,owner,t}}} */
+let PORTALS={portals:{}},portalSha=null;
+function pullPortals(){
+  return ghGet('portals.json').then(({sha,data})=>{
+    portalSha=sha;PORTALS=(data&&data.portals)?data:{portals:{}};
+    try{localStorage.setItem('hetan_portals_cache',JSON.stringify(PORTALS));}catch(e){}
+  }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();});
+}
+function pushPortals(msg){
+  return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;}).catch(()=>{
+    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;}).catch(()=>{});
+  });   /* 同signs：422拉最新重推一次 */
+}
+pullPortals();
 function editSign(x,y,z){
   signEditPos=[x,y,z];
   const k=x+','+y+','+z;
@@ -1995,6 +2130,8 @@ function loop(now){
   if((now|0)%3===0)pushWorld();   // 三秒一查，搭了就上云
   const nearBoard=boardDist()<4.5;
   document.getElementById('btnBoard').style.display=nearBoard?'block':'none';
+  document.getElementById('btnPortal').style.display=(portalDist()<3.5)?'block':'none';   /* v52 */
+  tickTeleport();
   // 水声：距河越近越响
   if((now|0)%6===0){
     const rz=34+Math.sin(p.x*0.09)*6+Math.cos(p.z*0.07)*4;
