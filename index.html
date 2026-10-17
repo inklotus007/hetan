@@ -374,7 +374,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v52.2';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v52.3';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1783,6 +1783,8 @@ function openPortalNaming(x,y,z){
 function portalCommit(){
   if(!portalEditPos)return;
   const [x,y,z]=portalEditPos;
+  /* v52.3：没确认过云端就先pull——开页时404（文件还没建）后来有人建了，空壳推送会冲掉别人的门（清言滩蒸发实录） */
+  if(!portalPulled){pullPortals().then(()=>portalCommit());return;}
   const name=document.getElementById('portalInput').value.trim().slice(0,6);
   if(!name){toast('起个名才立得住');return;}
   if(PORTALS.portals[name]){toast('这个名字有门了，换一个');return;}
@@ -1850,16 +1852,16 @@ document.getElementById('portalListClose').onclick=()=>document.getElementById('
 document.getElementById('portalList').addEventListener('click',e=>{if(e.target.id==='portalList')document.getElementById('portalList').classList.remove('on');});
 document.getElementById('btnPortal').onclick=()=>{document.getElementById('portalList').classList.add('on');renderPortalList();};
 /* v52 传送门数据层——portals.json，谁放谁命名；结构 {"portals":{"名字":{x,y,z,owner,t}}} */
-let PORTALS={portals:{}},portalSha=null;
+let PORTALS={portals:{}},portalSha=null,portalPulled=false;
 function pullPortals(){
   return ghGet('portals.json').then(({sha,data})=>{
-    portalSha=sha;PORTALS=(data&&data.portals)?data:{portals:{}};
+    portalSha=sha;PORTALS=(data&&data.portals)?data:{portals:{}};portalPulled=true;   /* 404也算确认过——真空板 */
     try{localStorage.setItem('hetan_portals_cache',JSON.stringify(PORTALS));}catch(e){}
-  }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();});
+  }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();portalPulled=false;});   /* 网络失败=没确认 */
 }
 function pushPortals(msg){
-  return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;}).catch(()=>{
-    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;}).catch(()=>{});
+  return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{
+    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{});
   });   /* 同signs：422拉最新重推一次 */
 }
 pullPortals();
