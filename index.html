@@ -148,6 +148,31 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 </div>
 <script src="three.min.js"></script>
 <script>
+/* v57.2 boot自救：①任何运行时错显示在页面上（今天三回「进不去」全是运行时错且看不见原因）②boot屏40秒没起来自动重试（Pages重建窗口1-10分钟，重试能自愈） */
+window.addEventListener('error',function(e){
+  try{
+    var el=document.getElementById('bootErr');
+    if(!el){el=document.createElement('div');el.id='bootErr';
+      el.style.cssText='position:fixed;left:8px;right:8px;bottom:64px;background:#4a1518;color:#ffd6d6;padding:10px 12px;border:1px solid #8a3a3a;border-radius:6px;font-size:12px;z-index:9999;white-space:pre-wrap;font-family:monospace;line-height:1.5';
+      (document.body||document.documentElement).appendChild(el);}
+    el.textContent='⚠ 启动出错 '+((e.message||'')+'\n@行'+(e.lineno||'?')+' 列'+(e.colno||'?')+'\n截图给清言就能修');
+  }catch(_){}
+});
+(function bootWatch(){
+  var n=0;
+  var iv=setInterval(function(){
+    n++;
+    if(window.__booted){clearInterval(iv);return;}
+    if(n%8===0){
+      var el=document.getElementById('bootErr');
+      if(!el){el=document.createElement('div');el.id='bootErr';
+        el.style.cssText='position:fixed;left:8px;right:8px;bottom:64px;background:#3a2a10;color:#ffe9c0;padding:10px 12px;border:1px solid #8a6a2a;border-radius:6px;font-size:12px;z-index:9999';
+        (document.body||document.documentElement).appendChild(el);}
+      el.textContent='⏳ 加载中('+Math.round(n*5/60*10)/10+'分钟)…刚更新过的话服务器可能在重建，自动重试中';
+      if(n===8){setTimeout(function(){location.reload();},100);}
+    }
+  },5000);
+})();
 /* ================= 基础 ================= */
 const W=512, D=512, H=40;             // 世界尺寸（v53：240×200→512×512——同志要的城间尺度：广场到清言滩601格，旧世界整个对角线才312格；传送门是城间唯一合理交通）
 const AIR=0;
@@ -200,11 +225,11 @@ function vnoise(fx,fz){   /* v57 value noise：格点hash+smoothstep插值——
 }
 function fbm01(x,z){   /* v57 fBm：6 octave，redblobgames偏移采样 */
   let e=0, amp=1, norm=0;
-  const OC=[[1,0,0],[2,5.3,9.1],[4,17.8,23.5],[8,3.7,11.1],[16,31.7,7.3],[32,13.1,29.7]];
+  const OC=[[1,0,0],[2,5.3,9.1],[4,17.8,23.5],[8,3.7,11.1],[16,31.7,7.3]];   /* v57.2：砍octave32（贡献0.2%） */
   for(const [f,ox,oz] of OC){ e+=amp*vnoise(x*0.013*f+ox, z*0.013*f+oz); norm+=amp; amp*=0.5; }
-  return e/norm;
+  return e/1.9375;
 }
-function height(x,z){
+function height(x,z,e){
   // 河从东北向西南弯过去，滩地沿河
   const river=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4; // 河道中心线的z偏移
   const dz=Math.abs(z-(34+river));                    // 距河中心
@@ -214,7 +239,7 @@ function height(x,z){
   else if(dz<=90) h=6+Math.round((dz-11)*0.35+hash(x,z)*1.6); // 岸上缓坡——v53：dz≤90严格旧式（现有搭建零错位）
   else{
     /* v57 fBm真大陆（redblobgames法）：6 octave分形噪声+pow重分布（平原多山峰陡）+噪声等值线河带（蛇形干流+支流） */
-    const e=fbm01(x,z);
+    if(e===undefined)e=fbm01(x,z);
     const er=Math.pow(Math.min(1,e*1.12),1.7);
     h=Math.round(4+er*36);
     if(Math.abs(e-0.28)<0.011)h=4;        // 干流带
@@ -224,7 +249,8 @@ function height(x,z){
   return Math.max(1,Math.min(H-3,h));
 }
 for(let x=0;x<W;x++)for(let z=0;z<D;z++){
-  const h=height(x,z), river=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4, dz=Math.abs(z-(34+river));
+  const eC=(z>124)?fbm01(x,z):undefined;   /* v57.2：同列height与水灌共用一次fbm计算 */
+  const h=height(x,z,eC), river=Math.sin(x*0.09)*6+Math.cos(z*0.07)*4, dz=Math.abs(z-(34+river));
   for(let y=0;y<=h;y++){
     let t;
     if(dz<5)       t=(y===h)?4:3;                       // 河底：沙面石身
@@ -236,7 +262,7 @@ for(let x=0;x<W;x++)for(let z=0;z<D;z++){
   }
   if(h<5)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;    // 水位线5：低于水位的全部灌满——河心不再露底（v25修「水没填满」）
   /* v57 远域河带：河床已挖到4/5，灌到水位5——干流支流与近河同一水位 */
-  if(dz>90&&h<=4){const e2=fbm01(x,z);if(Math.abs(e2-0.28)<0.011||Math.abs(e2-0.44)<0.009)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;}
+  if(dz>90&&h<=4){const e2=eC||fbm01(x,z);if(Math.abs(e2-0.28)<0.011||Math.abs(e2-0.44)<0.009)for(let y=h+1;y<=5;y++)world[idx(x,y,z)]=8;}
 }
 // 老柳树：岸上几棵
 const trees=[[12,12],[20,50],[44,10],[50,44],[30,58],[8,40],[52,26],[68,38],[96,56]];   // v39：新区东西滩各添一棵
@@ -408,7 +434,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v57';   /* fBm真大陆 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v56';   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1536,7 +1562,7 @@ for(const t in TYPES){
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
     m=T.mats.map(k=>new THREE.MeshLambertMaterial({map:texOf(k)}));
   }else{m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
-  const cap=(t==='1')?320000:(t==='3')?400000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v54：cap给足——JS实际count等同志端实测再收 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
+  const cap=(t==='1')?320000:(t==='3')?400000:(t==='2')?35000:(+t<=4||+t===11||+t===12)?30000:25000;   /* v57.2：土node实测30393 */   /* v54：cap给足——JS实际count等同志端实测再收 */   // v41：分层池——石头地形暴露面27734撞死统一上限27734（南岸高坡随机缺石块=同志看到的透明洞）；草土石砖瓦给大池，装饰类小池
   meshes[t]=new THREE.InstancedMesh(blockGeo,m,cap);
   meshes[t].count=0;meshes[t].frustumCulled=false;
   scene.add(meshes[t]);
@@ -2293,7 +2319,8 @@ function tickHighlight(){
 }
 
 function loop(now){
-  requestAnimationFrame(loop);
+  window.__booted=true;   /* v57.2 boot自救：跑到这里=启动成功，watch停 */
+requestAnimationFrame(loop);
   const dt=Math.min(0.05,(now-last)/1000);last=now;
   physics(dt);
   camera.position.set(p.x,p.y+EYE,p.z);
