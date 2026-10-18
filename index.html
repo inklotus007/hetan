@@ -208,7 +208,7 @@ const TYPES={
   27:{n:'牌', c:0x8a6a48, sign:true},   // 点牌=题字（写什么汉字牌上显示什么），2秒内再点=拆；文字存signs.json全端共享
   28:{n:'匾', c:0x8a6a48, sign:true, plaque:true},   // v50.1：横匾——横排题字（旅馆门楣那块），交互同牌
   29:{n:'门', c:0x8a5fbf, portal:true},   // v52：传送门——放置命名入portals.json，走近点「传」弹列表传送；潜行+点拆
-  30:{n:'雪', tex:'snow'}   // v57：峰顶雪——fBm海拔34+
+  30:{n:'雪', mats:['snow_side','snow_side','snow','stone','snow_side','snow_side']}   // v57：峰顶雪——fBm海拔34+；v59：侧面雪覆石（不再是白盒子）
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -481,7 +481,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v58';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v59';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1423,8 +1423,8 @@ function makeTex(kind){
   const dot=(n,style,s)=>{g.fillStyle=style;for(let i=0;i<n;i++)g.fillRect(Math.random()*63|0,Math.random()*63|0,s||2,s||2);};
   if(kind==='grass_top'){
     g.fillStyle='#7aa25c';g.fillRect(0,0,64,64);
-    dot(70,'#688f4c');dot(50,'#8bb26a');dot(18,'#557a3e');
-    g.strokeStyle='#5d8a4a';for(let i=0;i<14;i++){const x=Math.random()*64,y=Math.random()*64;g.beginPath();g.moveTo(x,y);g.lineTo(x+1,y-3);g.stroke();}
+    dot(150,'#688f4c',1);dot(110,'#8bb26a',1);dot(60,'#557a3e',1);dot(40,'#95bd74',1);
+    g.strokeStyle='#5d8a4a';for(let i=0;i<34;i++){const x=Math.random()*64,y=Math.random()*64;g.beginPath();g.moveTo(x,y);g.lineTo(x+1,y-3);g.stroke();}
   }else if(kind==='grass_side'){
     g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
     dot(50,'#75583c');dot(30,'#9a7a54');
@@ -1444,19 +1444,31 @@ function makeTex(kind){
     }
     dot(24,'rgba(230,246,252,.22)',3);
   }else if(kind==='snow'){
-    g.fillStyle='#eef2f6';g.fillRect(0,0,64,64);
-    dot(40,'#dde6ee');dot(22,'#f8fbff');dot(10,'#c8d8e6');
+    /* v59：雪面不再是白盒子——底色暗一档+密集细噪+明暗起伏大斑+碎冰纹 */
+    g.fillStyle='#e0e8f0';g.fillRect(0,0,64,64);
+    g.fillStyle='rgba(200,214,228,.5)';for(let i=0;i<9;i++){g.beginPath();g.ellipse(Math.random()*64,Math.random()*64,6+Math.random()*10,4+Math.random()*7,Math.random()*3,0,7);g.fill();}
+    g.fillStyle='rgba(246,250,254,.55)';for(let i=0;i<7;i++){g.beginPath();g.ellipse(Math.random()*64,Math.random()*64,5+Math.random()*9,3+Math.random()*6,Math.random()*3,0,7);g.fill();}
+    dot(240,'#d2dfea',1);dot(160,'#eef4fa',1);dot(90,'#c4d3e0',1);dot(60,'#f8fbff',1);
+    g.strokeStyle='rgba(178,196,214,.6)';g.lineWidth=1;
+    for(let i=0;i<6;i++){g.beginPath();let x=Math.random()*60,y=Math.random()*60;g.moveTo(x,y);for(let k=0;k<3;k++){x+=Math.random()*8-4;y+=Math.random()*8-4;g.lineTo(x,y);}g.stroke();}
+  }else if(kind==='snow_side'){
+    /* v59：雪覆石侧面——上1/3积雪带碎棱，下面岩纹 */
+    g.fillStyle='#8d8d8a';g.fillRect(0,0,64,64);
+    dot(120,'#7c7c79',1);dot(80,'#9c9c99',1);dot(40,'#6f6f6c',1);
+    g.fillStyle='#e0e8f0';g.fillRect(0,0,64,20);
+    g.fillStyle='#cfdbe6';for(let x=0;x<64;x+=4)g.fillRect(x,18,3,2+((x*7)%5));
+    dot(60,'#d8e2ec',1);dot(30,'#eef4fa',1);dot(20,'#c4d3e0',1);
   }else if(kind==='dirt'){
     g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
-    dot(60,'#75583c');dot(35,'#9a7a54');dot(8,'#6a6a66');
+    dot(150,'#75583c',1);dot(90,'#9a7a54',1);dot(30,'#6a6a66',1);
   }else if(kind==='stone'){
     g.fillStyle='#8d8d8a';g.fillRect(0,0,64,64);
-    dot(55,'#7c7c79');dot(40,'#9c9c99');
+    dot(150,'#7c7c79',1);dot(100,'#9c9c99',1);dot(50,'#84847e',1);
     g.strokeStyle='#6f6f6c';g.lineWidth=1.5;
     for(let i=0;i<3;i++){g.beginPath();let x=Math.random()*50+5,y=Math.random()*50+5;g.moveTo(x,y);g.lineTo(x+Math.random()*14-7,y+Math.random()*14-7);g.stroke();}
   }else if(kind==='sand'){
     g.fillStyle='#d6c58c';g.fillRect(0,0,64,64);
-    dot(90,'#c4b27a',1);dot(30,'#e2d4a0',1);
+    dot(200,'#c4b27a',1);dot(90,'#e2d4a0',1);dot(50,'#ccb982',1);
   }else if(kind==='wood_side'){
     g.fillStyle='#7a5b3a';g.fillRect(0,0,64,64);
     for(let x=2;x<64;x+=7){g.fillStyle='#5f4629';g.fillRect(x,0,2,64);}
@@ -1466,8 +1478,11 @@ function makeTex(kind){
     g.fillStyle='#8f6c46';g.fillRect(0,0,64,64);
     for(let r=4;r<34;r+=6){g.strokeStyle=r%12===4?'#5f4629':'#7a5b3a';g.lineWidth=2;g.beginPath();g.arc(32,32,r,0,7);g.stroke();}
   }else if(kind==='leaves'){
-    g.fillStyle='#5d8a4a';g.fillRect(0,0,64,64);
-    dot(70,'#4a7038');dot(40,'#6f9e5c');dot(12,'#8fb877');
+    /* v59：叶簇感——深底+成团叶簇+透光亮点，森林不是绿馒头 */
+    g.fillStyle='#41652f';g.fillRect(0,0,64,64);
+    for(let i=0;i<46;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*4;g.fillStyle=Math.random()<0.5?'#4d7a39':'#35521f';g.fillRect(x,y,s,s);}
+    for(let i=0;i<34;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*3;g.fillStyle=Math.random()<0.5?'#5d8a4a':'#6f9e5c';g.fillRect(x,y,s,s);}
+    dot(50,'#8fb877',1);dot(26,'#a8cc88',1);
   }else if(kind==='brick'){
     g.fillStyle='#a8563e';g.fillRect(0,0,64,64);
     g.fillStyle='#cfc4b0';
@@ -1487,10 +1502,24 @@ function makeTex(kind){
     g.beginPath();g.moveTo(20,52);g.lineTo(52,20);g.stroke();
     g.fillStyle='rgba(200,225,235,.18)';g.fillRect(4,4,56,56);
   }else if(kind==='stonebrick'){
-    g.fillStyle='#9a9a96';g.fillRect(0,0,64,64);
-    g.fillStyle='#6e6e6a';
-    g.fillRect(0,30,64,3);g.fillRect(30,0,3,30);g.fillRect(14,33,3,31);g.fillRect(48,33,3,31);
-    dot(30,'#8a8a86',1);
+    /* v59：错缝砖块分明——每砖独立明暗+边线高光阴影+点蚀，学院质感 */
+    g.fillStyle='#84847e';g.fillRect(0,0,64,64);
+    const rows=[0,16,32,48];
+    for(let r=0;r<4;r++){
+      const off=(r%2)*16;
+      for(let cx=-1;cx<5;cx++){
+        const bx=cx*32+off, by=rows[r], bw=30, bh=14;
+        const x0=Math.max(0,bx), wpx=Math.min(64,bx+bw)-x0;
+        if(wpx<=0)continue;
+        const shade=0.92+Math.random()*0.16, base=Math.round(154*shade);
+        g.fillStyle=`rgb(${base},${base},${Math.round(base*0.97)})`;
+        g.fillRect(x0,by,wpx,bh);
+        g.fillStyle='rgba(60,60,56,.55)';g.fillRect(x0,by+bh-2,wpx,2);   /* 砖底阴影 */
+        g.fillStyle='rgba(215,215,208,.4)';g.fillRect(x0,by,wpx,1);       /* 砖顶高光 */
+        g.strokeStyle='rgba(52,52,48,.5)';g.lineWidth=1.5;g.strokeRect(x0+0.5,by+0.5,wpx-1,bh-1);
+      }
+    }
+    dot(110,'#7a7a74',1);dot(70,'#a2a29c',1);dot(26,'#6a6a64',1);
   }else if(kind==='lantern'){
     g.fillStyle='#e8b860';g.fillRect(8,6,48,52);                 // 纸罩
     g.fillStyle='#c89840';for(let x=8;x<56;x+=8)g.fillRect(x,6,2,52);  // 竖骨
