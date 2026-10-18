@@ -119,6 +119,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
   </div>
  </div>
 </div>
+<div id="spadeModal" style="display:none;position:fixed;inset:0;background:rgba(10,18,14,.55);z-index:30;align-items:center;justify-content:center">
+ <div style="background:#e6f2ea;border:1px solid #88c9a0;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(20,60,30,.4)">
+  <div style="font-weight:bold;color:#1e4a2e;letter-spacing:2px;margin-bottom:8px;font-size:14px">大锹开挖</div>
+  <div id="spadeInfo" style="font-size:13px;color:#2e5a3e;line-height:1.7;margin-bottom:6px"></div>
+  <div style="font-size:11px;color:#4a7a5a;margin-bottom:4px">只挖自然地形——你搭过的每一格都留着</div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+   <button id="spadeOk" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #4a9a68;border-radius:6px;background:#b8e2c8;color:#1e4a2e;cursor:pointer">开 挖</button>
+   <button id="spadeNo" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #88c9a0;border-radius:6px;background:#e8f4ec;color:#3e6a4e;cursor:pointer">算了</button>
+  </div>
+ </div>
+</div>
 <div id="boardUI">
   <div id="boardCard">
     <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <span id="expBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">导出搭建</span> · <b id="boardClose">合上</b></div>
@@ -208,7 +219,15 @@ const TYPES={
   27:{n:'牌', c:0x8a6a48, sign:true},   // 点牌=题字（写什么汉字牌上显示什么），2秒内再点=拆；文字存signs.json全端共享
   28:{n:'匾', c:0x8a6a48, sign:true, plaque:true},   // v50.1：横匾——横排题字（旅馆门楣那块），交互同牌
   29:{n:'门', c:0x8a5fbf, portal:true},   // v52：传送门——放置命名入portals.json，走近点「传」弹列表传送；潜行+点拆
-  30:{n:'雪', mats:['snow_side','snow_side','snow','stone','snow_side','snow_side']}   // v57：峰顶雪——fBm海拔34+；v59：侧面雪覆石（不再是白盒子）
+  30:{n:'雪', mats:['snow_side','snow_side','snow','stone','snow_side','snow_side']},   // v57：峰顶雪——fBm海拔34+；v59：侧面雪覆石（不再是白盒子）
+  /* v61 家具六件+大锹（同志旅馆建设急需） */
+  31:{n:'椅', tex:'plank', chair:true},          // 有靠背的椅子（plank Lambert）
+  32:{n:'盆栽', plant:'potted'},                  // 盆栽——十字面片像素画（陶盆+花）
+  33:{n:'炉', mats:['stove_side','stove_side','stove_top','stove_top','stove_side','stove_side'], stove:true},   // 炉子——火口发光，进灯池
+  34:{n:'壁炉', mats:['fp_side','fp_side','fp_top','fp_top','fp_front','fp_side'], fp:true},   // 壁炉——正面火膛，进灯池
+  35:{n:'火塘', tex:'firepit', fp:true},          // 火塘——矮石台+火堆，进灯池
+  36:{n:'锹', c:0x7a5b3a, tool:true},             // 大锹——工具：选中后点「挖」圈地，两点定范围只挖自然地形
+  37:{n:'门', mats:['wood_side','wood_side','wood_side','wood_side','door','door'], door:true, c:0x8a6a48}   // 木门——薄板门，挡人
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -481,7 +500,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v60';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v61';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1576,6 +1595,69 @@ function makeTex(kind){
     g.fillStyle='#ffb040';g.fillRect(0,16,64,7);   // 火焰橙
     g.fillStyle='#ff5a20';g.fillRect(0,23,64,3);
     dot(26,'#ffd060',3);dot(8,'#ff7a30',2);
+  }else if(kind==='potted'){
+    /* v61 盆栽：下1/3陶盆，上2/3花团——十字面片整体贴图 */
+    g.fillStyle='#a0522d';g.fillRect(0,26,64,38);
+    g.fillStyle='#8b4513';g.fillRect(6,26,52,4);
+    g.fillStyle='#c06a3a';g.fillRect(10,32,44,26);
+    g.fillStyle='#8b4513';g.fillRect(14,58,36,6);
+    /* 绿叶+花团 */
+    g.fillStyle='#4d7a39';for(let i=0;i<14;i++)g.fillRect(14+Math.random()*36|0,14+Math.random()*14|0,4,4);
+    g.fillStyle='#5d8a4a';for(let i=0;i<9;i++)g.fillRect(16+Math.random()*32|0,10+Math.random()*14|0,3,3);
+    g.fillStyle='#d94f4f';[[26,12],[36,10],[22,18],[40,18],[31,16]].forEach(([x,y])=>g.fillRect(x,y,7,7));
+    g.fillStyle='#f0d060';g.fillRect(30,13,8,7);
+  }else if(kind==='stove_side'){
+    /* v61 炉侧：石身+正面炉口（黑洞+火） */
+    g.fillStyle='#8d8d8a';g.fillRect(0,0,64,64);
+    dot(110,'#7c7c79',1);dot(70,'#9c9c99',1);
+    g.fillStyle='#6e6e6a';g.fillRect(0,52,64,12);
+    g.fillStyle='#1a1a18';g.fillRect(16,28,32,26);
+    g.fillStyle='#ff8c1a';g.fillRect(20,40,24,13);
+    g.fillStyle='#ffd24a';g.fillRect(26,46,12,7);
+    g.fillStyle='#666';g.fillRect(4,6,56,4);
+  }else if(kind==='stove_top'){
+    /* v61 炉顶：灶台面+两口灶眼 */
+    g.fillStyle='#7a7a76';g.fillRect(0,0,64,64);
+    dot(60,'#6a6a66',1);dot(40,'#8a8a86',1);
+    g.fillStyle='#2a2a28';g.beginPath();g.arc(20,32,9,0,7);g.fill();
+    g.beginPath();g.arc(45,32,9,0,7);g.fill();
+    g.fillStyle='#ff8c1a';g.beginPath();g.arc(20,32,5,0,7);g.fill();
+    g.beginPath();g.arc(45,32,5,0,7);g.fill();
+  }else if(kind==='fp_front'){
+    /* v61 壁炉正面：石框+火膛大火 */
+    g.fillStyle='#84847e';g.fillRect(0,0,64,64);
+    dot(80,'#74746f',1);dot(50,'#94948f',1);
+    g.fillStyle='#5a5a55';g.fillRect(0,0,64,10);g.fillRect(0,54,64,10);
+    g.fillStyle='#5a5a55';g.fillRect(0,0,12,64);g.fillRect(52,0,12,64);
+    g.fillStyle='#141412';g.fillRect(14,18,36,36);
+    g.fillStyle='#ff7a1a';g.fillRect(18,34,28,20);
+    g.fillStyle='#ffb840';g.fillRect(23,42,18,12);
+    g.fillStyle='#ffe880';g.fillRect(28,48,8,6);
+    dot(16,'#ff9a3a',2);
+  }else if(kind==='fp_top'){
+    g.fillStyle='#84847e';g.fillRect(0,0,64,64);dot(70,'#74746f',1);dot(50,'#94948f',1);
+  }else if(kind==='fp_side'){
+    g.fillStyle='#84847e';g.fillRect(0,0,64,64);
+    dot(90,'#74746f',1);dot(60,'#94948f',1);dot(24,'#6a6a64',1);
+    g.fillStyle='#5a5a55';g.fillRect(0,0,64,4);g.fillRect(0,60,64,4);
+  }else if(kind==='firepit'){
+    /* v61 火塘：矮台顶视图——外圈石+中心炭火 */
+    g.fillStyle='#6f6f6c';g.fillRect(0,0,64,64);
+    dot(80,'#5f5f5c',1);dot(60,'#7f7f7c',1);
+    g.fillStyle='#3a3a36';g.fillRect(10,10,44,44);
+    g.fillStyle='#ff7a1a';g.fillRect(18,18,28,28);
+    g.fillStyle='#ffb840';g.fillRect(24,24,16,16);
+    g.fillStyle='#ffe880';g.fillRect(28,28,8,8);
+    dot(30,'#ff9a3a',2);
+  }else if(kind==='door'){
+    /* v61 木门：竖木纹+门框+把手 */
+    g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
+    g.fillStyle='#75583c';for(let x=6;x<64;x+=14)g.fillRect(x,0,3,64);
+    g.fillStyle='#9a7a54';for(let x=13;x<64;x+=14)g.fillRect(x,0,2,64);
+    g.fillStyle='#5f4630';g.fillRect(0,0,64,5);g.fillRect(0,59,64,5);g.fillRect(0,0,5,64);g.fillRect(59,0,5,64);
+    g.fillStyle='#5f4630';g.fillRect(0,30,64,4);
+    g.fillStyle='#e8d8a0';g.beginPath();g.arc(50,38,3.4,0,7);g.fill();
+    dot(50,'#6f5335',1);
   }else if(kind==='roof'){
     g.fillStyle='#7a4a42';g.fillRect(0,0,64,64);
     for(let y=0;y<64;y+=8){g.fillStyle='#653a33';g.fillRect(0,y,64,3);
@@ -1619,6 +1701,34 @@ const benchGeo=new THREE.BoxGeometry(1,0.42,1);benchGeo.translate(0,-0.5+0.21,0)
 /* v50：桥和旅馆的配套几何 */
 const bedGeo=new THREE.BoxGeometry(0.95,0.42,0.68);bedGeo.translate(0,-0.5+0.21,0.14);   // 床：低台靠格南（+z=床头板那端）
 const cabGeo=new THREE.BoxGeometry(0.85,1.15,0.5);cabGeo.translate(0,-0.5+0.575,0.2);    // 柜：高身贴地靠格南
+/* v61 家具几何：椅子/炉/壁炉/火塘/门 */
+const chairGeo=(()=>{   // 椅：座面+靠背+四腿——plank满格铺装风格（相邻可拼长凳）
+  const seat=new THREE.BoxGeometry(0.94,0.09,0.94);seat.translate(0,-0.5+0.26,0);
+  const back=new THREE.BoxGeometry(0.94,0.62,0.09);back.translate(0,-0.5+0.26+0.31,0.94/2-0.045);
+  const mkLeg=(dx,dz)=>{const l=new THREE.BoxGeometry(0.1,0.44,0.1);l.translate(dx,-0.5+0.22,dz);return l;};
+  return [back,seat,mkLeg(-0.38,-0.38),mkLeg(0.38,-0.38),mkLeg(-0.38,0.38),mkLeg(0.38,0.38)].reduce((a,b)=>mergeGeo(a,b));
+})();
+const stoveGeo=(()=>{   // 炉：石身+灶台面板
+  const body=new THREE.BoxGeometry(0.92,0.72,0.92);body.translate(0,-0.5+0.36,0);
+  const top=new THREE.BoxGeometry(1.0,0.1,1.0);top.translate(0,-0.5+0.77,0);
+  return mergeGeo(body,top);
+})();
+const fpGeo=(()=>{   // 壁炉：底座+双柱+顶梁
+  const base=new THREE.BoxGeometry(1.0,0.16,0.8);base.translate(0,-0.5+0.08,0.06);
+  const colL=new THREE.BoxGeometry(0.18,0.86,0.8);colL.translate(-0.41,-0.5+0.59,0.06);
+  const colR=new THREE.BoxGeometry(0.18,0.86,0.8);colR.translate(0.41,-0.5+0.59,0.06);
+  const lint=new THREE.BoxGeometry(1.0,0.18,0.8);lint.translate(0,-0.5+1.11,0.06);
+  return [base,colL,colR,lint].reduce((a,b)=>mergeGeo(a,b));
+})();
+const firepitGeo=(()=>{   // 火塘：矮石台+中央火堆
+  const rim=new THREE.BoxGeometry(0.85,0.16,0.85);rim.translate(0,-0.5+0.08,0);
+  const fire=new THREE.BoxGeometry(0.34,0.38,0.34);fire.translate(0,-0.5+0.35,0);
+  return mergeGeo(rim,fire);
+})();
+const doorGeo=(()=>{   // 门：薄板立中格
+  const d=new THREE.BoxGeometry(0.9,0.98,0.14);d.translate(0,-0.01,0);
+  return d;
+})();
 const signGeo=new THREE.BoxGeometry(0.72,0.92,0.09);signGeo.translate(0,-0.04,0);        // 牌：立式木牌，+z面是字
 const plaqueGeo=new THREE.BoxGeometry(1.0,0.42,0.1);   // v50.1匾：满格横匾悬格中（门楣高度），+z面横排字
 /* v40 四件：篱（围院）路（铺径）桌（配凳）灯（灯池夜光） */
@@ -1656,14 +1766,16 @@ function plantGeo(){
 for(const t in TYPES){
   const T=TYPES[t];let m;
   if(T.sign)continue;   // v50：牌不走InstancedMesh（每块牌文字不同=独立材质），单独refreshSign管理
-  const blockGeo=T.stair?stairGeo:(T.torch?torchGeo:(T.plant?plantGeo():(T.bench?benchGeo:(T.fence?fenceGeo:(T.path?pathGeo:(T.table?tableGeo:(T.lantern?lanternGeo:(T.bed?bedGeo:(T.cab?cabGeo:geo)))))))));   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）；v50：+床+柜
+  const blockGeo=T.stair?stairGeo:(T.torch?torchGeo:(T.plant?plantGeo():(T.bench?benchGeo:(T.fence?fenceGeo:(T.path?pathGeo:(T.table?tableGeo:(T.lantern?lanternGeo:(T.bed?bedGeo:(T.cab?cabGeo:(T.chair?chairGeo:(T.stove?stoveGeo:(T.fp?fpGeo:(T.firepit?firepitGeo:(T.door?doorGeo:geo))))))))))))));   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）；v50：+床+柜；v61：+椅炉壁炉火塘门
   if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
     m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
     catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
   else if(T.torch){m=new THREE.MeshBasicMaterial({map:texOf('torch')});}
   else if(T.plant){m=new THREE.MeshBasicMaterial({map:texOf(T.plant),alphaTest:0.45,side:THREE.DoubleSide});}   // v40：cutout——transparent:true的实例互相剔面（花瓣缺块），去掉transparent只留alphaTest：不进透明队列、深度正常写、零剔面
-  else if(T.bench||T.table){m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
+  else if(T.bench||T.table||T.chair){m=new THREE.MeshLambertMaterial({map:texOf(T.tex)});}
+  else if(T.door){m=new THREE.MeshLambertMaterial({map:texOf('door')});}
   else if(T.lantern){m=new THREE.MeshBasicMaterial({map:texOf('lantern')});}   // 自发光——夜里灯笼是亮的   // v31：自发光——MeshBasic不吃场景光照，火把永远亮；原来tex undefined→空白透明纹理，「放在地上是透明的」的实底
+  else if(T.stove||T.fp||T.firepit){m=new THREE.MeshBasicMaterial({map:T.mats?texOf(T.mats[0]):texOf(T.tex)});}   // v61：炉/壁炉/火塘=发光系（火口夜里亮，灯笼先例）
   else if(T.glass){m=new THREE.MeshLambertMaterial({map:texOf(T.tex),transparent:true,opacity:0.5,depthWrite:false});}   // v40：玻璃对玻璃不剔面（同水面方）
   else if(T.portal){try{m=new THREE.MeshBasicMaterial({map:portalTex(),transparent:true,opacity:0.94});}catch(e){m=new THREE.MeshLambertMaterial({color:0x8a5fbf});}}   // v52：自发光传送门——夜里也亮
   else if(T.mats){   // v50：六面各自取材（原来只有side/top/bot三档——床要床头板、柜要柜门，全六面了）
@@ -1694,7 +1806,7 @@ function tickTorch(now){
     }else L.intensity=0;
   }
 }
-const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28;};   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人
+const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28&&b!==31&&b!==32&&b!==33&&b!==34&&b!==35&&b!==36;};   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人；v61：椅盆炉壁炉塘锹不算墙（家具能穿+锹是工具），门37挡人
 /* v42：只有满格方块遮挡邻面——篱笆柱0.14宽/桌腿0.16宽盖不住那格的地面，但solid遮挡让地面顶面不渲染，从矮处看=空洞（「篱笆桌子下面透明」根）。玻璃透明也要透邻面 */
 const FULLT=new Set([1,2,3,4,5,6,7,8,10,11,12,13,30]);
 const covers=(x,y,z)=>{const b=get(x,y,z);return FULLT.has(b);};
@@ -1779,7 +1891,7 @@ function rebuild(){
   let railN=0;
   for(let x=0;x<W;x++)for(let z=0;z<D;z++)for(let y=0;y<H;y++){
     const t=world[idx(x,y,z)];if(t===AIR)continue;
-    if(t===14||t===22)torchSet.add(idx(x,y,z));   // v32：火炬进灯池；v40：灯笼也进
+    if(t===14||t===22||t===33||t===34||t===35)torchSet.add(idx(x,y,z));   // v32：火炬进灯池；v40：灯笼也进；v61：炉/壁炉/火塘的火光也进
     else if(t===27||t===28)signKeys.push(idx(x,y,z));   // v50：牌和匾进独立队列，末尾逐块refreshSign
     else if(t===19&&railN<47000){   // v42：篱笆横杆——查+x和+z邻居，是篱笆就在两格间放两根杆（独杆无杆，连排自动成栅栏）
       if(get(x+1,y,z)===19)for(const ry of [y+0.78,y+1.12]){_m.makeRotationY(0);_m.setPosition(x+1.0,ry,z+0.5);railMesh.setMatrixAt(railN++,_m);}
@@ -1934,7 +2046,7 @@ for(const t in TYPES){
   s.style.background='#'+(TYPES[t].c||0x9a8f7a).toString(16).padStart(6,'0');
   if(TYPES[t].water)s.innerHTML='<span>水</span>';
   else s.innerHTML='<span>'+TYPES[t].n+'</span>';
-  s.onclick=()=>{curType=+t;[...hot.children].forEach(c=>c.classList.remove('on'));s.classList.add('on');};
+  s.onclick=()=>{curType=+t;if(curType!==36)spClear();[...hot.children].forEach(c=>c.classList.remove('on'));s.classList.add('on');};
   hot.appendChild(s);
 }
 /* v51 潜行：按钮锁定(toggle)+Shift按住——潜行时贴边不掉、点床/牌/匾直接拆 */
@@ -1946,8 +2058,51 @@ function digBlock(h,msg){
   refreshSign(h.x,h.y,h.z);   /* 牌匾mesh随格清掉，普通方块无mesh无害 */
   toast(msg);
 }
+/* v61 大锹：两点圈地只挖自然地形 */
+let spA=null,spMarks=[],spBox=null;
+function spMark(color,h){
+  const m=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.03,1.03,1.03)),new THREE.LineBasicMaterial({color}));
+  m.position.set(h.x+0.5,h.y+0.5,h.z+0.5);scene.add(m);spMarks.push(m);
+}
+function spClear(){spMarks.forEach(m=>scene.remove(m));spMarks=[];spA=null;}
+function spadeTap(h){
+  if(!spA){
+    spA={x:h.x,y:h.y,z:h.z};spMark(0x00ffcc,h);
+    toast('起点('+h.x+','+h.y+','+h.z+')——再点对角');return;
+  }
+  const A=spA;spA=null;spMark(0xffaa00,h);
+  const x0=Math.min(A.x,h.x),x1=Math.max(A.x,h.x);
+  const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
+  const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
+  const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
+  if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次挖');return;}
+  openSpade(x0,y0,z0,x1,y1,z1,cnt);
+}
+function openSpade(x0,y0,z0,x1,y1,z1,cnt){
+  spBox=[x0,y0,z0,x1,y1,z1];
+  document.getElementById('spadeInfo').textContent=x1-x0+1+'×'+(y1-y0+1)+'×'+(z1-z0+1)+' ＝ '+cnt+'格';
+  document.getElementById('spadeModal').style.display='flex';
+}
+function spadeExec(){
+  const[x0,y0,z0,x1,y1,z1]=spBox;spBox=null;
+  document.getElementById('spadeModal').style.display='none';spClear();
+  let n=0,skip=0;
+  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){
+    const key=x+','+y+','+z;
+    if(diffs.a[key]!==undefined){skip++;continue;}   // 你搭的/你改的——全留
+    if(world[idx(x,y,z)]===AIR)continue;
+    if(x===STX&&z===STZ&&y>=8){skip++;continue;}     // 碑
+    if(Math.abs(x-BOARD_POS[0]-0.5)<2&&Math.abs(z-BOARD_POS[2])<2){skip++;continue;}   // 留言板
+    world[idx(x,y,z)]=AIR;
+    diffs.r.push([x,y,z]);refreshSign(x,y,z);n++;
+  }
+  try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
+  worldDirty=true;rebuild();
+  showStele('挖掉'+n+'格。'+(skip?('留了'+skip+'格搭的。'):''));
+}
 function dig(){
   const h=raycast();if(!h)return;
+  if(curType===36){spadeTap(h);return;}   // v61：锹选中——点挖=圈地
   const tt=world[idx(h.x,h.y,h.z)];
   const hk=h.x+','+h.y+','+h.z;
   /* v51：床/牌/匾=交互方块——普通点=功能，潜行点=直接拆（MC语义）。
@@ -1976,6 +2131,7 @@ function dig(){
   world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
 }
 function put(){
+  if(curType===36){if(spA||spMarks.length){spClear();toast('圈地清了');}return;}   // v61：锹——点搭=取消圈地
   const h=raycast();if(!h)return;
   const x=h.x+h.nx,y=h.y+h.ny,z=h.z+h.nz;
   if(!inW(x,y,z))return;
@@ -2391,6 +2547,8 @@ function tend(e){
 }
 canvas.addEventListener('touchend',tend);canvas.addEventListener('touchcancel',tend);
 if(isTouch){['btnDig','btnPut','btnJmp'].forEach(id=>document.getElementById(id).style.display='flex');document.getElementById('btnMap').style.display='block';document.getElementById('btnPortal').style.display='block';}
+document.getElementById('spadeOk').addEventListener('click',spadeExec);
+document.getElementById('spadeNo').addEventListener('click',()=>{document.getElementById('spadeModal').style.display='none';spClear();});
 document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();AU.click();dig();},{passive:false});
 document.getElementById('btnPut').addEventListener('touchstart',e=>{e.preventDefault();AU.click();put();},{passive:false});
 document.getElementById('btnJmp').addEventListener('touchstart',e=>{e.preventDefault();keys.jump=true;},{passive:false});
