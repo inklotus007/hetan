@@ -481,7 +481,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v59';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v60';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1340,6 +1340,34 @@ for(let i=0;i<CLOUD_N;i++){
   cloudGroup.add(g);
 }
 scene.add(cloudGroup);
+
+/* ---- v60 远景天穹：地图边缘不再是虚无——远山三层+海+海平线，跟随玩家，颜色随昼夜 ---- */
+function makeDomeTex(){
+  const W=2048,H=1024,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const g=cv.getContext('2d');
+  g.fillStyle='#ffffff';g.fillRect(0,0,W,H);   /* 天：白，被k.sky逐帧染色 */
+  const HOR=H*0.50;                            /* 山海线：赤道略上（玩家眼高于球心） */
+  const seaG=g.createLinearGradient(0,HOR,0,H);
+  seaG.addColorStop(0,'#a8c2d4');seaG.addColorStop(0.4,'#7a9ab2');seaG.addColorStop(1,'#5a7a94');
+  g.fillStyle=seaG;g.fillRect(0,HOR,W,H-HOR);
+  g.fillStyle='rgba(255,255,255,0.4)';g.fillRect(0,HOR-2,W,3);   /* 海平线亮带 */
+  const ridge=(amp,ph,col)=>{   /* 周期山脊：sin组合天然首尾无缝 */
+    g.fillStyle=col;g.beginPath();g.moveTo(0,HOR+2);
+    for(let x=0;x<=W;x+=8){
+      const t=x/W*Math.PI*2;
+      let hgt=Math.sin(t*3+ph)*0.5+Math.sin(t*7+ph*2.7)*0.3+Math.sin(t*13+ph*1.3)*0.2;
+      g.lineTo(x,HOR+2-hgt*amp);
+    }
+    g.lineTo(W,HOR+2);g.closePath();g.fill();
+  };
+  ridge(H*0.085,1.7,'#dfe8f0');   /* 远山：接近雾色，大气透视 */
+  ridge(H*0.062,4.2,'#b8c8d6');
+  ridge(H*0.045,2.9,'#8aa0b4');   /* 近山：最深的剪影层 */
+  return new THREE.CanvasTexture(cv);
+}
+const domeMat=new THREE.MeshBasicMaterial({map:makeDomeTex(),side:THREE.BackSide,depthWrite:false,fog:false});
+const dome=new THREE.Mesh(new THREE.SphereGeometry(150,48,24),domeMat);
+dome.renderOrder=-10;scene.add(dome);
 let lastSeg='';
 function tickSky(now){
   const dayT=((now/1000)%DAY_LEN)/DAY_LEN;
@@ -1351,6 +1379,8 @@ function tickSky(now){
   amb.intensity=k.amb*dim;
   sun.intensity=k.sunI*dim;sun.color.setHex(k.sunC);
   const bx=p.x, by=p.y, bz=p.z;
+  dome.position.set(bx,0,bz);
+  domeMat.color.setHex(k.sky).multiplyScalar(dim);
   const sa=(dayT-0.25)/0.5*Math.PI;
   sunSpr.position.set(bx-Math.cos(sa)*200,by+Math.sin(sa)*110+8,bz-72);
   sun.position.copy(sunSpr.position).multiplyScalar(0.5);
