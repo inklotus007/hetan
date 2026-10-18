@@ -228,8 +228,12 @@ const TYPES={
   35:{n:'火塘', mats:['fpit_side','fpit_side','firepit','firepit','fpit_side','fpit_side'], fp:true},   // 火塘——顶石圈炭火+侧面火苗（v62修：不再是一圈横纹），进灯池
   36:{n:'锹', c:0x7a5b3a, tool:true},             // 大锹——工具：选中后点「挖」圈地，两点定范围只挖自然地形
   37:{n:'门', mats:['wood_side','wood_side','wood_side','wood_side','door','door'], door:true, c:0x8a6a48},   // v62：两格高
-  39:{n:'宅门', mats:['gate_side','gate_side','gate_top','gate_top','gate_front','gate_side'], door:true, c:0x8d8d8a},   // v62：三格高石门楼
-  40:{n:'对开门', tex:'door', dgate:true, door:true, c:0x8a6a48}   // v62：两扇八字微开+横楣（mergeGeo无groups不能用mats——单纹理door两扇各带把手）
+  39:{n:'宅门', mats:['gate_side','gate_side','gate_top','gate_top','gate_front','gate_side'], gate:true, c:0x8d8d8a},   // v63：四格高石门楼（gate:true接gateGeo——v62实底：door:true让它误走了doorGeo）
+  40:{n:'对开门', tex:'door', dgate:true, door:true, c:0x8a6a48},   // v63：四格高两扇八字微开+横楣
+  /* v63 开态（点门切换）：100+类型——hidden不进物品栏，渲染走OPEN_GEO，solid放行（开着能走进去） */
+  137:{n:'门开', tex:'door', openKey:37, door:true, hidden:true},
+  139:{n:'宅门开', tex:'gate_side', openKey:39, gate:true, hidden:true},
+  140:{n:'对开开', tex:'door', openKey:40, dgate:true, hidden:true}
 };
 const world=new Uint8Array(W*H*D);
 const idx=(x,y,z)=>(x*D+z)*H+y;
@@ -502,7 +506,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v62';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v63';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1749,11 +1753,21 @@ const stoveGeo=(()=>{const b=new THREE.BoxGeometry(1.0,0.86,1.0);b.translate(0,-
 const fpGeo=(()=>{const b=new THREE.BoxGeometry(1.0,1.34,0.8);b.translate(0,-0.5+0.67,0.06);return b;})();   // 壁炉：1.34高单box——正面fp_front画双柱+火膛大火
 const firepitGeo=(()=>{const b=new THREE.BoxGeometry(0.9,0.34,0.9);b.translate(0,-0.5+0.17,0);return b;})();  // 火塘：0.34矮台——顶石圈炭火+侧面火苗探出
 const doorGeo=(()=>{const b=new THREE.BoxGeometry(0.94,1.98,0.14);b.translate(0,-0.5+0.99,0);return b;})();   // v62门：两格高（门洞两格是人的尺寸，一格是狗洞——同志定的）
-const gateGeo=(()=>{const b=new THREE.BoxGeometry(1.0,2.98,0.2);b.translate(0,-0.5+1.49,0);return b;})();     // v62宅门：三格高石门楼（正面石框双扇门钉）
-const dgateGeo=(()=>{   // v62对开门：两扇八字微开+顶横楣
-  const l=new THREE.BoxGeometry(0.46,1.98,0.12);l.rotateY(0.24);l.translate(-0.235,-0.5+0.99,0);
-  const r=new THREE.BoxGeometry(0.46,1.98,0.12);r.rotateY(-0.24);r.translate(0.235,-0.5+0.99,0);
-  const top=new THREE.BoxGeometry(0.96,0.14,0.16);top.translate(0,-0.5+1.93,0);
+const gateGeo=(()=>{const b=new THREE.BoxGeometry(1.0,3.98,0.2);b.translate(0,-0.5+1.99,0);return b;})();     // v63宅门：四格高石门楼（TA定的：大门三格四格，弄到四格；v62实底：geo写了没接链，39走了doorGeo所以和门一样高）
+const dgateGeo=(()=>{   // v63对开大门：两扇八字微开+顶横楣——四格高
+  const l=new THREE.BoxGeometry(0.46,3.98,0.12);l.rotateY(0.24);l.translate(-0.235,-0.5+1.99,0);
+  const r=new THREE.BoxGeometry(0.46,3.98,0.12);r.rotateY(-0.24);r.translate(0.235,-0.5+1.99,0);
+  const top=new THREE.BoxGeometry(0.96,0.14,0.16);top.translate(0,-0.5+3.9,0);
+  return [l,r,top].reduce((a,b)=>mergeGeo(a,b));
+})();
+/* v63 开态geo：门板转90°贴侧——点门开关（状态存diffs值100+类型，全端同步） */
+const OPEN_GEO={};
+OPEN_GEO[37]=(()=>{const b=new THREE.BoxGeometry(0.14,1.98,0.94);b.translate(0.40,-0.5+0.99,0);return b;})();
+OPEN_GEO[39]=(()=>{const b=new THREE.BoxGeometry(0.2,3.98,1.0);b.translate(0.40,-0.5+1.99,0);return b;})();
+OPEN_GEO[40]=(()=>{   // 对开开态：两扇并排贴+x侧+楣原位
+  const l=new THREE.BoxGeometry(0.12,3.98,0.46);l.translate(0.40,-0.5+1.99,-0.24);
+  const r=new THREE.BoxGeometry(0.12,3.98,0.46);r.translate(0.40,-0.5+1.99,0.24);
+  const top=new THREE.BoxGeometry(0.96,0.14,0.16);top.translate(0,-0.5+3.9,0);
   return [l,r,top].reduce((a,b)=>mergeGeo(a,b));
 })();
 const signGeo=new THREE.BoxGeometry(0.72,0.92,0.09);signGeo.translate(0,-0.04,0);        // 牌：立式木牌，+z面是字
@@ -1793,7 +1807,7 @@ function plantGeo(){
 for(const t in TYPES){
   const T=TYPES[t];let m;
   if(T.sign)continue;   // v50：牌不走InstancedMesh（每块牌文字不同=独立材质），单独refreshSign管理
-  const blockGeo=T.stair?stairGeo:(T.torch?torchGeo:(T.plant?plantGeo():(T.bench?benchGeo:(T.fence?fenceGeo:(T.path?pathGeo:(T.table?tableGeo:(T.lantern?lanternGeo:(T.bed?bedGeo:(T.cab?cabGeo:(T.chair?chairGeo:(T.stove?stoveGeo:(T.fp?fpGeo:(T.firepit?firepitGeo:(T.dgate?dgateGeo:(T.door?doorGeo:geo)))))))))))))));   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）；v50：+床+柜；v61：+椅炉壁炉火塘门
+  const blockGeo=OPEN_GEO[T.openKey]||((T.stair?stairGeo:(T.torch?torchGeo:(T.plant?plantGeo():(T.bench?benchGeo:(T.fence?fenceGeo:(T.path?pathGeo:(T.table?tableGeo:(T.lantern?lanternGeo:(T.bed?bedGeo:(T.cab?cabGeo:(T.chair?chairGeo:(T.stove?stoveGeo:(T.fp?fpGeo:(T.firepit?firepitGeo:(T.gate?gateGeo:(T.dgate?dgateGeo:(T.door?doorGeo:geo))))))))))))))))));   // v29.1：原来的名字撞了循环外的geo（TDZ自引用炸——boot永远不消失，同志白蓝屏的实底）；v50：+床+柜；v61：+椅炉壁炉火塘门
   if(T.water){try{waterTex=makeTex('water');waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
     m=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:0.82,depthWrite:false});}
     catch(e){waterTex=null;m=new THREE.MeshLambertMaterial({color:T.c,transparent:true,opacity:0.72,depthWrite:false});}}   // 纹理在任何手机GPU上炸了就退回纯色——世界不能因一块水面白屏   // v25：透明实例无排序，关深度写入才不会互相剔面
@@ -1833,7 +1847,7 @@ function tickTorch(now){
     }else L.intensity=0;
   }
 }
-const solid=(x,y,z)=>{const b=get(x,y,z);return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28&&b!==31&&b!==32&&b!==33&&b!==34&&b!==35&&b!==36;};   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人；v61：椅盆炉壁炉塘锹不算墙（家具能穿+锹是工具），门37挡人
+const solid=(x,y,z)=>{const b=get(x,y,z);if(b>=137&&b<=140)return false;return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28&&b!==31&&b!==32&&b!==33&&b!==34&&b!==35&&b!==36;};   // v63：开着的门放行（能走进去）   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人；v61：椅盆炉壁炉塘锹不算墙（家具能穿+锹是工具），门37挡人
 /* v42：只有满格方块遮挡邻面——篱笆柱0.14宽/桌腿0.16宽盖不住那格的地面，但solid遮挡让地面顶面不渲染，从矮处看=空洞（「篱笆桌子下面透明」根）。玻璃透明也要透邻面 */
 const FULLT=new Set([1,2,3,4,5,6,7,8,10,11,12,13,30]);
 const covers=(x,y,z)=>{const b=get(x,y,z);return FULLT.has(b);};
@@ -2069,6 +2083,7 @@ function raycast(maxDist=5.2){
 let curType=1;
 const hot=document.getElementById('hot');
 for(const t in TYPES){
+  if(TYPES[t].hidden)continue;   // v63：开态门不进物品栏
   const s=document.createElement('div');s.className='slot'+(+t===1?' on':'');
   s.style.background='#'+(TYPES[t].c||0x9a8f7a).toString(16).padStart(6,'0');
   if(TYPES[t].water)s.innerHTML='<span>水</span>';
@@ -2134,6 +2149,16 @@ function dig(){
   const hk=h.x+','+h.y+','+h.z;
   /* v51：床/牌/匾=交互方块——普通点=功能，潜行点=直接拆（MC语义）。
      双点拆除退役：手机上两下要命中同一格，手抖一下就永远拆不掉（「拆半天拆不掉」的根） */
+  if((tt===37||tt===39||tt===40)&&!isSneak()){   // v63：点门=开关（状态+100全端同步）；潜行着点=拆
+    world[idx(h.x,h.y,h.z)]=tt+100;saveDiff(h.x,h.y,h.z,tt+100);rebuild();AU.click();toast(tt===40?'门开了':'门开了——再点关上');return;
+  }
+  if(tt>=137&&tt<=140&&!isSneak()){
+    world[idx(h.x,h.y,h.z)]=tt-100;saveDiff(h.x,h.y,h.z,tt-100);rebuild();AU.click();toast('门关了');return;
+  }
+  if((tt===137||tt===139||tt===140)&&isSneak()){   // 开着的门潜行拆=先关门再拆（关态）
+    world[idx(h.x,h.y,h.z)]=tt-100;saveDiff(h.x,h.y,h.z,tt-100);
+    digBlock(h,'门拆了');return;
+  }
   if(tt===23){
     if(isSneak()){digBlock(h,'床拆了');return;}
     setBedSpawn(h.x,h.y,h.z);toast('出生点设在这张床了（潜行着点=拆床）');return;
@@ -2166,7 +2191,7 @@ function put(){
   // 别放进自己身体
   if(curType!==8&&x+1>p.x-PW&&x<p.x+PW&&z+1>p.z-PW&&z<p.z+PW&&y+1>p.y&&y<p.y+PH)return;
   if(curType===37||curType===40){const u=world[idx(x,y+1,z)];if(u!==AIR&&u!==8){toast('门上头要留一格空——门是两格高');return;}}   // v62
-  if(curType===39){const u1=world[idx(x,y+1,z)],u2=world[idx(x,y+2,z)];if((u1!==AIR&&u1!==8)||(u2!==AIR&&u2!==8)){toast('宅门上头要留两格空——门楼是三格高');return;}}   // v62
+  if(curType===39||curType===40){for(const dy of [1,2,3]){const u=world[idx(x,y+dy,z)];if(u!==AIR&&u!==8){toast('大门上头要留三格空——大门是四格高');return;}}}   // v63：四格大门
   AU.put();
   world[idx(x,y,z)]=curType;saveDiff(x,y,z,curType);rebuild();
   if(curType===27||curType===28)editSign(x,y,z);   // v50：牌和匾一放下就请你题字
