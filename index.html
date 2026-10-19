@@ -523,7 +523,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v68.1';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v68.2';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2150,7 +2150,7 @@ function slotEl(t,fromPanel){
   e.onclick=(ev)=>{ev.stopPropagation();pickType(+t,fp);};
   return e;
 }
-let curHotIdx=0;
+let hotItems=HOT_DEFAULT.slice(),curHotIdx=0;   // v68.2补声明（v68实底：引用了没声明的hotItems）
 function pickType(t,fromPanel){
   curType=t;if(!TYPES[t].tool)lastMaterial=t;
   if(curType!==36&&curType!==41&&curType!==42)spClear();
