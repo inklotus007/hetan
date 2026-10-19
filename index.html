@@ -524,7 +524,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v72';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v73';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2248,6 +2248,7 @@ function spadeExec(){
     if(world[idx(x,y,z)]===AIR)continue;
     if(x===STX&&z===STZ&&y>=8){skip++;continue;}     // 碑
     if(Math.abs(x-BOARD_POS[0]-0.5)<2&&Math.abs(z-BOARD_POS[2])<2){skip++;continue;}   // 留言板
+    for(const pk in PORTALS.portals){const q=PORTALS.portals[pk];if(q.x===x&&q.y===y&&q.z===z){delete PORTALS.portals[pk];pushPortals('河滩：传送门「'+pk+'」被挖走了');break;}}   // v73：批量拆到门块=门从列表清走
     world[idx(x,y,z)]=AIR;
     diffs.r.push([x,y,z]);refreshSign(x,y,z);n++;
   }
@@ -2268,6 +2269,7 @@ function fillExec(){
   for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){
     if(x===STX&&z===STZ&&y>=8){skip++;continue;}
     if(Math.abs(x-BOARD_POS[0]-0.5)<2&&Math.abs(z-BOARD_POS[2])<2){skip++;continue;}
+    for(const pk in PORTALS.portals){const q=PORTALS.portals[pk];if(q.x===x&&q.y===y&&q.z===z){delete PORTALS.portals[pk];pushPortals('河滩：传送门「'+pk+'」被挖走了');break;}}   // v73：批量拆到门块=门从列表清走
     const key=x+','+y+','+z;
     if(world[idx(x,y,z)]===mat){continue;}
     world[idx(x,y,z)]=mat;
@@ -2427,11 +2429,23 @@ function portalCommit(){
 }
 function portalDist(){   /* 最近的传送门距离 */
   let m=1e9;
-  for(const k in PORTALS.portals){const q=PORTALS.portals[k];m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
+  for(const k in PORTALS.portals){const q=PORTALS.portals[k];if(!portalAlive(q))continue;m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
   return m;
+}
+function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
+  return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
+}
+function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+  const dead=[];
+  for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
+  if(!dead.length)return;
+  for(const k of dead)delete PORTALS.portals[k];
+  pushPortals('河滩：失效传送门清走——'+dead.join('、'));
+  toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
+  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
   const keys=Object.keys(PORTALS.portals);
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
@@ -3021,11 +3035,23 @@ function portalCommit(){
 }
 function portalDist(){   /* 最近的传送门距离 */
   let m=1e9;
-  for(const k in PORTALS.portals){const q=PORTALS.portals[k];m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
+  for(const k in PORTALS.portals){const q=PORTALS.portals[k];if(!portalAlive(q))continue;m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
   return m;
+}
+function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
+  return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
+}
+function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+  const dead=[];
+  for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
+  if(!dead.length)return;
+  for(const k of dead)delete PORTALS.portals[k];
+  pushPortals('河滩：失效传送门清走——'+dead.join('、'));
+  toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
+  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
   const keys=Object.keys(PORTALS.portals);
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
@@ -3625,11 +3651,23 @@ function portalCommit(){
 }
 function portalDist(){   /* 最近的传送门距离 */
   let m=1e9;
-  for(const k in PORTALS.portals){const q=PORTALS.portals[k];m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
+  for(const k in PORTALS.portals){const q=PORTALS.portals[k];if(!portalAlive(q))continue;m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
   return m;
+}
+function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
+  return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
+}
+function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+  const dead=[];
+  for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
+  if(!dead.length)return;
+  for(const k of dead)delete PORTALS.portals[k];
+  pushPortals('河滩：失效传送门清走——'+dead.join('、'));
+  toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
+  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
   const keys=Object.keys(PORTALS.portals);
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
@@ -4219,11 +4257,23 @@ function portalCommit(){
 }
 function portalDist(){   /* 最近的传送门距离 */
   let m=1e9;
-  for(const k in PORTALS.portals){const q=PORTALS.portals[k];m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
+  for(const k in PORTALS.portals){const q=PORTALS.portals[k];if(!portalAlive(q))continue;m=Math.min(m,Math.hypot(p.x-q.x-0.5,p.z-q.z-0.5));}
   return m;
+}
+function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
+  return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
+}
+function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+  const dead=[];
+  for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
+  if(!dead.length)return;
+  for(const k of dead)delete PORTALS.portals[k];
+  pushPortals('河滩：失效传送门清走——'+dead.join('、'));
+  toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
+  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
   const keys=Object.keys(PORTALS.portals);
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
