@@ -18,11 +18,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 #menuBtn{pointer-events:auto}   /* 顶栏穿透但菜单要点得动（v28.3：mute/tokBtn删了，☰顶上——删UI要连豁免清单一起改） */
 #top small{display:block;font-size:11px;letter-spacing:2px;opacity:.85;margin-top:2px}
 /* 热栏 */
-#hot{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:5px;z-index:6;width:min(94vw,560px);max-height:106px;overflow-y:auto;padding:4px 6px;background:rgba(30,40,50,.25);border-radius:8px;scrollbar-width:none;box-sizing:border-box}#hot::-webkit-scrollbar{display:none}
-.slot{width:40px;height:40px;border:2px solid rgba(255,255,255,.5);border-radius:5px;cursor:pointer;position:relative;box-shadow:0 2px 6px rgba(30,40,50,.35)}
+#hot{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;justify-content:center;gap:4px;z-index:6;width:min(96vw,560px);padding:5px;background:rgba(30,40,50,.32);border-radius:10px;box-sizing:border-box}#catPanel{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(96vw,560px);max-height:60vh;overflow-y:auto;background:rgba(24,32,42,.94);border:1px solid rgba(255,255,255,.18);border-radius:12px;z-index:8;padding:10px;display:none;box-sizing:border-box}#catTabs{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}#catTabs .tab{padding:7px 11px;border-radius:7px;background:rgba(255,255,255,.08);color:#d8d2c4;font-size:12px;letter-spacing:1px;cursor:pointer;border:1px solid transparent}#catTabs .tab.on{background:rgba(200,180,120,.25);border-color:rgba(220,190,120,.5);color:#f0e6c8}#catGrid{display:flex;flex-wrap:wrap;gap:6px}#hot .slot{width:min(9vw,44px);height:min(9vw,44px)}#catGrid .slot{width:52px;height:52px}
+.slot{width:44px;height:44px;border:2px solid rgba(255,255,255,.5);border-radius:7px;cursor:pointer;position:relative;box-shadow:0 2px 6px rgba(30,40,50,.35);box-sizing:border-box}
 .slot.on{border-color:#ffe9a8;box-shadow:0 0 0 2px rgba(255,233,168,.55),0 2px 6px rgba(30,40,50,.35);transform:scale(1.08)}
 .slot span{position:absolute;left:0;right:0;top:1px;text-align:center;font-size:9px;color:rgba(255,255,255,.94);text-shadow:0 1px 2px rgba(40,50,60,.85);white-space:nowrap;pointer-events:none}
-@media(min-width:700px){#hot{max-height:152px}}   /* 宽屏3行：27个全显零滚动；手机2行竖滚 */
+   /* 宽屏3行：27个全显零滚动；手机2行竖滚 */
 /* 移动端按钮 */
 .mbtn{position:fixed;z-index:7;width:58px;height:58px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(50,60,70,.38);color:#f4efe2;font-size:16px;letter-spacing:2px;display:none;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;font-family:inherit;transition:transform .06s,background .06s}
 .mbtn:active{background:rgba(240,230,200,.5);transform:scale(0.9);border-color:#f0e6c8}
@@ -130,6 +130,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
   </div>
  </div>
 </div>
+<div id="fillModal" style="display:none;position:fixed;inset:0;background:rgba(18,14,8,.55);z-index:30;align-items:center;justify-content:center">
+ <div style="background:#f2ead8;border:1px solid #c9a86a;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(60,40,10,.4)">
+  <div style="font-weight:bold;color:#4a3212;letter-spacing:2px;margin-bottom:8px;font-size:14px">快速填充</div>
+  <div id="fillInfo" style="font-size:13px;color:#5a4218;line-height:1.7;margin-bottom:6px"></div>
+  <div style="font-size:11px;color:#7a5a28;margin-bottom:4px">区域内整体填入该材质——碑和留言板不受影响</div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+   <button id="fillOk" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #a8843a;border-radius:6px;background:#ead9a8;color:#4a3212;cursor:pointer">填 入</button>
+   <button id="fillNo" style="flex:1;padding:10px 0;font-family:inherit;font-size:14px;letter-spacing:3px;border:1px solid #c9a86a;border-radius:6px;background:#f2ecdc;color:#6a5228;cursor:pointer">算了</button>
+  </div>
+ </div>
+</div>
 <div id="boardUI">
   <div id="boardCard">
     <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <span id="expBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">导出搭建</span> · <b id="boardClose">合上</b></div>
@@ -142,6 +153,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
   </div>
 </div>
 <div id="hot"></div>
+<div id="catPanel">
+ <div id="catTabs"></div>
+ <div id="catGrid"></div>
+</div>
 <div class="mbtn" id="btnDig">挖</div>
 <div class="mbtn" id="btnPut">放</div>
 <div class="mbtn" id="btnJmp">跳</div>
@@ -212,7 +227,7 @@ const TYPES={
   21:{n:'桌', c:0x8a6a48, tex:'plank', table:true},
   22:{n:'灯', c:0xffe0a0, lantern:true},
   /* v50：桥和旅馆的配套——同志要点名加的 */
-  23:{n:'床', c:0x8a6a48, bed:true, mats:['wood_side','wood_side','bed_top','plank','bed_head','plank']},   // 点床=设出生点，2秒内再点=拆
+  23:{n:'床', c:0x8a6a48, bed:true, mats:['wood_side','wood_side','bed_top2','plank','bed_head2','plank']},   // v64：大床2×3格。点床=设出生点，潜行点=拆
   24:{n:'柜', c:0x8a6a48, cab:true, mats:['wood_side','wood_side','wood_top','wood_top','cab_front','wood_side']},
   25:{n:'幌', c:0x31538a, plant:'banner'},
   26:{n:'石凳', c:0x9a9a96, tex:'stone', bench:true},
@@ -227,6 +242,8 @@ const TYPES={
   34:{n:'壁炉', mats:['fp_side','fp_side','fp_top','fp_top','fp_front','fp_side'], fp:true},   // 壁炉——正面火膛真贴上（v62修：单box），进灯池
   35:{n:'火塘', mats:['fpit_side','fpit_side','firepit','firepit','fpit_side','fpit_side'], fp:true},   // 火塘——顶石圈炭火+侧面火苗（v62修：不再是一圈横纹），进灯池
   36:{n:'锹', c:0x7a5b3a, tool:true},             // 大锹——工具：选中后点「挖」圈地，两点定范围只挖自然地形
+  41:{n:'填', c:0x9a8f7a, tool:true},             // v64快速填充——选中后点「搭」圈地，两点定范围整体填入最后选中的方块材质
+  42:{n:'梯', c:0x8a6a48, tool:true},             // v64折返楼梯生成器——点「搭」=在命中格生成4×5折返楼梯（升5格到二楼），体素阶块可走
   37:{n:'门', mats:['wood_side','wood_side','wood_side','wood_side','door','door'], door:true, c:0x8a6a48},   // v62：两格高
   39:{n:'宅门', mats:['gate_side','gate_side','gate_top','gate_top','gate_front','gate_side'], gate:true, c:0x8d8d8a},   // v63：四格高石门楼（gate:true接gateGeo——v62实底：door:true让它误走了doorGeo）
   40:{n:'对开门', tex:'door', dgate:true, door:true, c:0x8a6a48},   // v63：四格高两扇八字微开+横楣
@@ -506,7 +523,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v63';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v64';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1667,6 +1684,30 @@ function makeTex(kind){
     g.fillStyle='#ffb840';g.fillRect(26,22,12,24);
     g.fillStyle='#ffe880';g.fillRect(29,30,6,16);
     dot(26,'#ff9a3a',2);
+  }else if(kind==='dgate_front'){
+    /* v64 对开大门正面（3格宽4格高比例192×256）：木框+两扇各带把手+中缝+顶楣 */
+    g.fillStyle='#6a4d30';g.fillRect(0,0,192,256);
+    g.fillStyle='#8a6a48';g.fillRect(8,20,176,236);
+    g.fillStyle='#5f4630';g.fillRect(8,20,176,6);g.fillRect(8,244,176,12);
+    g.fillStyle='#5f4630';g.fillRect(92,20,8,236);   /* 中缝 */
+    /* 左右扇竖木纹 */
+    for(const x0 of [8,100]){for(let x=x0+8;x<x0+84;x+=14){g.fillStyle='#75583c';g.fillRect(x,26,3,218);g.fillStyle='#9a7a54';g.fillRect(x+7,26,2,218);}}
+    /* 门钉两排 */
+    g.fillStyle='#e8d8a0';for(const y of [60,180]){for(let x=26;x<180;x+=34)g.fillRect(x,y,6,6);}
+    /* 双把手（各扇内侧） */
+    g.fillStyle='#e8d8a0';g.fillRect(74,130,10,10);g.fillRect(108,130,10,10);
+  }else if(kind==='bed_top2'){
+    /* v64 大床顶面（2×3格比例128×192）：枕头+被褶 */
+    g.fillStyle='#b03a3a';g.fillRect(0,0,128,192);
+    g.fillStyle='#8a2a2a';g.fillRect(0,0,128,26);
+    g.fillStyle='#e8e0d0';g.fillRect(10,8,108,44);   /* 枕头 */
+    g.fillStyle='#d8d0c0';for(let y=70;y<192;y+=18)g.fillRect(0,y,128,5);   /* 被褶 */
+    g.fillStyle='#983030';g.fillRect(0,186,128,6);
+  }else if(kind==='bed_head2'){
+    /* v64 床头板（2格宽比例128×64）：木横条 */
+    g.fillStyle='#8a6a48';g.fillRect(0,0,128,64);
+    g.fillStyle='#75583c';for(let y=10;y<64;y+=16)g.fillRect(0,y,128,6);
+    g.fillStyle='#9a7a54';g.fillRect(0,0,128,4);
   }else if(kind==='gate_front'){
     /* v62 宅门正面（三格高门楼）：石框+双扇门板+门钉+中缝 */
     g.fillStyle='#8d8d8a';g.fillRect(0,0,64,64);
@@ -1739,13 +1780,17 @@ const torchGeo=new THREE.BoxGeometry(0.18,0.9,0.18);torchGeo.translate(0,0.03,0)
 /* v37 装饰植物：两片十字交叉面片，像素纹理（透明底），不吃光照（Basic）——花该是亮的 */
 const benchGeo=new THREE.BoxGeometry(1,0.42,1);benchGeo.translate(0,-0.5+0.21,0);   // 凳：满格半砖台——v41同志拿凳拼平台，0.55深的缝太大
 /* v50：桥和旅馆的配套几何 */
-const bedGeo=new THREE.BoxGeometry(0.95,0.42,0.68);bedGeo.translate(0,-0.5+0.21,0.14);   // 床：低台靠格南（+z=床头板那端）
+const bedGeo=(()=>{   // v64大床：2格宽×3格长（双人床1.5×2m÷0.9——TA基准人物1宽2高），床头-z，向+z延伸
+  const body=new THREE.BoxGeometry(1.85,0.4,2.85);body.translate(0.425,-0.5+0.2,0.925);
+  const head=new THREE.BoxGeometry(1.85,0.9,0.15);head.translate(0.425,-0.5+0.45,-0.075);
+  return mergeGeo(body,head);
+})();
 const cabGeo=new THREE.BoxGeometry(0.85,1.15,0.5);cabGeo.translate(0,-0.5+0.575,0.2);    // 柜：高身贴地靠格南
 /* v61 家具几何：椅子/炉/壁炉/火塘/门 */
-const chairGeo=(()=>{   // 椅：座面+靠背+四腿——plank满格铺装风格（相邻可拼长凳）
-  const seat=new THREE.BoxGeometry(0.94,0.09,0.94);seat.translate(0,-0.5+0.26,0);
-  const back=new THREE.BoxGeometry(0.94,0.62,0.09);back.translate(0,-0.5+0.26+0.31,0.94/2-0.045);
-  const mkLeg=(dx,dz)=>{const l=new THREE.BoxGeometry(0.1,0.44,0.1);l.translate(dx,-0.5+0.22,dz);return l;};
+const chairGeo=(()=>{   // v64椅：座高0.5格（0.45m人体工学）、靠背到1格——plank满格
+  const seat=new THREE.BoxGeometry(0.94,0.08,0.94);seat.translate(0,-0.5+0.5,0);
+  const back=new THREE.BoxGeometry(0.94,0.56,0.09);back.translate(0,-0.5+0.5+0.28,0.94/2-0.045);
+  const mkLeg=(dx,dz)=>{const l=new THREE.BoxGeometry(0.1,0.46,0.1);l.translate(dx,-0.5+0.23,dz);return l;};
   return [back,seat,mkLeg(-0.38,-0.38),mkLeg(0.38,-0.38),mkLeg(-0.38,0.38),mkLeg(0.38,0.38)].reduce((a,b)=>mergeGeo(a,b));
 })();
 /* v62：炉/壁炉/火塘全部单box+mats六面——v61实底：mergeGeo多件+mats只认材质[0]（BufferGeometry没有groups），火膛纹理根本没贴上（「壁炉没火」不是js限制是我的bug）。双柱/顶梁造型改纹理画 */
@@ -1754,15 +1799,21 @@ const fpGeo=(()=>{const b=new THREE.BoxGeometry(1.0,1.34,0.8);b.translate(0,-0.5
 const firepitGeo=(()=>{const b=new THREE.BoxGeometry(0.9,0.34,0.9);b.translate(0,-0.5+0.17,0);return b;})();  // 火塘：0.34矮台——顶石圈炭火+侧面火苗探出
 const doorGeo=(()=>{const b=new THREE.BoxGeometry(0.94,1.98,0.14);b.translate(0,-0.5+0.99,0);return b;})();   // v62门：两格高（门洞两格是人的尺寸，一格是狗洞——同志定的）
 const gateGeo=(()=>{const b=new THREE.BoxGeometry(1.0,3.98,0.2);b.translate(0,-0.5+1.99,0);return b;})();     // v63宅门：四格高石门楼（TA定的：大门三格四格，弄到四格；v62实底：geo写了没接链，39走了doorGeo所以和门一样高）
-const dgateGeo=(()=>{   // v63对开大门：两扇八字微开+顶横楣——四格高
-  const l=new THREE.BoxGeometry(0.46,3.98,0.12);l.rotateY(0.24);l.translate(-0.235,-0.5+1.99,0);
-  const r=new THREE.BoxGeometry(0.46,3.98,0.12);r.rotateY(-0.24);r.translate(0.235,-0.5+1.99,0);
-  const top=new THREE.BoxGeometry(0.96,0.14,0.16);top.translate(0,-0.5+3.9,0);
-  return [l,r,top].reduce((a,b)=>mergeGeo(a,b));
+const dgateGeo=(()=>{   // v64对开大门：3格宽×4格高（现实双开1.5-1.8m÷0.9m/格——TA定的三格），单类型跨格geo，主格在左端
+  const L=new THREE.BoxGeometry(1.42,3.98,0.14);L.translate(0.21,-0.5+1.99,0);
+  const M=new THREE.BoxGeometry(1.42,3.98,0.14);M.translate(1.65,-0.5+1.99,0);
+  const top=new THREE.BoxGeometry(3.0,0.18,0.2);top.translate(1.5,-0.5+3.9,0);
+  return [L,M,top].reduce((a,b)=>mergeGeo(a,b));
 })();
-/* v63 开态geo：门板转90°贴侧——点门开关（状态存diffs值100+类型，全端同步） */
+/* v63/v64 开态geo：门板转90°贴侧——点门开关（状态存diffs值100+类型，全端同步）；v64对开=两扇各向外开 */
 const OPEN_GEO={};
 OPEN_GEO[37]=(()=>{const b=new THREE.BoxGeometry(0.14,1.98,0.94);b.translate(0.40,-0.5+0.99,0);return b;})();
+OPEN_GEO[40]=(()=>{   // v64开态：两扇各向外转90°贴门框外侧——「向两边开」
+  const L=new THREE.BoxGeometry(0.14,3.98,1.42);L.translate(0.21,-0.5+1.99,-0.71);
+  const M=new THREE.BoxGeometry(0.14,3.98,1.42);M.translate(1.65,-0.5+1.99,-0.71);
+  const top=new THREE.BoxGeometry(3.0,0.18,0.2);top.translate(1.5,-0.5+3.9,0);
+  return [L,M,top].reduce((a,b)=>mergeGeo(a,b));
+})();
 OPEN_GEO[39]=(()=>{const b=new THREE.BoxGeometry(0.2,3.98,1.0);b.translate(0.40,-0.5+1.99,0);return b;})();
 OPEN_GEO[40]=(()=>{   // 对开开态：两扇并排贴+x侧+楣原位
   const l=new THREE.BoxGeometry(0.12,3.98,0.46);l.translate(0.40,-0.5+1.99,-0.24);
@@ -1776,9 +1827,11 @@ const plaqueGeo=new THREE.BoxGeometry(1.0,0.42,0.1);   // v50.1匾：满格横�
 const fenceGeo=(()=>{const post=new THREE.BoxGeometry(0.14,1,0.14);post.translate(0,0.01,0);return post;})();   // v42：独杆（MC式），底面抬0.01防z-fighting；横杆是独立实例，按邻居自动生成
 const railGeo=new THREE.BoxGeometry(1.06,0.09,0.05);   // 横杆：两格间距1.0+两端各搭0.03进柱子
 const pathGeo=new THREE.BoxGeometry(1,0.09,1);pathGeo.translate(0,-0.5+0.045,0);
-const tableGeo=(()=>{const top=new THREE.BoxGeometry(1.0,0.09,1.0);top.translate(0,0.28,0);   // v41：满格——相邻桌拼大桌无缝
-  const leg=new THREE.BoxGeometry(0.16,0.87,0.16);leg.translate(0,-0.065,0);   // v42：腿落地（0.87高，-0.5~0.37）——原来悬空0.13桌子飘着
-  return mergeGeo(top,leg);})();
+const tableGeo=(()=>{   // v64桌：高0.72格（0.65m桌面——现实0.75m）
+  const top=new THREE.BoxGeometry(1.0,0.09,1.0);top.translate(0,0.31,0);
+  const mkLeg=(dx,dz)=>{const l=new THREE.BoxGeometry(0.12,0.68,0.12);l.translate(dx,0.34,dz);return l;};
+  return [top,mkLeg(-0.4,-0.4),mkLeg(0.4,-0.4),mkLeg(-0.4,0.4),mkLeg(0.4,0.4)].reduce((a,b)=>mergeGeo(a,b));
+})();
 const lanternGeo=(()=>{const body=new THREE.BoxGeometry(0.34,0.56,0.34);body.translate(0,0.02,0);
   const pole=new THREE.BoxGeometry(0.08,0.42,0.08);pole.translate(0,-0.27,0);   // v42：杆收进格内（-0.48~-0.06），原-0.71戳穿地底
   return mergeGeo(body,pole);})();
@@ -2080,17 +2133,52 @@ function raycast(maxDist=5.2){
 }
 
 /* ================= 交互：挖 / 放 ================= */
-let curType=1;
+let curType=1,lastMaterial=1;   // v64：lastMaterial=填充工具用的材质（最后选中的非工具方块）
+/* v64 UI：拇指热键栏+分类抽屉——TA批评界面太乱，按手游规范重做 */
+const HOT_DEFAULT=[1,2,3,10,11,9,22,37,41];
 const hot=document.getElementById('hot');
-for(const t in TYPES){
-  if(TYPES[t].hidden)continue;   // v63：开态门不进物品栏
-  const s=document.createElement('div');s.className='slot'+(+t===1?' on':'');
-  s.style.background='#'+(TYPES[t].c||0x9a8f7a).toString(16).padStart(6,'0');
-  if(TYPES[t].water)s.innerHTML='<span>水</span>';
-  else s.innerHTML='<span>'+TYPES[t].n+'</span>';
-  s.onclick=()=>{curType=+t;if(curType!==36)spClear();[...hot.children].forEach(c=>c.classList.remove('on'));s.classList.add('on');};
-  hot.appendChild(s);
+const catPanel=document.getElementById('catPanel');
+const catGrid=document.getElementById('catGrid');
+const CATS=[['地形',[1,2,3,4,8,17]],['建材',[10,11,7,9,12,13,19,20]],['家具',[18,21,23,24,26,31,32,33,34,35,37,39,40]],['装饰',[14,15,16,22,25,27,28,5,6,29]],['工具',[36,41]]];
+function slotEl(t){
+  const e=document.createElement('div');e.className='slot';e.dataset.t=t;
+  e.style.background='#'+(TYPES[t].c||0x9a8f7a).toString(16).padStart(6,'0');
+  e.innerHTML='<span>'+TYPES[t].n+'</span>';
+  e.onclick=(ev)=>{ev.stopPropagation();pickType(+t);};
+  return e;
 }
+function pickType(t){
+  curType=t;if(!TYPES[t].tool)lastMaterial=t;
+  if(curType!==36&&curType!==41)spClear();
+  [...hot.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
+  [...catGrid.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
+  if(TYPES[t].tool)toast(TYPES[t].n+'：'+(t===36?'点「挖」圈地':t===41?'点「搭」圈地':'点「搭」放楼梯')+(t===42?'——升5格到二楼':'——两点定范围'));
+  catPanel.style.display='none';
+}
+let curCat=0;
+function renderCat(){
+  const tabs=document.getElementById('catTabs');tabs.innerHTML='';
+  CATS.forEach((c,i)=>{
+    const tb=document.createElement('div');tb.className='tab'+(i===curCat?' on':'');tb.textContent=c[0];
+    tb.onclick=()=>{curCat=i;renderCat();};tabs.appendChild(tb);
+  });
+  catGrid.innerHTML='';
+  CATS[curCat][1].forEach(t=>{
+    if(!TYPES[t]||TYPES[t].hidden)return;
+    catGrid.appendChild(slotEl(t));
+  });
+}
+function renderHot(){
+  hot.innerHTML='';
+  HOT_DEFAULT.forEach(t=>{if(TYPES[t])hot.appendChild(slotEl(t));});
+  const more=document.createElement('div');more.className='slot';more.dataset.t=-1;
+  more.style.background='rgba(200,180,120,.3)';more.innerHTML='<span>全</span>';
+  more.onclick=(ev)=>{ev.stopPropagation();catPanel.style.display=catPanel.style.display==='block'?'none':'block';};
+  hot.appendChild(more);
+}
+renderHot();renderCat();
+(()=>{const el=[...hot.children].find(c=>+c.dataset.t===1);if(el)el.classList.add('on');})();
+document.addEventListener('click',(e)=>{if(!catPanel.contains(e.target)&&![...hot.children].some(c=>c.contains(e.target)))catPanel.style.display='none';});
 /* v51 潜行：按钮锁定(toggle)+Shift按住——潜行时贴边不掉、点床/牌/匾直接拆 */
 let sneakLock=false,shiftHeld=false;
 const isSneak=()=>sneakLock||shiftHeld;
@@ -2142,9 +2230,51 @@ function spadeExec(){
   worldDirty=true;rebuild();
   showStele('挖掉'+n+'格。'+(skip?('留了'+skip+'格搭的。'):''));
 }
+function openFill(x0,y0,z0,x1,y1,z1,cnt){
+  spBox=[x0,y0,z0,x1,y1,z1];
+  const mn=TYPES[lastMaterial]?TYPES[lastMaterial].n:'?';
+  document.getElementById('fillInfo').textContent=x1-x0+1+'×'+(y1-y0+1)+'×'+(z1-z0+1)+' ＝ '+cnt+'格\n填入材质：'+mn+'（最后选中的方块）';
+  document.getElementById('fillModal').style.display='flex';
+}
+function fillExec(){
+  const[x0,y0,z0,x1,y1,z1]=spBox;spBox=null;
+  document.getElementById('fillModal').style.display='none';spClear();
+  const mat=lastMaterial;let n=0,skip=0;
+  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){
+    if(x===STX&&z===STZ&&y>=8){skip++;continue;}
+    if(Math.abs(x-BOARD_POS[0]-0.5)<2&&Math.abs(z-BOARD_POS[2])<2){skip++;continue;}
+    const key=x+','+y+','+z;
+    if(world[idx(x,y,z)]===mat){continue;}
+    world[idx(x,y,z)]=mat;
+    if(mat===AIR){if(!diffs.r.some(p=>p[0]===x&&p[1]===y&&p[2]===z))diffs.r.push([x,y,z]);delete diffs.a[key];}
+    else{diffs.a[key]=mat;diffs.r=diffs.r.filter(p=>!(p[0]===x&&p[1]===y&&p[2]===z));}
+    refreshSign(x,y,z);n++;
+  }
+  try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
+  worldDirty=true;rebuild();
+  showStele('填了'+n+'格。'+(skip?('碑区留了'+skip+'格。'):''));
+}
+/* v64折返楼梯模板（现实折返梯：两段+休息平台；人物2格高、层高5格）——占地4宽×5长，升5格 */
+function genStair(x,y,z){
+  const out=[];
+  const STEP=13, PLAT=10;   // 阶块+木板
+  /* 第一段：沿+z升3阶（x排） */
+  for(let i=0;i<3;i++){out.push([x,y+i,z+i,STEP]);out.push([x+1,y+i,z+i,STEP]);}
+  /* 休息平台：z+3，两格宽 */
+  out.push([x,y+3,z+3,PLAT]);out.push([x+1,y+3,z+3,PLAT]);
+  /* 第二段：折返沿-z升2阶（x+2排，与第一段并排——转180°） */
+  for(let i=0;i<2;i++){out.push([x+2,y+4-i+2-2,z+2-i,0]);}
+  out.length-=2;
+  for(let i=0;i<2;i++){out.push([x+2,y+3+i+1,z+2-i,STEP]);out.push([x+3,y+3+i+1,z+2-i,STEP]);}
+  /* 到达口平台 */
+  out.push([x+2,y+6,z,PLAT]);out.push([x+3,y+6,z,PLAT]);
+  return out;
+}
 function dig(){
   const h=raycast();if(!h)return;
   if(curType===36){spadeTap(h);return;}   // v61：锹选中——点挖=圈地
+  if(curType===42){toast('梯——点「搭」生成');return;}
+  if(curType===41){if(spA||spMarks.length){spClear();toast('圈地清了');}return;}   // v64：填——点挖=取消圈地
   const tt=world[idx(h.x,h.y,h.z)];
   const hk=h.x+','+h.y+','+h.z;
   /* v51：床/牌/匾=交互方块——普通点=功能，潜行点=直接拆（MC语义）。
@@ -2184,6 +2314,36 @@ function dig(){
 }
 function put(){
   if(curType===36){if(spA||spMarks.length){spClear();toast('圈地清了');}return;}   // v61：锹——点搭=取消圈地
+  if(curType===42){   // v64：折返楼梯生成器——点搭=生成，点挖=取消
+    const h=raycast();if(!h)return;
+    const cells=genStair(h.x,h.y+1,h.z);   // 从命中格的上一格起步（站在地面放）
+    let n=0;
+    for(const[cx,cy,cz,ct] of cells){
+      if(!inW(cx,cy,cz))continue;
+      if(cx===STX&&cz===STZ&&cy>=8)continue;
+      world[idx(cx,cy,cz)]=ct;
+      diffs.a[cx+','+cy+','+cz]=ct;
+      diffs.r=diffs.r.filter(p=>!(p[0]===cx&&p[1]===cy&&p[2]===cz));
+      refreshSign(cx,cy,cz);n++;
+    }
+    try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
+    worldDirty=true;rebuild();AU.put();
+    toast('折返楼梯搭好了——'+n+'格，从这头上到二楼');return;
+  }
+  if(curType===41){   // v64：填充工具——点搭=圈地，点挖=取消
+    const h=raycast();if(!h)return;
+    if(!spA){
+      spA={x:h.x,y:h.y,z:h.z};spMark(0xffd24a,h);
+      toast('填充起点('+h.x+','+h.y+','+h.z+')——再点对角');return;
+    }
+    const A=spA;spA=null;spMark(0xffa040,h);
+    const x0=Math.min(A.x,h.x),x1=Math.max(A.x,h.x);
+    const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
+    const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
+    const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
+    if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次填');return;}
+    openFill(x0,y0,z0,x1,y1,z1,cnt);return;
+  }
   const h=raycast();if(!h)return;
   const x=h.x+h.nx,y=h.y+h.ny,z=h.z+h.nz;
   if(!inW(x,y,z))return;
@@ -2602,6 +2762,8 @@ function tend(e){
 canvas.addEventListener('touchend',tend);canvas.addEventListener('touchcancel',tend);
 if(isTouch){['btnDig','btnPut','btnJmp'].forEach(id=>document.getElementById(id).style.display='flex');document.getElementById('btnMap').style.display='block';document.getElementById('btnPortal').style.display='block';}
 document.getElementById('spadeOk').addEventListener('click',spadeExec);
+document.getElementById('fillOk').addEventListener('click',fillExec);
+document.getElementById('fillNo').addEventListener('click',()=>{document.getElementById('fillModal').style.display='none';spClear();});
 document.getElementById('spadeNo').addEventListener('click',()=>{document.getElementById('spadeModal').style.display='none';spClear();});
 document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();AU.click();dig();},{passive:false});
 document.getElementById('btnPut').addEventListener('touchstart',e=>{e.preventDefault();AU.click();put();},{passive:false});
