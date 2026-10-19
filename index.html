@@ -105,8 +105,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div id="portalList">
  <div style="background:#efe8f8;border:1px solid #b9a8e8;border-radius:10px;padding:16px 18px;width:min(340px,88vw);box-shadow:0 10px 40px rgba(30,20,60,.45)">
   <div style="font-weight:bold;color:#3a2a5a;letter-spacing:3px;margin-bottom:10px;font-size:14px">去哪儿</div>
-  <div id="portalItems" style="max-height:46vh;overflow:auto"></div>
-  <button id="portalListClose" style="width:100%;margin-top:12px;padding:9px 0;font-family:inherit;font-size:13px;letter-spacing:3px;border:1px solid #b0a0d0;border-radius:6px;background:#e4dcf2;color:#5a4a7a;cursor:pointer">不去了</button>
+  <div id="portalItems" style="max-height:56vh;overflow:auto"></div>
+  <div style="display:flex;gap:8px;margin-top:12px">
+   <button id="portalListClose" style="flex:1;padding:9px 0;font-family:inherit;font-size:13px;letter-spacing:3px;border:1px solid #b0a0d0;border-radius:6px;background:#e4dcf2;color:#5a4a7a;cursor:pointer">不去了</button>
+   <button id="portalSweep" style="flex:1;padding:9px 0;font-family:inherit;font-size:13px;letter-spacing:3px;border:1px solid #c9a0a0;border-radius:6px;background:#f2e0e0;color:#7a3a3a;cursor:pointer">清失效门</button>
+  </div>
  </div>
 </div>
 <div id="portalModal" style="display:none;position:fixed;inset:0;background:rgba(10,14,18,.55);z-index:30;align-items:center;justify-content:center">
@@ -524,7 +527,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v73';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v74';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2435,18 +2438,20 @@ function portalDist(){   /* 最近的传送门距离 */
 function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
   return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
 }
-function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+function sweepDeadPortals(destructive){   /* v74：默认只滤列表不删数据（pull时序没对齐会误杀）；「清失效门」按钮才真删 */
   const dead=[];
   for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
   if(!dead.length)return;
+  if(!destructive)return;
+  if(!worldPulled){toast('世界还没同步完——稍后再清');return;}
   for(const k of dead)delete PORTALS.portals[k];
   pushPortals('河滩：失效传送门清走——'+dead.join('、'));
   toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
-  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
-  const keys=Object.keys(PORTALS.portals);
+  sweepDeadPortals();   /* v74：失效门滤出列表（数据保留，手动清） */
+  const keys=Object.keys(PORTALS.portals).filter(k=>portalAlive(PORTALS.portals[k]));
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
     const qa=PORTALS.portals[a],qb=PORTALS.portals[b];
@@ -2494,6 +2499,7 @@ document.getElementById('portalOk').onclick=portalCommit;
 document.getElementById('portalInput').addEventListener('keydown',e=>{if(e.key==='Enter')portalCommit();});
 document.getElementById('portalNo').onclick=()=>{document.getElementById('portalModal').style.display='none';portalEditPos=null;};
 document.getElementById('portalListClose').onclick=()=>document.getElementById('portalList').classList.remove('on');
+document.getElementById('portalSweep').onclick=()=>{sweepDeadPortals(true);renderPortalList();};   /* v74：手动清失效门（真删） */
 document.getElementById('portalList').addEventListener('click',e=>{if(e.target.id==='portalList')document.getElementById('portalList').classList.remove('on');});
 document.getElementById('btnPortal').onclick=()=>{document.getElementById('portalList').classList.add('on');renderPortalList();};
 /* v54 地图：全境俯视——地形色块+门+碑+板+玩家实时位置。512²列色缓存一次，标记层每帧轻画 */
@@ -2582,9 +2588,13 @@ function pullPortals(){
   }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();portalPulled=false;});   /* 网络失败=没确认 */
 }
 function pushPortals(msg){
+  const localSnap=JSON.parse(JSON.stringify(PORTALS.portals));   /* v74：重试前留本地底——pull回来把没传上去的门补回，不销毁 */
   return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{
-    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{});
-  });   /* 同signs：422拉最新重推一次 */
+    return pullPortals().then(()=>{
+      for(const k in localSnap){if(!PORTALS.portals[k])PORTALS.portals[k]=localSnap[k];}   /* v74：本地新立的门pull后还在 */
+      return ghPut('portals.json',PORTALS,portalSha,msg);
+    }).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{try{toast('门没传上云——网络回来点一下列表会重试');}catch(e){}});
+  });   /* 同signs：422拉最新重推一次；v74重试改合并不销毁——pull把刚立没传上的门抹掉再推空态=「门走两步就不见了」实底 */
 }
 pullPortals();
 function editSign(x,y,z){
@@ -3041,18 +3051,20 @@ function portalDist(){   /* 最近的传送门距离 */
 function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
   return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
 }
-function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+function sweepDeadPortals(destructive){   /* v74：默认只滤列表不删数据（pull时序没对齐会误杀）；「清失效门」按钮才真删 */
   const dead=[];
   for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
   if(!dead.length)return;
+  if(!destructive)return;
+  if(!worldPulled){toast('世界还没同步完——稍后再清');return;}
   for(const k of dead)delete PORTALS.portals[k];
   pushPortals('河滩：失效传送门清走——'+dead.join('、'));
   toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
-  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
-  const keys=Object.keys(PORTALS.portals);
+  sweepDeadPortals();   /* v74：失效门滤出列表（数据保留，手动清） */
+  const keys=Object.keys(PORTALS.portals).filter(k=>portalAlive(PORTALS.portals[k]));
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
     const qa=PORTALS.portals[a],qb=PORTALS.portals[b];
@@ -3100,6 +3112,7 @@ document.getElementById('portalOk').onclick=portalCommit;
 document.getElementById('portalInput').addEventListener('keydown',e=>{if(e.key==='Enter')portalCommit();});
 document.getElementById('portalNo').onclick=()=>{document.getElementById('portalModal').style.display='none';portalEditPos=null;};
 document.getElementById('portalListClose').onclick=()=>document.getElementById('portalList').classList.remove('on');
+document.getElementById('portalSweep').onclick=()=>{sweepDeadPortals(true);renderPortalList();};   /* v74：手动清失效门（真删） */
 document.getElementById('portalList').addEventListener('click',e=>{if(e.target.id==='portalList')document.getElementById('portalList').classList.remove('on');});
 document.getElementById('btnPortal').onclick=()=>{document.getElementById('portalList').classList.add('on');renderPortalList();};
 /* v54 地图：全境俯视——地形色块+门+碑+板+玩家实时位置。512²列色缓存一次，标记层每帧轻画 */
@@ -3188,9 +3201,13 @@ function pullPortals(){
   }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();portalPulled=false;});   /* 网络失败=没确认 */
 }
 function pushPortals(msg){
+  const localSnap=JSON.parse(JSON.stringify(PORTALS.portals));   /* v74：重试前留本地底——pull回来把没传上去的门补回，不销毁 */
   return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{
-    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{});
-  });   /* 同signs：422拉最新重推一次 */
+    return pullPortals().then(()=>{
+      for(const k in localSnap){if(!PORTALS.portals[k])PORTALS.portals[k]=localSnap[k];}   /* v74：本地新立的门pull后还在 */
+      return ghPut('portals.json',PORTALS,portalSha,msg);
+    }).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{try{toast('门没传上云——网络回来点一下列表会重试');}catch(e){}});
+  });   /* 同signs：422拉最新重推一次；v74重试改合并不销毁——pull把刚立没传上的门抹掉再推空态=「门走两步就不见了」实底 */
 }
 pullPortals();
 function editSign(x,y,z){
@@ -3657,18 +3674,20 @@ function portalDist(){   /* 最近的传送门距离 */
 function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
   return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
 }
-function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+function sweepDeadPortals(destructive){   /* v74：默认只滤列表不删数据（pull时序没对齐会误杀）；「清失效门」按钮才真删 */
   const dead=[];
   for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
   if(!dead.length)return;
+  if(!destructive)return;
+  if(!worldPulled){toast('世界还没同步完——稍后再清');return;}
   for(const k of dead)delete PORTALS.portals[k];
   pushPortals('河滩：失效传送门清走——'+dead.join('、'));
   toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
-  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
-  const keys=Object.keys(PORTALS.portals);
+  sweepDeadPortals();   /* v74：失效门滤出列表（数据保留，手动清） */
+  const keys=Object.keys(PORTALS.portals).filter(k=>portalAlive(PORTALS.portals[k]));
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
     const qa=PORTALS.portals[a],qb=PORTALS.portals[b];
@@ -3716,6 +3735,7 @@ document.getElementById('portalOk').onclick=portalCommit;
 document.getElementById('portalInput').addEventListener('keydown',e=>{if(e.key==='Enter')portalCommit();});
 document.getElementById('portalNo').onclick=()=>{document.getElementById('portalModal').style.display='none';portalEditPos=null;};
 document.getElementById('portalListClose').onclick=()=>document.getElementById('portalList').classList.remove('on');
+document.getElementById('portalSweep').onclick=()=>{sweepDeadPortals(true);renderPortalList();};   /* v74：手动清失效门（真删） */
 document.getElementById('portalList').addEventListener('click',e=>{if(e.target.id==='portalList')document.getElementById('portalList').classList.remove('on');});
 document.getElementById('btnPortal').onclick=()=>{document.getElementById('portalList').classList.add('on');renderPortalList();};
 /* v54 地图：全境俯视——地形色块+门+碑+板+玩家实时位置。512²列色缓存一次，标记层每帧轻画 */
@@ -3804,9 +3824,13 @@ function pullPortals(){
   }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();portalPulled=false;});   /* 网络失败=没确认 */
 }
 function pushPortals(msg){
+  const localSnap=JSON.parse(JSON.stringify(PORTALS.portals));   /* v74：重试前留本地底——pull回来把没传上去的门补回，不销毁 */
   return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{
-    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{});
-  });   /* 同signs：422拉最新重推一次 */
+    return pullPortals().then(()=>{
+      for(const k in localSnap){if(!PORTALS.portals[k])PORTALS.portals[k]=localSnap[k];}   /* v74：本地新立的门pull后还在 */
+      return ghPut('portals.json',PORTALS,portalSha,msg);
+    }).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{try{toast('门没传上云——网络回来点一下列表会重试');}catch(e){}});
+  });   /* 同signs：422拉最新重推一次；v74重试改合并不销毁——pull把刚立没传上的门抹掉再推空态=「门走两步就不见了」实底 */
 }
 pullPortals();
 function editSign(x,y,z){
@@ -4263,18 +4287,20 @@ function portalDist(){   /* 最近的传送门距离 */
 function portalAlive(q){   /* v73：门绑定方块存在性（TA定的）——门格没有29号方块=失效门 */
   return inW(q.x,q.y,q.z)&&get(q.x,q.y,q.z)===29;
 }
-function sweepDeadPortals(){   /* v73：失效门清出portals.json并上云——锹挖/填埋拆了门块，列表不留幽灵 */
+function sweepDeadPortals(destructive){   /* v74：默认只滤列表不删数据（pull时序没对齐会误杀）；「清失效门」按钮才真删 */
   const dead=[];
   for(const k in PORTALS.portals){if(!portalAlive(PORTALS.portals[k]))dead.push(k);}
   if(!dead.length)return;
+  if(!destructive)return;
+  if(!worldPulled){toast('世界还没同步完——稍后再清');return;}
   for(const k of dead)delete PORTALS.portals[k];
   pushPortals('河滩：失效传送门清走——'+dead.join('、'));
   toast('清走了失效的门：'+dead.join('、'));
 }
 function renderPortalList(){
   const box=document.getElementById('portalItems');box.innerHTML='';
-  sweepDeadPortals();   /* v73：先清幽灵再画列表 */
-  const keys=Object.keys(PORTALS.portals);
+  sweepDeadPortals();   /* v74：失效门滤出列表（数据保留，手动清） */
+  const keys=Object.keys(PORTALS.portals).filter(k=>portalAlive(PORTALS.portals[k]));
   if(!keys.length){box.innerHTML='<div style="color:#7a6a9a;font-size:13px;letter-spacing:1px;padding:12px 0;text-align:center">还没有立起来的门——放一块「门」，起个名，它就一直在那儿</div>';return;}
   keys.sort((a,b)=>{
     const qa=PORTALS.portals[a],qb=PORTALS.portals[b];
@@ -4322,6 +4348,7 @@ document.getElementById('portalOk').onclick=portalCommit;
 document.getElementById('portalInput').addEventListener('keydown',e=>{if(e.key==='Enter')portalCommit();});
 document.getElementById('portalNo').onclick=()=>{document.getElementById('portalModal').style.display='none';portalEditPos=null;};
 document.getElementById('portalListClose').onclick=()=>document.getElementById('portalList').classList.remove('on');
+document.getElementById('portalSweep').onclick=()=>{sweepDeadPortals(true);renderPortalList();};   /* v74：手动清失效门（真删） */
 document.getElementById('portalList').addEventListener('click',e=>{if(e.target.id==='portalList')document.getElementById('portalList').classList.remove('on');});
 document.getElementById('btnPortal').onclick=()=>{document.getElementById('portalList').classList.add('on');renderPortalList();};
 /* v54 地图：全境俯视——地形色块+门+碑+板+玩家实时位置。512²列色缓存一次，标记层每帧轻画 */
@@ -4410,9 +4437,13 @@ function pullPortals(){
   }).catch(()=>{PORTALS=(function(){try{return JSON.parse(localStorage.getItem('hetan_portals_cache'))||{portals:{}};}catch(e){return {portals:{}};}})();portalPulled=false;});   /* 网络失败=没确认 */
 }
 function pushPortals(msg){
+  const localSnap=JSON.parse(JSON.stringify(PORTALS.portals));   /* v74：重试前留本地底——pull回来把没传上去的门补回，不销毁 */
   return ghPut('portals.json',PORTALS,portalSha,msg).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{
-    return pullPortals().then(()=>ghPut('portals.json',PORTALS,portalSha,msg)).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{});
-  });   /* 同signs：422拉最新重推一次 */
+    return pullPortals().then(()=>{
+      for(const k in localSnap){if(!PORTALS.portals[k])PORTALS.portals[k]=localSnap[k];}   /* v74：本地新立的门pull后还在 */
+      return ghPut('portals.json',PORTALS,portalSha,msg);
+    }).then(({sha})=>{portalSha=sha;portalPulled=true;}).catch(()=>{try{toast('门没传上云——网络回来点一下列表会重试');}catch(e){}});
+  });   /* 同signs：422拉最新重推一次；v74重试改合并不销毁——pull把刚立没传上的门抹掉再推空态=「门走两步就不见了」实底 */
 }
 pullPortals();
 function editSign(x,y,z){
