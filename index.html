@@ -524,7 +524,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v70';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v71';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2333,7 +2333,7 @@ function put(){
     }
     const A=spA;spA=null;spClear();
     const cells=genStair2(A,{x:h.x,y:h.y,z:h.z});
-    if(!cells){toast('二楼要比一楼高——换个落点');return;}
+    if(!cells){toast('落点要比基点高至少一格——还没盖二楼的话，对着将来二楼的位置点墙也行');return;}
     let n=0;
     for(const[cx,cy,cz,ct] of cells){
       if(!inW(cx,cy,cz))continue;
@@ -3463,8 +3463,7 @@ bt.style.opacity=0;setTimeout(()=>bt.style.display='none',700);
 </html>/* v70两点式折返楼梯：阶13踏步可走+篱19两侧栏杆+板10平台——体素可走可拆 */
 function genStair2(A,B){
   const dy=B.y-A.y;
-  if(dy<2)return null;
-  const dx=B.x-A.x, dz=B.z-A.z;
+  if(dy<1)return null;   // v71：只拦同层（dy=0）——升1格也能生成矮梯
   const alongX=Math.abs(dx)>=Math.abs(dz);
   const dir=alongX?(dx>0?1:-1):(dz>0?1:-1);
   const L1=Math.ceil(dy/2), L2=dy-L1;
@@ -3531,7 +3530,7 @@ function put(){
     }
     const A=spA;spA=null;spClear();
     const cells=genStair2(A,{x:h.x,y:h.y,z:h.z});
-    if(!cells){toast('二楼要比一楼高——换个落点');return;}
+    if(!cells){toast('落点要比基点高至少一格——还没盖二楼的话，对着将来二楼的位置点墙也行');return;}
     let n=0;
     for(const[cx,cy,cz,ct] of cells){
       if(!inW(cx,cy,cz))continue;
