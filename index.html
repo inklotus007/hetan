@@ -2254,26 +2254,34 @@ function fillExec(){
   worldDirty=true;rebuild();
   showStele('填了'+n+'格。'+(skip?('碑区留了'+skip+'格。'):''));
 }
-/* v64折返楼梯模板（现实折返梯：两段+休息平台；人物2格高、层高5格）——占地4宽×5长，升5格 */
-function genStair(x,y,z){
-  const out=[];
-  const STEP=13, PLAT=10;   // 阶块+木板
-  /* 第一段：沿+z升3阶（x排） */
-  for(let i=0;i<3;i++){out.push([x,y+i,z+i,STEP]);out.push([x+1,y+i,z+i,STEP]);}
-  /* 休息平台：z+3，两格宽 */
-  out.push([x,y+3,z+3,PLAT]);out.push([x+1,y+3,z+3,PLAT]);
-  /* 第二段：折返沿-z升2阶（x+2排，与第一段并排——转180°） */
-  for(let i=0;i<2;i++){out.push([x+2,y+4-i+2-2,z+2-i,0]);}
-  out.length-=2;
-  for(let i=0;i<2;i++){out.push([x+2,y+3+i+1,z+2-i,STEP]);out.push([x+3,y+3+i+1,z+2-i,STEP]);}
-  /* 到达口平台 */
-  out.push([x+2,y+6,z,PLAT]);out.push([x+3,y+6,z,PLAT]);
-  return out;
+/* v65折返楼梯两点式（TA设计：地面选基点、二楼选落点自动生成）——A=一楼脚下，B=二楼落点格 */
+function genStair2(A,B){
+  const dy=B.y-A.y;
+  if(dy<2)return null;
+  const dx=B.x-A.x, dz=B.z-A.z;
+  const alongX=Math.abs(dx)>=Math.abs(dz);
+  const dir=alongX?(dx>0?1:-1):(dz>0?1:-1);
+  const L1=Math.ceil(dy/2), L2=dy-L1;
+  const out=[];const STEP=13, PLAT=10;
+  const P=(u,v,y,t)=>{   /* u=主轴格距 v=垂直轴格距（负向） */
+    if(alongX)out.push([A.x+u,A.y+y,A.z+v,t]);
+    else out.push([A.x+v,A.y+y,A.z+u,t]);
+  };
+  for(let i=0;i<L1;i++){P(dir*i,0,i,STEP);P(dir*i,-1,i,STEP);}          /* 段1两格宽 */
+  for(let j=0;j<2;j++){P(dir*(L1+j),0,L1,PLAT);P(dir*(L1+j),-1,L1,PLAT);}   /* 休息平台2×2 */
+  for(let i=0;i<L2;i++){P(dir*(L1+1-i),-2,L1+1+i,STEP);P(dir*(L1+1-i),-3,L1+1+i,STEP);}   /* 段2折返沿-u */
+  for(let j=0;j<2;j++){P(dir*(L1-L2+1),-2,dy,PLAT);P(dir*(L1-L2+1),-3,dy,PLAT);}   /* 到达平台=二楼落点 */
+  return dedupe(out);
+}
+function dedupe(out){
+  const seen=new Set(),r=[];
+  for(const c of out){const k=c[0]+','+c[1]+','+c[2];if(!seen.has(k)){seen.add(k);r.push(c);}}
+  return r;
 }
 function dig(){
   const h=raycast();if(!h)return;
   if(curType===36){spadeTap(h);return;}   // v61：锹选中——点挖=圈地
-  if(curType===42){toast('梯——点「搭」生成');return;}
+  if(curType===42){if(spA){spA=null;spClear();toast('基点清了');}return;}
   if(curType===41){if(spA||spMarks.length){spClear();toast('圈地清了');}return;}   // v64：填——点挖=取消圈地
   const tt=world[idx(h.x,h.y,h.z)];
   const hk=h.x+','+h.y+','+h.z;
@@ -2314,9 +2322,15 @@ function dig(){
 }
 function put(){
   if(curType===36){if(spA||spMarks.length){spClear();toast('圈地清了');}return;}   // v61：锹——点搭=取消圈地
-  if(curType===42){   // v64：折返楼梯生成器——点搭=生成，点挖=取消
+  if(curType===42){   // v65：楼梯两点式——点搭第一下=一楼基点，第二下=二楼落点，自动生成
     const h=raycast();if(!h)return;
-    const cells=genStair(h.x,h.y+1,h.z);   // 从命中格的上一格起步（站在地面放）
+    if(!spA){
+      spA={x:h.x,y:h.y,z:h.z};spMark(0x00ffcc,h);
+      toast('一楼基点——走上去点二楼落点');return;
+    }
+    const A=spA;spA=null;spClear();
+    const cells=genStair2(A,{x:h.x,y:h.y,z:h.z});
+    if(!cells){toast('二楼要比一楼高才好上——换个落点');return;}
     let n=0;
     for(const[cx,cy,cz,ct] of cells){
       if(!inW(cx,cy,cz))continue;
@@ -2328,7 +2342,7 @@ function put(){
     }
     try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
     worldDirty=true;rebuild();AU.put();
-    toast('折返楼梯搭好了——'+n+'格，从这头上到二楼');return;
+    toast('折返楼梯生成——'+n+'格');return;
   }
   if(curType===41){   // v64：填充工具——点搭=圈地，点挖=取消
     const h=raycast();if(!h)return;
