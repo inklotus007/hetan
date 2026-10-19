@@ -523,7 +523,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v66';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v67';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1825,9 +1825,9 @@ const plaqueGeo=new THREE.BoxGeometry(1.0,0.42,0.1);   // v50.1匾：满格横�
 const fenceGeo=(()=>{const post=new THREE.BoxGeometry(0.14,1,0.14);post.translate(0,0.01,0);return post;})();   // v42：独杆（MC式），底面抬0.01防z-fighting；横杆是独立实例，按邻居自动生成
 const railGeo=new THREE.BoxGeometry(1.06,0.09,0.05);   // 横杆：两格间距1.0+两端各搭0.03进柱子
 const pathGeo=new THREE.BoxGeometry(1,0.09,1);pathGeo.translate(0,-0.5+0.045,0);
-const tableGeo=(()=>{   // v64桌：高0.72格（0.65m桌面——现实0.75m）
-  const top=new THREE.BoxGeometry(1.0,0.09,1.0);top.translate(0,0.31,0);
-  const mkLeg=(dx,dz)=>{const l=new THREE.BoxGeometry(0.12,0.68,0.12);l.translate(dx,0.34,dz);return l;};
+const tableGeo=(()=>{   // v67桌修：v64腿悬空半格（坐标系错）——格底基准重写，桌面0.72格=0.65m
+  const top=new THREE.BoxGeometry(1.0,0.09,1.0);top.translate(0,-0.5+0.72,0);
+  const mkLeg=(dx,dz)=>{const l=new THREE.BoxGeometry(0.12,0.68,0.12);l.translate(dx,-0.5+0.34,dz);return l;};
   return [top,mkLeg(-0.4,-0.4),mkLeg(0.4,-0.4),mkLeg(-0.4,0.4),mkLeg(0.4,0.4)].reduce((a,b)=>mergeGeo(a,b));
 })();
 const lanternGeo=(()=>{const body=new THREE.BoxGeometry(0.34,0.56,0.34);body.translate(0,0.02,0);
@@ -1898,7 +1898,8 @@ function tickTorch(now){
     }else L.intensity=0;
   }
 }
-const solid=(x,y,z)=>{const b=get(x,y,z);if(b>=137&&b<=140)return false;return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28&&b!==31&&b!==32&&b!==33&&b!==34&&b!==35&&b!==36;};   // v63：开着的门放行（能走进去）   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人；v61：椅盆炉壁炉塘锹不算墙（家具能穿+锹是工具），门37挡人
+const solid=(x,y,z)=>{let b=get(x,y,z);if(b>=1000)b=b%1000;   // v67定向家具归一
+  if(b>=137&&b<=140)return false;return b!==AIR&&b!==8&&b!==14&&b!==15&&b!==16&&b!==17&&b!==18&&b!==20&&b!==22&&b!==25&&b!==27&&b!==28&&b!==31&&b!==32&&b!==33&&b!==34&&b!==35&&b!==36;};   // v63：开着的门放行（能走进去）   // 火把/花/草/凳/路/灯/幌/牌/匾不算墙；床柜篱桌挡人；v61：椅盆炉壁炉塘锹不算墙（家具能穿+锹是工具），门37挡人
 /* v42：只有满格方块遮挡邻面——篱笆柱0.14宽/桌腿0.16宽盖不住那格的地面，但solid遮挡让地面顶面不渲染，从矮处看=空洞（「篱笆桌子下面透明」根）。玻璃透明也要透邻面 */
 const FULLT=new Set([1,2,3,4,5,6,7,8,10,11,12,13,30]);
 const covers=(x,y,z)=>{const b=get(x,y,z);return FULLT.has(b);};
@@ -1983,17 +1984,20 @@ function rebuild(){
   let railN=0;
   for(let x=0;x<W;x++)for(let z=0;z<D;z++)for(let y=0;y<H;y++){
     const t=world[idx(x,y,z)];if(t===AIR)continue;
-    if(t===14||t===22||t===33||t===34||t===35)torchSet.add(idx(x,y,z));   // v32：火炬进灯池；v40：灯笼也进；v61：炉/壁炉/火塘的火光也进
+    const tBare=t>=1000?t%1000:t;
+    if(tBare===14||tBare===22||tBare===33||tBare===34||tBare===35)torchSet.add(idx(x,y,z));   // v32：火炬进灯池；v40：灯笼也进；v61：炉/壁炉/火塘的火光也进
     else if(t===27||t===28)signKeys.push(idx(x,y,z));   // v50：牌和匾进独立队列，末尾逐块refreshSign
     else if(t===19&&railN<47000){   // v42：篱笆横杆——查+x和+z邻居，是篱笆就在两格间放两根杆（独杆无杆，连排自动成栅栏）
       if(get(x+1,y,z)===19)for(const ry of [y+0.78,y+1.12]){_m.makeRotationY(0);_m.setPosition(x+1.0,ry,z+0.5);railMesh.setMatrixAt(railN++,_m);}
       if(get(x,y,z+1)===19)for(const ry of [y+0.78,y+1.12]){_m.makeRotationY(Math.PI/2);_m.setPosition(x+0.5,ry,z+1.0);railMesh.setMatrixAt(railN++,_m);}
     }
     if(!exposed(x,y,z))continue;
-    const mesh=meshes[t];if(!mesh)continue;   // v38：数据里有、这版代码不认识的类型直接跳过——伊卡洛斯的花先于老页面存在时，rebuild炸掉整个渲染的防御
-    if(counts[t]>=mesh.instanceMatrix.count){if(!mesh._warned){console.warn('实例池满：类型'+t);mesh._warned=true;}continue;}   // v39：超预分配截断+只警告一次
-    const i=counts[t]++;
-    _m.makeTranslation(x+0.5, y+0.5, z+0.5);mesh.setMatrixAt(i,_m);
+    let tt=t,rot=0;
+    if(t>=1000){rot=Math.floor(t/1000);tt=t%1000;}   // v67定向家具解包（朝向存值里全端同步）
+    const mesh=meshes[tt];if(!mesh)continue;   // v38：数据里有、这版代码不认识的类型直接跳过——伊卡洛斯的花先于老页面存在时，rebuild炸掉整个渲染的防御
+    if(counts[tt]>=mesh.instanceMatrix.count){if(!mesh._warned){console.warn('实例池满：类型'+tt);mesh._warned=true;}continue;}   // v39：超预分配截断+只警告一次
+    const i=counts[tt]++;
+    _m.makeRotationY(rot*Math.PI/2);_m.setPosition(x+0.5, y+0.5, z+0.5);mesh.setMatrixAt(i,_m);
   }
   for(const t in meshes){meshes[t].count=counts[t];meshes[t].instanceMatrix.needsUpdate=true;}
   railMesh.count=railN;railMesh.instanceMatrix.needsUpdate=true;   // v42：横杆实例数在主循环里累加
@@ -2131,9 +2135,9 @@ function raycast(maxDist=5.2){
 }
 
 /* ================= 交互：挖 / 放 ================= */
-let curType=1,lastMaterial=1;   // v64：lastMaterial=填充工具用的材质（最后选中的非工具方块）
+let curType=1,lastMaterial=1;const DRT={34:1,23:1,39:1,40:1};   // v67定向家具（朝向玩家）   // v64：lastMaterial=填充工具用的材质（最后选中的非工具方块）
 /* v64 UI：拇指热键栏+分类抽屉——TA批评界面太乱，按手游规范重做 */
-const HOT_DEFAULT=[1,2,3,10,11,9,22,37,41];
+const HOT_DEFAULT=[1,2,3,10,11,9,22,37,42];   // v67：梯进热栏（TA没找到——藏在工具页）
 const hot=document.getElementById('hot');
 const catPanel=document.getElementById('catPanel');
 const catGrid=document.getElementById('catGrid');
@@ -2150,15 +2154,16 @@ function pickType(t){
   if(curType!==36&&curType!==41)spClear();
   [...hot.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
   [...catGrid.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
-  if(TYPES[t].tool)toast(TYPES[t].n+'：'+(t===36?'点「挖」圈地':t===41?'点「搭」圈地':'点「搭」放楼梯')+(t===42?'——升5格到二楼':'——两点定范围'));
-  catPanel.style.display='none';
+  if(TYPES[t].tool)toast(TYPES[t].n+'：'+(t===36?'点「挖」圈地':t===41?'点「搭」圈地':'点「搭」放楼梯——一楼点一下二楼点一下')+(t===42?'':''));
+  else toast('已选：'+TYPES[t].n);
+  /* v67：面板停留——换标签/选物不再自动关（点「全」或面板外才收） */
 }
 let curCat=0;
 function renderCat(){
   const tabs=document.getElementById('catTabs');tabs.innerHTML='';
   CATS.forEach((c,i)=>{
     const tb=document.createElement('div');tb.className='tab'+(i===curCat?' on':'');tb.textContent=c[0];
-    tb.onclick=()=>{curCat=i;renderCat();};tabs.appendChild(tb);
+    tb.onclick=(ev)=>{ev.stopPropagation();curCat=i;renderCat();};tabs.appendChild(tb);
   });
   catGrid.innerHTML='';
   CATS[curCat][1].forEach(t=>{
@@ -2364,8 +2369,13 @@ function put(){
   if(curType!==8&&x+1>p.x-PW&&x<p.x+PW&&z+1>p.z-PW&&z<p.z+PW&&y+1>p.y&&y<p.y+PH)return;
   if(curType===37||curType===40){const u=world[idx(x,y+1,z)];if(u!==AIR&&u!==8){toast('门上头要留一格空——门是两格高');return;}}   // v62
   if(curType===39||curType===40){for(const dy of [1,2,3]){const u=world[idx(x,y+dy,z)];if(u!==AIR&&u!==8){toast('大门上头要留三格空——大门是四格高');return;}}}   // v63：四格大门
+  let putT=curType;
+  if(DRT[curType]){   // v67定向家具：火口/床头/门面朝向玩家
+    const dir=((Math.round((p.yaw||0)/(Math.PI/2))%4)+4)%4;
+    if(dir)putT=curType+dir*1000;
+  }
   AU.put();
-  world[idx(x,y,z)]=curType;saveDiff(x,y,z,curType);rebuild();
+  world[idx(x,y,z)]=putT;saveDiff(x,y,z,putT);rebuild();
   if(curType===27||curType===28)editSign(x,y,z);   // v50：牌和匾一放下就请你题字
   if(curType===29)openPortalNaming(x,y,z);   // v52：门一放下就请你起名
 }
