@@ -227,7 +227,7 @@ const TYPES={
   21:{n:'桌', c:0x8a6a48, tex:'plank', table:true},
   22:{n:'灯', c:0xffe0a0, lantern:true},
   /* v50：桥和旅馆的配套——同志要点名加的 */
-  23:{n:'床', c:0x8a6a48, bed:true, mats:['wood_side','wood_side','bed_top2','plank','bed_head2','plank']},   // v64：大床2×3格。点床=设出生点，潜行点=拆
+  23:{n:'床', c:0x8a6a48, bed:true, mats:['wood_side','wood_side','bed_top2','plank','wood_side','bed_head2']},   // v66：大床2×3格单box，床头板在-z面纹理。点床=设出生点，潜行点=拆
   24:{n:'柜', c:0x8a6a48, cab:true, mats:['wood_side','wood_side','wood_top','wood_top','cab_front','wood_side']},
   25:{n:'幌', c:0x31538a, plant:'banner'},
   26:{n:'石凳', c:0x9a9a96, tex:'stone', bench:true},
@@ -1780,10 +1780,8 @@ const torchGeo=new THREE.BoxGeometry(0.18,0.9,0.18);torchGeo.translate(0,0.03,0)
 /* v37 装饰植物：两片十字交叉面片，像素纹理（透明底），不吃光照（Basic）——花该是亮的 */
 const benchGeo=new THREE.BoxGeometry(1,0.42,1);benchGeo.translate(0,-0.5+0.21,0);   // 凳：满格半砖台——v41同志拿凳拼平台，0.55深的缝太大
 /* v50：桥和旅馆的配套几何 */
-const bedGeo=(()=>{   // v64大床：2格宽×3格长（双人床1.5×2m÷0.9——TA基准人物1宽2高），床头-z，向+z延伸
-  const body=new THREE.BoxGeometry(1.85,0.4,2.85);body.translate(0.425,-0.5+0.2,0.925);
-  const head=new THREE.BoxGeometry(1.85,0.9,0.15);head.translate(0.425,-0.5+0.45,-0.075);
-  return mergeGeo(body,head);
+const bedGeo=(()=>{   // v66大床：2格宽×3格长单box（v64实底：mergeGeo多件+材质数组=无groups=零绘制=「床空白」）——床头板改-z面纹理画
+  const b=new THREE.BoxGeometry(1.85,0.42,2.85);b.translate(0.425,-0.5+0.21,0.925);return b;
 })();
 const cabGeo=new THREE.BoxGeometry(0.85,1.15,0.5);cabGeo.translate(0,-0.5+0.575,0.2);    // 柜：高身贴地靠格南
 /* v61 家具几何：椅子/炉/壁炉/火塘/门 */
@@ -1808,9 +1806,9 @@ const dgateGeo=(()=>{   // v64对开大门：3格宽×4格高（现实双开1.5-
 /* v63/v64 开态geo：门板转90°贴侧——点门开关（状态存diffs值100+类型，全端同步）；v64对开=两扇各向外开 */
 const OPEN_GEO={};
 OPEN_GEO[37]=(()=>{const b=new THREE.BoxGeometry(0.14,1.98,0.94);b.translate(0.40,-0.5+0.99,0);return b;})();
-OPEN_GEO[40]=(()=>{   // v64开态：两扇各向外转90°贴门框外侧——「向两边开」
-  const L=new THREE.BoxGeometry(0.14,3.98,1.42);L.translate(0.21,-0.5+1.99,-0.71);
-  const M=new THREE.BoxGeometry(0.14,3.98,1.42);M.translate(1.65,-0.5+1.99,-0.71);
+OPEN_GEO[40]=(()=>{   // v66开态修正：左扇绕左轴贴-x外侧、右扇绕右轴贴+x外侧——「向两侧开」（v64实底：两扇都转去了同一边）
+  const L=new THREE.BoxGeometry(0.14,3.98,1.42);L.translate(-0.07,-0.5+1.99,0);
+  const M=new THREE.BoxGeometry(0.14,3.98,1.42);M.translate(3.07,-0.5+1.99,0);
   const top=new THREE.BoxGeometry(3.0,0.18,0.2);top.translate(1.5,-0.5+3.9,0);
   return [L,M,top].reduce((a,b)=>mergeGeo(a,b));
 })();
