@@ -523,7 +523,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v68';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v68.1';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2142,11 +2142,12 @@ const hot=document.getElementById('hot');
 const catPanel=document.getElementById('catPanel');
 const catGrid=document.getElementById('catGrid');
 const CATS=[['地形',[1,2,3,4,8,17]],['建材',[10,11,7,9,12,13,19,20]],['家具',[18,21,23,24,26,31,32,33,34,35,37,39,40]],['装饰',[14,15,16,22,25,27,28,5,6,29]],['工具',[36,41]]];
-function slotEl(t){
+function slotEl(t,fromPanel){
   const e=document.createElement('div');e.className='slot';e.dataset.t=t;
   e.style.background='#'+(TYPES[t].c||0x9a8f7a).toString(16).padStart(6,'0');
   e.innerHTML='<span>'+TYPES[t].n+'</span>';
-  e.onclick=(ev)=>{ev.stopPropagation();pickType(+t,e.currentTarget.parentElement.id==='catGrid');};
+  const fp=!!fromPanel;   // v68.1：闭包传来源——v68实底：e.currentTarget写成了元素属性（undefined.parentElement），e/ev两变量搞混
+  e.onclick=(ev)=>{ev.stopPropagation();pickType(+t,fp);};
   return e;
 }
 let curHotIdx=0;
@@ -2173,7 +2174,7 @@ function renderCat(){
   catGrid.innerHTML='';
   CATS[curCat][1].forEach(t=>{
     if(!TYPES[t]||TYPES[t].hidden)return;
-    catGrid.appendChild(slotEl(t));
+    catGrid.appendChild(slotEl(t,true));
   });
 }
 function renderHot(){
