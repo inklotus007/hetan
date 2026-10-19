@@ -18,7 +18,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 #menuBtn{pointer-events:auto}   /* 顶栏穿透但菜单要点得动（v28.3：mute/tokBtn删了，☰顶上——删UI要连豁免清单一起改） */
 #top small{display:block;font-size:11px;letter-spacing:2px;opacity:.85;margin-top:2px}
 /* 热栏 */
-#hot{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;justify-content:center;gap:4px;z-index:6;width:min(96vw,560px);padding:5px;background:rgba(30,40,50,.32);border-radius:10px;box-sizing:border-box}#catPanel{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(96vw,560px);max-height:60vh;overflow-y:auto;background:rgba(24,32,42,.94);border:1px solid rgba(255,255,255,.18);border-radius:12px;z-index:8;padding:10px;display:none;box-sizing:border-box}#catTabs{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}#catTabs .tab{padding:7px 11px;border-radius:7px;background:rgba(255,255,255,.08);color:#d8d2c4;font-size:12px;letter-spacing:1px;cursor:pointer;border:1px solid transparent}#catTabs .tab.on{background:rgba(200,180,120,.25);border-color:rgba(220,190,120,.5);color:#f0e6c8}#catGrid{display:flex;flex-wrap:wrap;gap:6px}#hot .slot{width:min(9vw,44px);height:min(9vw,44px)}#catGrid .slot{width:52px;height:52px}
+#hot{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;justify-content:center;gap:4px;z-index:6;width:min(96vw,560px);padding:5px;background:rgba(30,40,50,.32);border-radius:10px;box-sizing:border-box}#catPanel{position:fixed;left:50%;bottom:calc(64px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(96vw,560px);max-height:56vh;overflow-y:auto;background:rgba(24,32,42,.94);border:1px solid rgba(255,255,255,.18);border-radius:12px;z-index:8;padding:10px;display:none;box-sizing:border-box}#catTabs{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}#catTabs .tab{padding:7px 11px;border-radius:7px;background:rgba(255,255,255,.08);color:#d8d2c4;font-size:12px;letter-spacing:1px;cursor:pointer;border:1px solid transparent}#catTabs .tab.on{background:rgba(200,180,120,.25);border-color:rgba(220,190,120,.5);color:#f0e6c8}#catGrid{display:flex;flex-wrap:wrap;gap:6px}#hot .slot{width:min(9vw,44px);height:min(9vw,44px)}#catGrid .slot{width:52px;height:52px}
 .slot{width:44px;height:44px;border:2px solid rgba(255,255,255,.5);border-radius:7px;cursor:pointer;position:relative;box-shadow:0 2px 6px rgba(30,40,50,.35);box-sizing:border-box}
 .slot.on{border-color:#ffe9a8;box-shadow:0 0 0 2px rgba(255,233,168,.55),0 2px 6px rgba(30,40,50,.35);transform:scale(1.08)}
 .slot span{position:absolute;left:0;right:0;top:1px;text-align:center;font-size:9px;color:rgba(255,255,255,.94);text-shadow:0 1px 2px rgba(40,50,60,.85);white-space:nowrap;pointer-events:none}
@@ -523,7 +523,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v67';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v68';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2146,17 +2146,22 @@ function slotEl(t){
   const e=document.createElement('div');e.className='slot';e.dataset.t=t;
   e.style.background='#'+(TYPES[t].c||0x9a8f7a).toString(16).padStart(6,'0');
   e.innerHTML='<span>'+TYPES[t].n+'</span>';
-  e.onclick=(ev)=>{ev.stopPropagation();pickType(+t);};
+  e.onclick=(ev)=>{ev.stopPropagation();pickType(+t,e.currentTarget.parentElement.id==='catGrid');};
   return e;
 }
-function pickType(t){
+let curHotIdx=0;
+function pickType(t,fromPanel){
   curType=t;if(!TYPES[t].tool)lastMaterial=t;
-  if(curType!==36&&curType!==41)spClear();
-  [...hot.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
-  [...catGrid.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
-  if(TYPES[t].tool)toast(TYPES[t].n+'：'+(t===36?'点「挖」圈地':t===41?'点「搭」圈地':'点「搭」放楼梯——一楼点一下二楼点一下')+(t===42?'':''));
+  if(curType!==36&&curType!==41&&curType!==42)spClear();
+  if(fromPanel){   /* v68 MC式：抽屉点物品→放进当前快捷槽→收面板回游戏 */
+    hotItems[curHotIdx]=t;renderHot();
+    catPanel.style.display='none';
+  }else{
+    curHotIdx=hotItems.indexOf(t)>=0?hotItems.indexOf(t):curHotIdx;
+    [...hot.children].forEach(c=>c.classList.toggle('on',+c.dataset.t===t));
+  }
+  if(TYPES[t].tool)toast(TYPES[t].n+'：'+(t===36?'点「挖」圈地':t===41?'点「搭」圈地填地':'点「搭」——一楼点一下、二楼点一下'));
   else toast('已选：'+TYPES[t].n);
-  /* v67：面板停留——换标签/选物不再自动关（点「全」或面板外才收） */
 }
 let curCat=0;
 function renderCat(){
@@ -2181,6 +2186,9 @@ function renderHot(){
 }
 renderHot();renderCat();
 (()=>{const el=[...hot.children].find(c=>+c.dataset.t===1);if(el)el.classList.add('on');})();
+/* 热栏点击=切槽（v68）：more按钮除外 */
+const _hotObs=new MutationObserver(()=>{[...hot.children].forEach(c=>{if(+c.dataset.t>0&&!c._wired){c._wired=true;const old=c.onclick;c.onclick=(ev)=>{ev.stopPropagation();curHotIdx=hotItems.indexOf(+c.dataset.t);pickType(+c.dataset.t,false);};}});});
+_hotObs.observe(hot,{childList:true});
 document.addEventListener('click',(e)=>{if(!catPanel.contains(e.target)&&![...hot.children].some(c=>c.contains(e.target)))catPanel.style.display='none';});
 /* v51 潜行：按钮锁定(toggle)+Shift按住——潜行时贴边不掉、点床/牌/匾直接拆 */
 let sneakLock=false,shiftHeld=false;
