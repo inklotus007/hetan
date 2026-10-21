@@ -527,7 +527,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v74';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v75';   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2233,7 +2233,7 @@ function spadeTap(h){
   const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
   const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
   const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
-  if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次挖');return;}
+  if(cnt>20000){spClear();toast('圈太大了（'+cnt+'格>20000）——分几次挖');return;}
   openSpade(x0,y0,z0,x1,y1,z1,cnt);
 }
 function openSpade(x0,y0,z0,x1,y1,z1,cnt){
@@ -2381,7 +2381,7 @@ function put(){
     const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
     const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
     const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
-    if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次填');return;}
+    if(cnt>20000){spClear();toast('圈太大了（'+cnt+'格>20000）——分几次填');return;}
     openFill(x0,y0,z0,x1,y1,z1,cnt);return;
   }
   const h=raycast();if(!h)return;
@@ -2994,7 +2994,7 @@ function put(){
     const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
     const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
     const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
-    if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次填');return;}
+    if(cnt>20000){spClear();toast('圈太大了（'+cnt+'格>20000）——分几次填');return;}
     openFill(x0,y0,z0,x1,y1,z1,cnt);return;
   }
   const h=raycast();if(!h)return;
@@ -3617,7 +3617,7 @@ function put(){
     const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
     const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
     const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
-    if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次填');return;}
+    if(cnt>20000){spClear();toast('圈太大了（'+cnt+'格>20000）——分几次填');return;}
     openFill(x0,y0,z0,x1,y1,z1,cnt);return;
   }
   const h=raycast();if(!h)return;
@@ -4230,7 +4230,7 @@ function put(){
     const y0=Math.min(A.y,h.y),y1=Math.max(A.y,h.y);
     const z0=Math.min(A.z,h.z),z1=Math.max(A.z,h.z);
     const cnt=(x1-x0+1)*(y1-y0+1)*(z1-z0+1);
-    if(cnt>4000){spClear();toast('圈太大了（'+cnt+'格>4000）——分几次填');return;}
+    if(cnt>20000){spClear();toast('圈太大了（'+cnt+'格>20000）——分几次填');return;}
     openFill(x0,y0,z0,x1,y1,z1,cnt);return;
   }
   const h=raycast();if(!h)return;
