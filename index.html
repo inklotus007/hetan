@@ -543,7 +543,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v76';   /* v76复制粘贴cpv76：点挖圈选（连牌连字），点搭预览/确认粘贴，十秒撤销 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v77';   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1023,6 +1023,17 @@ function npcPos(npc,tSec){
   if(npc.project){   /* 等指令的投影：站在home，指令到了才动 */
     return[npc.home[0]+0.5,npc.home[1]+0.5,Math.sin(dayT*160+npc.seed)*0.6,'stand'];
   }
+  /* v77村民：施工中白天绕宅地干活（build），夜里归宅地站定；盖好了恢复全村漫游 */
+  if(VH.homes[npc.id]&&!npc.project){
+    const vh=VH.homes[npc.id];
+    const tot=villTotals[npc.id]||1,blt=villBuilt[npc.id]||0;
+    if(blt<tot){
+      const cx2=vh.plot[0]+2.5,cz2=vh.plot[2]+1.5;
+      if(dayT<0.22||dayT>0.82)return[cx2,cz2,0,'stand'];   /* 夜里在家 */
+      const a=tSec*0.13+npc.seed;
+      return[cx2+Math.sin(a)*4.5,cz2+Math.cos(a*0.8)*3.5,Math.sin(a*2)*0.8,'build'];
+    }
+  }
   /* 路人：随机漫游 */
   const s2=npc.seed;
   const dx=Math.sin(tSec*0.071+s2)*8+Math.sin(tSec*0.021+s2*2.7)*5;
@@ -1456,7 +1467,7 @@ function tickSky(now){
   cloudGroup.children.forEach(c=>{
     c.position.x=(((c.userData.x0+now*0.001*c.userData.spd)%220)+220)%220-110;
   });
-  tickWeather(now);
+  tickWeather(now);applyVillagers(now);
   let seg=SEG_NAME[0][1];
   for(const [tt,name] of SEG_NAME){if(dayT>=tt)seg=name;}
   if(seg!==lastSeg){lastSeg=seg;
@@ -1470,7 +1481,7 @@ function tickWeather(now){
   if(!weatherUntil){weatherUntil=now+90000+Math.random()*150000;return;}
   if(now>weatherUntil){
     const r=Math.random();
-    weather=r<0.58?'clear':r<0.85?'rain':'snow';
+    weather=r<0.58?'clear':r<0.85?'rain':'snow';villInitDay=-999;
     weatherUntil=now+90000+Math.random()*150000;
     if(weather==='rain')toast('下雨了');
     else if(weather==='snow')toast('落雪了');
@@ -1949,6 +1960,16 @@ function pullSigns(){
     signsSha=sha;SIGNS=(data&&data.signs)?data:{signs:{}};
   }).catch(()=>{});
 }
+/* v77居民安家 vil77：村民=确定性晴日进度盖房。宅地已在开发时按世界逻辑跑定（villagers.json）：
+   离水12-40格、6×6平地、避开全部已有建筑5格、九户互距≥12格。房子只盖在自然地形上=「不拆已有」；
+   玩家的锹/填/放/粘贴也动不了村民的格子=同一规则的另一面。进度=f(晴日数)：历史晴雨按hash节奏
+   （约72%晴），今天实时联动weather——下雨天看得见停工。 */
+let VH={v:0,up:0,homes:{}},villSha=null,villCells={},villBuilt={},villTotals={},villInitDay=-999,villSignMesh={};
+function pullVillagers(){
+  return ghGet('villagers.json').then(({sha,data})=>{
+    villSha=sha;VH=(data&&data.homes)?data:{v:0,up:0,homes:{}};
+  }).catch(()=>{});
+}
 function pushSigns(msg){
   return ghPut('signs.json',SIGNS,signsSha,msg).then(({sha})=>{signsSha=sha;}).catch(()=>{
     return pullSigns().then(()=>ghPut('signs.json',SIGNS,signsSha,msg)).then(({sha})=>{signsSha=sha;}).catch(()=>{});
@@ -2037,7 +2058,7 @@ function rebuild(){
 }
 rebuild();
 pullWorld().then(()=>{/* 云端的花台、别人搭的一切，叠上来 */});
-pullSigns().then(()=>{rebuild();});   // v50：招牌的字从云端回来，重立一遍
+pullSigns().then(()=>{rebuild();});pullVillagers().then(()=>{villInitDay=-999;applyVillagers(Date.now());});   /* v77：村民宅地回来就开工 */   // v50：招牌的字从云端回来，重立一遍
 
 /* ---- 杨棉 ---- */
 const FLOC=260;
@@ -2228,6 +2249,8 @@ document.addEventListener('click',(e)=>{if(!catPanel.contains(e.target)&&![...ho
 let sneakLock=false,shiftHeld=false;
 const isSneak=()=>sneakLock||shiftHeld;
 function digBlock(h,msg){
+  const vk=villCells[h.x+','+h.y+','+h.z];
+  if(vk&&vk!=='skip'){toast('这是'+(VH.homes[vk]?VH.homes[vk].name:'村民')+'家的——动不得');return;}   /* v77 */
   AU.dig(world[idx(h.x,h.y,h.z)]);
   world[idx(h.x,h.y,h.z)]=AIR;saveDiff(h.x,h.y,h.z,AIR);rebuild();
   refreshSign(h.x,h.y,h.z);   /* 牌匾mesh随格清掉，普通方块无mesh无害 */
@@ -2242,6 +2265,101 @@ function spMark(color,h){
   m.position.set(h.x+0.5,h.y+0.5,h.z+0.5);scene.add(m);spMarks.push(m);
 }
 function spClear(){spMarks.forEach(m=>scene.remove(m));spMarks=[];spA=null;}
+/* v77蓝图：三户型施工序列（地基→墙→门窗→炬→顶→牌最后=封顶立名牌）。bp1小屋69格/bp2两层楼85格/bp3长屋61格 */
+function bpCells(bp){
+  const c=[],S=11,P=10,R=12,G=9,F=19,T=14,Q=27;
+  if(bp===1){
+    for(let x=0;x<5;x++)for(let z=0;z<4;z++)if(x===0||x===4||z===0||z===3)c.push([x,0,z,S]);
+    for(let y=1;y<=2;y++)for(let x=0;x<5;x++)for(let z=0;z<4;z++){
+      if(!(x===0||x===4||z===0||z===3))continue;
+      if(z===0&&x===2)continue;
+      if(z===0&&y===2&&(x===1||x===3))c.push([x,y,z,G]);else c.push([x,y,z,P]);
+    }
+    c.push([2,1,0,37]);
+    for(let x=0;x<5;x++)for(let z=0;z<4;z++)c.push([x,3,z,R]);
+    for(let x=1;x<4;x++)for(let z=1;z<3;z++)c.push([x,4,z,R]);
+    c.push([3,1,2,T]);
+    c.push([2,0,-1,Q]);
+  }else if(bp===2){
+    for(let x=0;x<4;x++)for(let z=0;z<4;z++)if(x===0||x===3||z===0||z===3)c.push([x,0,z,S]);
+    for(let y=1;y<=4;y++)for(let x=0;x<4;x++)for(let z=0;z<4;z++){
+      if(!(x===0||x===3||z===0||z===3))continue;
+      if(z===0&&x===1&&(y===1||y===2))continue;
+      if(x===3&&z===2&&(y===2||y===3))continue;
+      if(z===0&&x===2&&(y===3||y===4))c.push([x,y,z,G]);else c.push([x,y,z,P]);
+    }
+    c.push([1,1,0,37]);
+    c.push([3,2,2,G],[3,3,2,G]);
+    for(let x=1;x<3;x++)for(let z=1;z<3;z++)c.push([x,4,z,P]);
+    for(let x=0;x<4;x++)for(let z=0;z<4;z++)c.push([x,5,z,R]);
+    c.push([0,6,0,F],[3,6,0,F],[0,6,3,F],[3,6,3,F]);
+    c.push([2,1,1,T]);
+    c.push([1,0,-1,Q]);
+  }else{
+    for(let x=0;x<6;x++)for(let z=0;z<3;z++)if(x===0||x===5||z===0||z===2)c.push([x,0,z,S]);
+    for(let y=1;y<=2;y++)for(let x=0;x<6;x++)for(let z=0;z<3;z++){
+      if(!(x===0||x===5||z===0||z===2))continue;
+      if(z===0&&x===3)continue;
+      if(z===0&&y===2&&(x===1||x===2||x===4))c.push([x,y,z,G]);else c.push([x,y,z,P]);
+    }
+    c.push([3,1,0,37]);
+    for(let x=0;x<6;x++)for(let z=0;z<3;z++)c.push([x,3,z,R]);
+    c.push([1,1,1,T]);
+    c.push([3,0,-1,Q]);
+  }
+  return c;
+}
+function villagerProgress(vh,now){   /* 晴日制：历史按hash节奏（约72%晴——确定性，所有客户端一致），今天实时联动weather */
+  const days=Math.max(0,Math.floor((now-VH.up)/86400000));
+  let n=0;
+  for(let i=0;i<days;i++){if(hash(i*7.7,i*3.3)<0.72)n+=vh.spd;}
+  if(weather==='clear')n+=vh.spd;
+  return n;
+}
+function villPlotAt(x,y,z){   /* 宅地空域：6×6 footprint，地上8格——放置/粘贴查这个 */
+  for(const id in VH.homes){
+    const vh=VH.homes[id];
+    if(x>=vh.plot[0]&&x<vh.plot[0]+6&&z>=vh.plot[2]&&z<vh.plot[2]+6&&y>=vh.plot[1]&&y<=vh.plot[1]+8)return id;
+  }
+  return null;
+}
+function villSignMake(id,vh,x,y,z){   /* 封顶名牌：门前立牌，写名字。不进signs.json（村民牌不可编辑、无竞态） */
+  const key='vill_'+id;
+  if(villSignMesh[key])return;
+  const wood=new THREE.MeshLambertMaterial({map:texOf('wood_side')});
+  const woodTop=new THREE.MeshLambertMaterial({map:texOf('wood_top')});
+  const mesh=new THREE.Mesh(signGeo,[wood,wood,woodTop,woodTop,signTexFor(key,vh.name,'v'),wood]);
+  mesh.rotation.y=(vh.plot[2]>riverZAt(vh.plot[0])?0:2)*Math.PI/2;   /* 牌面朝河 */
+  mesh.position.set(x+0.5,y+0.5,z+0.5);
+  scene.add(mesh);villSignMesh[key]=mesh;
+}
+function applyVillagers(now){
+  if(!VH.homes)return;
+  const day=Math.floor((now-VH.up)/86400000);
+  if(day===villInitDay)return;   /* 一天一算；今天内部进度另由weather翻倍触发（rain/clear切换时强制重算一次） */
+  const firstTime=villInitDay===-999;
+  villInitDay=day;
+  let changed=false;
+  for(const id in VH.homes){
+    const vh=VH.homes[id];
+    const cells=bpCells(vh.bp);
+    const n=Math.min(cells.length,Math.max(0,Math.round(villagerProgress(vh,now))));
+    const prev=villBuilt[id]||0;
+    villBuilt[id]=n;villTotals[id]=cells.length;
+    if(n<=prev&&!firstTime)continue;
+    for(let i=(firstTime?0:prev);i<n;i++){
+      const[dx,dy,dz,t]=cells[i];
+      const x=vh.plot[0]+dx,y=vh.plot[1]+1+dy,z=vh.plot[2]+dz;
+      const k=x+','+y+','+z;
+      if(villCells[k])continue;
+      if(!inW(x,y,z))continue;
+      if(world[idx(x,y,z)]!==AIR){villCells[k]='skip';continue;}   /* 已有方块不拆——「不拆已有」 */
+      world[idx(x,y,z)]=t;villCells[k]=id;changed=true;
+      if(t===27)villSignMake(id,vh,x,y,z);   /* 牌=最后一格=封顶 */
+    }
+  }
+  if(changed)rebuild();
+}
 /* ===== v76复制粘贴 cpv76 ===== */
 function countSel(x0,y0,z0,x1,y1,z1){
   let n=0,sigs=0;
@@ -2277,6 +2395,7 @@ function cpExec(){
 }
 function pasteExec(){
   const a=CPA;CPA=null;cpPrevClear();
+  for(const[dx,dy,dz] of CB.cells){if(villPlotAt(a.x+dx,a.y+dy,a.z+dz)){toast('范围里有村民宅地——换个地方粘');return;}}   /* v77 */
   const undo=[];let n=0;
   for(const[dx,dy,dz,t] of CB.cells){
     const x=a.x+dx,y=a.y+dy,z=a.z+dz;
@@ -2344,6 +2463,8 @@ function spadeExec(){
   for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){
     const key=x+','+y+','+z;
     if(diffs.a[key]!==undefined){skip++;continue;}   // 你搭的/你改的——全留
+    if(villCells[key]&&villCells[key]!=='skip'){skip++;continue;}   /* v77：村民盖的——留 */
+    if(villPlotAt(x,y,z)){skip++;continue;}   /* v77：宅地空域也不锹——地基材料堆在置 */
     if(world[idx(x,y,z)]===AIR)continue;
     if(x===STX&&z===STZ&&y>=8){skip++;continue;}     // 碑
     if(Math.abs(x-BOARD_POS[0]-0.5)<2&&Math.abs(z-BOARD_POS[2])<2){skip++;continue;}   // 留言板
@@ -2368,6 +2489,9 @@ function fillExec(){
   for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){
     if(x===STX&&z===STZ&&y>=8){skip++;continue;}
     if(Math.abs(x-BOARD_POS[0]-0.5)<2&&Math.abs(z-BOARD_POS[2])<2){skip++;continue;}
+    const vkey=x+','+y+','+z;
+    if(villCells[vkey]&&villCells[vkey]!=='skip'){skip++;continue;}   /* v77：村民格子填不动 */
+    if(villPlotAt(x,y,z)){skip++;continue;}
     for(const pk in PORTALS.portals){const q=PORTALS.portals[pk];if(q.x===x&&q.y===y&&q.z===z){delete PORTALS.portals[pk];pushPortals('河滩：传送门「'+pk+'」被挖走了');break;}}   // v73：批量拆到门块=门从列表清走
     const key=x+','+y+','+z;
     if(world[idx(x,y,z)]===mat){continue;}
@@ -2507,6 +2631,9 @@ function put(){
   const x=h.x+h.nx,y=h.y+h.ny,z=h.z+h.nz;
   if(!inW(x,y,z))return;
   if(world[idx(x,y,z)]!==AIR&&world[idx(x,y,z)]!==8)return;
+  const vk=villCells[x+','+y+','+z];
+  if(vk&&vk!=='skip'){toast('这是'+(VH.homes[vk]?VH.homes[vk].name:'村民')+'家盖到的地方——换个别处');return;}   /* v77 */
+  if(villPlotAt(x,y,z)){toast('这是'+(VH.homes[villPlotAt(x,y,z)]||{}).name+'的宅地——换个别处');return;}   /* v77 */
   // 别放进自己身体
   if(curType!==8&&x+1>p.x-PW&&x<p.x+PW&&z+1>p.z-PW&&z<p.z+PW&&y+1>p.y&&y<p.y+PH)return;
   if(curType===37||curType===40){const u=world[idx(x,y+1,z)];if(u!==AIR&&u!==8){toast('门上头要留一格空——门是两格高');return;}}   // v62
