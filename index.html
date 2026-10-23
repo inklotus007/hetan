@@ -543,7 +543,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v77';   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v78';   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1965,6 +1965,7 @@ function pullSigns(){
    玩家的锹/填/放/粘贴也动不了村民的格子=同一规则的另一面。进度=f(晴日数)：历史晴雨按hash节奏
    （约72%晴），今天实时联动weather——下雨天看得见停工。 */
 let VH={v:0,up:0,homes:{}},villSha=null,villCells={},villBuilt={},villTotals={},villInitDay=-999,villSignMesh={};
+let villKids=[],villKidsBuilt=false,villWedDone={};   /* v78kin78 */
 function pullVillagers(){
   return ghGet('villagers.json').then(({sha,data})=>{
     villSha=sha;VH=(data&&data.homes)?data:{v:0,up:0,homes:{}};
@@ -2309,11 +2310,12 @@ function bpCells(bp){
   }
   return c;
 }
-function villagerProgress(vh,now){   /* 晴日制：历史按hash节奏（约72%晴——确定性，所有客户端一致），今天实时联动weather */
-  const days=Math.max(0,Math.floor((now-VH.up)/86400000));
+function villagerProgress(vh,now,startDay){   /* 晴日制：历史按hash节奏（约72%晴——确定性，所有客户端一致），今天实时联动weather */
+  const sd=startDay||0;   /* v78kin78：孩子户从成年日起算，不把童年算进工期 */
+  const days=Math.max(0,Math.floor((now-VH.up)/86400000)-sd);
   let n=0;
-  for(let i=0;i<days;i++){if(hash(i*7.7,i*3.3)<0.72)n+=vh.spd;}
-  if(weather==='clear')n+=vh.spd;
+  for(let i=0;i<days;i++){if(hash((i+sd)*7.7,i*3.3)<0.72)n+=vh.spd;}
+  if(weather==='clear'&&days>0)n+=vh.spd;
   return n;
 }
 function villPlotAt(x,y,z){   /* 宅地空域：6×6 footprint，地上8格——放置/粘贴查这个 */
@@ -2340,10 +2342,17 @@ function applyVillagers(now){
   const firstTime=villInitDay===-999;
   villInitDay=day;
   let changed=false;
-  for(const id in VH.homes){
-    const vh=VH.homes[id];
+  /* v78kin78：孩子成年→升级为施工户（宅地地面用JS height现场算，贴地形不靠预计算） */
+  const active={};
+  for(const id in VH.homes)active[id]=VH.homes[id];
+  if(VH.children)for(const c of VH.children){
+    if(now<VH.up+c.adultDay*86400000||active[c.id])continue;
+    active[c.id]={plot:[c.plot[0],Math.round(height(c.plot[0],c.plot[2])),c.plot[2]],bp:c.bp||1,spd:c.spd||8,name:c.name,startDay:c.adultDay};
+  }
+  for(const id in active){
+    const vh=active[id];
     const cells=bpCells(vh.bp);
-    const n=Math.min(cells.length,Math.max(0,Math.round(villagerProgress(vh,now))));
+    const n=Math.min(cells.length,Math.max(0,Math.round(villagerProgress(vh,now,vh.startDay))));
     const prev=villBuilt[id]||0;
     villBuilt[id]=n;villTotals[id]=cells.length;
     if(n<=prev&&!firstTime)continue;
@@ -2358,12 +2367,62 @@ function applyVillagers(now){
       if(t===27)villSignMake(id,vh,x,y,z);   /* 牌=最后一格=封顶 */
     }
   }
+  /* v78kin78婚礼：两宅门口红花+喜牌（一次性事件，办过永记） */
+  if(VH.weddings)for(const wd of VH.weddings){
+    if(now<wd.at)continue;
+    const wk='wed_'+wd.a+'_'+wd.b;
+    if(villWedDone[wk])continue;
+    villWedDone[wk]=1;
+    if(wd.arch){
+      const[ax,ay,az]=wd.arch;
+      if(inW(ax,ay,az)&&world[idx(ax,ay,az)]===AIR){world[idx(ax,ay,az)]=27;villCells[ax+','+ay+','+az]='wed';}
+      const na=(VH.homes[wd.a]?VH.homes[wd.a].name:'')+(VH.homes[wd.b]?VH.homes[wd.b].name:'');
+      villSignMake('wed'+wd.a+wd.b,{name:(na+'成亲').slice(0,6),plot:[ax,ay,az]},ax,ay,az);   /* plot供牌面朝河判断 */
+      let fl=0;
+      for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){if(fl>=2)break;const fx=ax+dx,fz=az+dz;
+        if(inW(fx,ay,fz)&&world[idx(fx,ay,fz)]===AIR){world[idx(fx,ay,fz)]=15;villCells[fx+','+ay+','+fz]='wed';fl++;}}
+    }
+    changed=true;toast((VH.homes[wd.a]?VH.homes[wd.a].name:'')+'和'+(VH.homes[wd.b]?VH.homes[wd.b].name:'')+'成亲了');
+  }
   /* v77.1部落火塘：村心一格35号——部落的火，进保护（TA：部落与部落的规模） */
   if(VH.camps)for(const c of VH.camps){
     const cx=c[0],cy=c[1]+1,cz=c[2],k=cx+','+cy+','+cz;
     if(!villCells[k]&&inW(cx,cy,cz)&&world[idx(cx,cy,cz)]===AIR){world[idx(cx,cy,cz)]=35;villCells[k]='camp';changed=true;}
   }
   if(changed)rebuild();
+}
+
+/* v78kin78孩子：出生2天后出门（小体型绕火塘玩），夜里回家不渲染；成年（一天当一岁）体型长成、绕自家宅地——施工中的家 */
+function renderVillKids(now){
+  if(!VH.children||!VH.camps)return;
+  if(!villKidsBuilt){
+    villKidsBuilt=true;
+    for(const c of VH.children){
+      try{
+        const g=makeNPCBody({name:c.name,seed:c.seed,coat:c.coat,skin:c.skin});
+        g.userData.villKid=c;g.userData.villKidFlag=1;
+        scene.add(g);villKids.push(g);
+      }catch(e){}
+    }
+  }
+  const dayT=(now%DAY_LEN)/DAY_LEN;
+  const night=dayT<0.22||dayT>0.82;
+  for(const g of villKids){
+    const c=g.userData.villKid;
+    const bornAt=VH.up+c.bornDay*86400000, adultAt=VH.up+c.adultDay*86400000;
+    if(now<bornAt+2*86400000||night){g.visible=false;continue;}   /* 婴幼儿在家；天黑回家 */
+    g.visible=true;
+    const grown=now>=adultAt;
+    const s=grown?1:0.55+Math.min(0.15,(now-bornAt)/86400000*0.02);
+    g.scale.set(s,s,s);
+    const cp=VH.camps[c.camp]||[c.plot[0],c.plot[1],c.plot[2]];
+    const hx=grown?c.plot[0]+2:cp[0], hz=grown?c.plot[2]+1.5:cp[2];
+    const a=now*0.0004+c.seed;
+    const r=grown?3.5:2.5+(c.seed%30)/10;
+    const px=hx+Math.sin(a)*r, pz=hz+Math.cos(a*0.8)*r;
+    g.position.set(px,surfaceY(Math.floor(px),Math.floor(pz)),pz);
+    g.rotation.y=Math.sin(a*2)*0.8;
+  }
 }
 /* ===== v76复制粘贴 cpv76 ===== */
 function countSel(x0,y0,z0,x1,y1,z1){
@@ -3133,6 +3192,7 @@ requestAnimationFrame(loop);
   tickHighlight();
   if((now|0)%7===0)diag();
   renderNPCs(npcList,now/1000);   // 来客NPC（离线的按seed漫游）
+  renderVillKids(now);   /* v78kin78：村民的孩子 */
   renderAnimals(now/1000,dt);   // v45：鸭漂鸡啄狗迎客，受惊四散有叫声；鱼影蜻蜓
   if(now>nextChirp){if(dayIsUp())AU.birdChirp();nextChirp=now+3500+Math.random()*9000;}   // 白天鸟鸣，夜里停
   ensureBoard();boardWind(now/1000);
