@@ -133,6 +133,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
   </div>
  </div>
 </div>
+<div id="chronModal" style="display:none;position:fixed;inset:0;background:rgba(15,12,25,.6);z-index:30;align-items:center;justify-content:center">
+ <div style="background:#f2eef8;border:1px solid #a89ac8;border-radius:10px;padding:16px 18px;width:min(360px,90vw);max-height:78vh;overflow-y:auto;box-shadow:0 10px 40px rgba(40,25,70,.45)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+   <div style="font-weight:bold;color:#3a2a5a;letter-spacing:2px;font-size:15px">📜 河滩村志</div>
+   <button id="chronBack" style="font-family:inherit;font-size:12px;padding:4px 12px;border:1px solid #a89ac8;border-radius:6px;background:#e8e2f4;color:#4a3a6a;cursor:pointer;display:none">回目录</button>
+  </div>
+  <div id="chronList"></div>
+  <div id="chronBody" style="display:none"></div>
+  <div style="font-size:11px;color:#8a7aa8;margin-top:8px">判定者每晚执笔——点火塘，听村里的故事</div>
+ </div>
+</div>
 <div id="cpModal" style="display:none;position:fixed;inset:0;background:rgba(8,16,22,.55);z-index:30;align-items:center;justify-content:center">
  <div style="background:#e2ecf2;border:1px solid #6a9ab8;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(10,40,60,.4)">
   <div style="font-weight:bold;color:#1e3a4a;letter-spacing:2px;margin-bottom:8px;font-size:14px">复制选定</div>
@@ -543,7 +554,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v78';   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v79';   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2059,7 +2070,8 @@ function rebuild(){
 }
 rebuild();
 pullWorld().then(()=>{/* 云端的花台、别人搭的一切，叠上来 */});
-pullSigns().then(()=>{rebuild();});pullVillagers().then(()=>{villInitDay=-999;applyVillagers(Date.now());});   /* v77：村民宅地回来就开工 */   // v50：招牌的字从云端回来，重立一遍
+pullSigns().then(()=>{rebuild();});pullVillagers().then(()=>{villInitDay=-999;applyVillagers(Date.now());});   /* v77：村民宅地回来就开工 */
+pullChronicle();   /* v79：村志 */   // v50：招牌的字从云端回来，重立一遍
 
 /* ---- 杨棉 ---- */
 const FLOC=260;
@@ -2267,6 +2279,31 @@ function spMark(color,h){
 }
 function spClear(){spMarks.forEach(m=>scene.remove(m));spMarks=[];spA=null;}
 /* v77蓝图：三户型施工序列（地基→墙→门窗→炬→顶→牌最后=封顶立名牌）。bp1小屋69格/bp2两层楼85格/bp3长屋61格 */
+let CHRON={v:0,book:'河滩村志',chapters:[]},chronSha=null;
+function pullChronicle(){
+  return ghGet('chronicle.json').then(({sha,data})=>{
+    chronSha=sha;CHRON=(data&&data.chapters)?data:{v:0,book:'河滩村志',chapters:[]};
+  }).catch(()=>{});
+}
+function openChronicle(){
+  const list=document.getElementById('chronList');
+  list.innerHTML='';
+  if(!CHRON.chapters.length){list.innerHTML='<div style="padding:10px;color:#6a5c8a;font-size:13px">村志还没写——判定者今晚执笔</div>';}
+  CHRON.chapters.forEach((ch,i)=>{
+    const d=document.createElement('div');
+    d.style.cssText='padding:8px 10px;border-bottom:1px solid #d8d0e8;cursor:pointer';
+    d.innerHTML='<b style="color:#4a3a6a">'+ch.title+'</b> <span style="color:#9a8ab8;font-size:11px">'+(ch.date||'')+'</span>';
+    d.onclick=()=>{
+      document.getElementById('chronBody').innerHTML='<div style="white-space:pre-wrap;line-height:1.9;color:#3a2a5a;font-size:14px">'+ch.text+'</div>';
+      document.getElementById('chronBody').style.display='block';
+      document.getElementById('chronList').style.display='none';
+    };
+    list.appendChild(d);
+  });
+  document.getElementById('chronBody').innerHTML='';document.getElementById('chronBody').style.display='none';
+  document.getElementById('chronList').style.display='block';
+  document.getElementById('chronModal').style.display='flex';
+}
 function bpCells(bp){
   const c=[],S=11,P=10,R=12,G=9,F=19,T=14,Q=27;
   if(bp===1){
@@ -2599,6 +2636,7 @@ function dig(){
   if(tt>=137&&tt<=140&&!isSneak()){
     world[idx(h.x,h.y,h.z)]=tt-100;saveDiff(h.x,h.y,h.z,tt-100);rebuild();AU.click();toast('门关了');return;
   }
+  if(tt===35&&!isSneak()){openChronicle();return;}   /* v79：点部落火塘=翻村志 */
   if((tt===137||tt===139||tt===140)&&isSneak()){   // 开着的门潜行拆=先关门再拆（关态）
     world[idx(h.x,h.y,h.z)]=tt-100;saveDiff(h.x,h.y,h.z,tt-100);
     digBlock(h,'门拆了');return;
@@ -3140,6 +3178,8 @@ document.getElementById('fillOk').addEventListener('click',fillExec);
 document.getElementById('fillNo').addEventListener('click',()=>{document.getElementById('fillModal').style.display='none';spClear();});
 document.getElementById('spadeNo').addEventListener('click',()=>{document.getElementById('spadeModal').style.display='none';spClear();});
 document.getElementById('cpOk').addEventListener('click',()=>{cpExec();});
+document.getElementById('chronBack').addEventListener('click',()=>{document.getElementById('chronBody').style.display='none';document.getElementById('chronList').style.display='block';});
+document.getElementById('chronModal').addEventListener('click',(e)=>{if(e.target.id==='chronModal')document.getElementById('chronModal').style.display='none';});
 document.getElementById('cpNo').addEventListener('click',()=>{document.getElementById('cpModal').style.display='none';cpBox=null;spClear();});
 document.getElementById('undoYes').addEventListener('click',()=>{undoPaste();});
 document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();AU.click();dig();},{passive:false});
