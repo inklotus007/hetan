@@ -554,7 +554,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v79';   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v79.1';   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1041,6 +1041,7 @@ function npcPos(npc,tSec){
     if(blt<tot){
       const cx2=vh.plot[0]+2.5,cz2=vh.plot[2]+1.5;
       if(dayT<0.22||dayT>0.82)return[cx2,cz2,0,'stand'];   /* 夜里在家 */
+      if(weather==='rain'||weather==='snow')return[cx2,cz2,0,'stand'];   /* v79.1：雨天停工=人不出工（进度不归零，格子照在） */
       const a=tSec*0.13+npc.seed;
       return[cx2+Math.sin(a)*4.5,cz2+Math.cos(a*0.8)*3.5,Math.sin(a*2)*0.8,'build'];
     }
@@ -2347,12 +2348,13 @@ function bpCells(bp){
   }
   return c;
 }
-function villagerProgress(vh,now,startDay){   /* 晴日制：历史按hash节奏（约72%晴——确定性，所有客户端一致），今天实时联动weather */
+function villagerProgress(vh,now,startDay){   /* 晴日制·纯确定（v79.1修：雨天进度归零的bug——TA凌晨实测「房屋不见了就只有火塘了」）：
+  开工日必晴（开工当天已经在干的活不算雨），后续按hash节奏；今天的实时天气只影响村民出不出工（渲染层），不影响进度。
+  原v78的「今天clear+n+=spd」在day0+rain时n=0——工地清空，已修 */
   const sd=startDay||0;   /* v78kin78：孩子户从成年日起算，不把童年算进工期 */
   const days=Math.max(0,Math.floor((now-VH.up)/86400000)-sd);
   let n=0;
-  for(let i=0;i<days;i++){if(hash((i+sd)*7.7,i*3.3)<0.72)n+=vh.spd;}
-  if(weather==='clear'&&days>0)n+=vh.spd;
+  for(let i=0;i<=days;i++){const d=i+sd;if(d===sd||hash(d*7.7,i*3.3)<0.72)n+=vh.spd;}   /* d===sd=开工日必晴 */
   return n;
 }
 function villPlotAt(x,y,z){   /* 宅地空域：6×6 footprint，地上8格——放置/粘贴查这个 */
@@ -2447,7 +2449,7 @@ function renderVillKids(now){
   for(const g of villKids){
     const c=g.userData.villKid;
     const bornAt=VH.up+c.bornDay*86400000, adultAt=VH.up+c.adultDay*86400000;
-    if(now<bornAt+2*86400000||night){g.visible=false;continue;}   /* 婴幼儿在家；天黑回家 */
+    if(now<bornAt+2*86400000||night||weather==='rain'||weather==='snow'){g.visible=false;continue;}   /* 婴幼儿在家；天黑/雨天回家 */
     g.visible=true;
     const grown=now>=adultAt;
     const s=grown?1:0.55+Math.min(0.15,(now-bornAt)/86400000*0.02);
