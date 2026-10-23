@@ -1,0 +1,24 @@
+name: chronicle
+on:
+  schedule:
+    - cron: '0 16 * * *'   # UTC16=北京0点：村子一天结束，记史人执笔
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python3 scripts/chronicle_gen.py
+        env:
+          ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
+      - run: |
+          git config user.name "村志判定者"
+          git config user.email "chronicle@users.noreply.github.com"
+          git add chronicle.json
+          git diff --cached --quiet || git commit -m "村志：$(date -u +%m-%d)章"
+          git push
