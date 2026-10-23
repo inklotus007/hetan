@@ -2358,6 +2358,11 @@ function applyVillagers(now){
       if(t===27)villSignMake(id,vh,x,y,z);   /* 牌=最后一格=封顶 */
     }
   }
+  /* v77.1部落火塘：村心一格35号——部落的火，进保护（TA：部落与部落的规模） */
+  if(VH.camps)for(const c of VH.camps){
+    const cx=c[0],cy=c[1]+1,cz=c[2],k=cx+','+cy+','+cz;
+    if(!villCells[k]&&inW(cx,cy,cz)&&world[idx(cx,cy,cz)]===AIR){world[idx(cx,cy,cz)]=35;villCells[k]='camp';changed=true;}
+  }
   if(changed)rebuild();
 }
 /* ===== v76复制粘贴 cpv76 ===== */
