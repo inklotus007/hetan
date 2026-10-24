@@ -566,7 +566,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v80';   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v80.1';   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2343,7 +2343,7 @@ function talkBubble(who,text,mine,pending){
 function renderTalk(data){
   const flow=document.getElementById('talkFlow');
   flow.innerHTML='';
-  const list=((data&&data.replies)||[]).filter(r=>r.npc===talkNpc).sort((a,b)=>(a.rt||0)-(b.rt||0));
+  const list=((data&&data.replies)||[]).filter(r=>r.npc===talkNpc&&r.reply).sort((a,b)=>(a.rt||0)-(b.rt||0));   /* 空答（4.7-flash历史空回）不渲染 */
   for(const r of list){
     flow.appendChild(talkBubble(r.name||'客',r.text,true,false));
     flow.appendChild(talkBubble(talkNpc,r.reply,false,false));
