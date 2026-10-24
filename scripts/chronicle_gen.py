@@ -40,21 +40,30 @@ prompt = """你是河滩世界村志的记史人。这个世界是3D像素村庄
 只输出JSON：{"title":"...","text":"..."}。""" % (kids, kids_days, day, today_desc, day)
 
 def call(model):
-    body = json.dumps({'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 800, 'temperature': 0.85}).encode()
+    # max_tokens 1024：4.7-flash带思考链，800可能全花在思考上（finish=length content空——10/25实测）
+    body = json.dumps({'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 1024, 'temperature': 0.85}).encode()
     req = urllib.request.Request('https://open.bigmodel.cn/api/paas/v4/chat/completions', data=body,
         headers={'Authorization': 'Bearer ' + os.environ['ZHIPU_KEY'], 'Content-Type': 'application/json'})
-    return json.load(urllib.request.urlopen(req, timeout=90))
+    r = json.load(urllib.request.urlopen(req, timeout=90))
+    ch = r['choices'][0]
+    c = ((ch.get('message') or {}).get('content') or '').strip()
+    if not c:
+        raise RuntimeError('empty finish=%s' % ch.get('finish_reason'))
+    return c
 
 import os
 txt = None
 try:
-    txt = call('glm-4.7-flash')['choices'][0]['message']['content']
+    txt = call('glm-4.7-flash')
 except urllib.error.HTTPError as e:
     if e.code == 429:
         print('4.7-flash限流，降4-flash')
-        txt = call('glm-4-flash')['choices'][0]['message']['content']
+        txt = call('glm-4-flash')
     else:
         raise
+except RuntimeError as e:
+    print('4.7-flash空答(%s)，降4-flash' % str(e)[:50])
+    txt = call('glm-4-flash')
 
 txt = txt.strip()
 try:

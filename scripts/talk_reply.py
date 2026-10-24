@@ -55,10 +55,16 @@ for item in Q:
 只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], hist_txt, who, text)
 
     def call(model):
-        body = json.dumps({'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 200, 'temperature': 0.9}).encode()
+        # max_tokens 1024：4.7-flash带思考链，200全花在思考上（finish=length content空——10/25端到端实测）
+        body = json.dumps({'model': model, 'messages': [{'role': 'user', 'content': prompt}], 'max_tokens': 1024, 'temperature': 0.9}).encode()
         req = urllib.request.Request('https://open.bigmodel.cn/api/paas/v4/chat/completions', data=body,
             headers={'Authorization': 'Bearer ' + os.environ['ZHIPU_KEY'], 'Content-Type': 'application/json'})
-        return json.load(urllib.request.urlopen(req, timeout=90))['choices'][0]['message']['content'].strip()
+        r = json.load(urllib.request.urlopen(req, timeout=90))
+        ch = r['choices'][0]
+        c = ((ch.get('message') or {}).get('content') or '').strip()
+        if not c:
+            raise RuntimeError('empty finish=%s' % ch.get('finish_reason'))
+        return c
 
     try:
         try:
@@ -69,6 +75,9 @@ for item in Q:
                 reply = call('glm-4-flash')
             else:
                 raise
+        except RuntimeError as e:
+            print('4.7-flash空答(%s)，降4-flash' % str(e)[:50])
+            reply = call('glm-4-flash')
     except Exception as e:
         print('答话失败(%s)：%s——留在queue' % (npc, str(e)[:60]))
         failed.append(item.get('id'))
