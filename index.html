@@ -170,6 +170,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
   </div>
  </div>
 </div>
+<div id="talkUI" style="display:none;position:fixed;inset:0;background:rgba(10,14,18,.55);z-index:31;align-items:center;justify-content:center">
+ <div style="background:#f3ecd8;border:1px solid #d0c29c;border-radius:10px;padding:14px 16px;width:min(340px,88vw);box-shadow:0 10px 40px rgba(40,30,10,.4)">
+  <div style="font-weight:bold;color:#3a2f1e;letter-spacing:2px;font-size:14px;display:flex;justify-content:space-between;align-items:center"><span>跟 <span id="talkWho" style="color:#8c4a2a"></span> 说话</span><b id="talkX" style="cursor:pointer">合上</b></div>
+  <div id="talkFlow" style="height:220px;overflow-y:auto;background:#efe6cf;border:1px solid #d8c9a3;border-radius:8px;padding:8px;margin:10px 0;font-size:13px;line-height:1.7"></div>
+  <div style="display:flex;gap:6px">
+   <input id="talkIn" maxlength="60" placeholder="说点什么……" style="flex:1;border:1px solid #d0c29c;border-radius:6px;padding:7px 9px;font-size:13px;background:#fbf6e8;color:#3a2f1e;outline:none">
+   <button id="talkGo" style="border:none;border-radius:6px;background:#6a8a5a;color:#f4efe2;padding:0 14px;font-size:13px;cursor:pointer">说</button>
+  </div>
+  <div style="font-size:11px;color:#8a7a5a;margin-top:6px">村里人想好了才答——话捎到了，等一会儿（一分钟上下）</div>
+ </div>
+</div>
 <div id="boardUI">
   <div id="boardCard">
     <div id="boardHead">河滩留言板 <span id="nameBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">改名</span> · <span id="tokBtn2" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">令牌</span> · <span id="expBtn" style="cursor:pointer;font-size:12px;letter-spacing:1px;text-decoration:underline">导出搭建</span> · <b id="boardClose">合上</b></div>
@@ -190,6 +201,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#9fc5e0;font-family:
 <div class="mbtn" id="btnPut">放</div>
 <div class="mbtn" id="btnJmp">跳</div>
 <div class="mbtn" id="btnSneak">潜</div>
+<div class="mbtn" id="btnTalk" style="display:none">说</div>
 <div id="stickBase"></div><div id="stickKnob"></div>
 <div id="signModal" style="display:none;position:fixed;inset:0;background:rgba(10,14,18,.55);z-index:30;align-items:center;justify-content:center">
  <div style="background:#f3ecd8;border:1px solid #d0c29c;border-radius:10px;padding:18px 20px;width:min(320px,86vw);box-shadow:0 10px 40px rgba(40,30,10,.4)">
@@ -554,7 +566,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v79.1';   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v80';   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2305,6 +2317,87 @@ function openChronicle(){
   document.getElementById('chronList').style.display='block';
   document.getElementById('chronModal').style.display='flex';
 }
+/* v80对话talk80 */
+let talkNpc=null,talkTid=null,talkPending=null;
+function nearVillName(){
+  if(!VH.homes)return null;
+  let best=null,bd=64;
+  for(const id in VH.homes){
+    const vh=VH.homes[id];
+    const dx=p.x-(vh.plot[0]+0.5),dz=p.z-(vh.plot[2]+0.5);
+    const d2=dx*dx+dz*dz;
+    if(d2<bd){bd=d2;best=vh.name;}
+  }
+  return bd<49?best:null;
+}
+function talkBubble(who,text,mine,pending){
+  const d=document.createElement('div');
+  d.style.cssText='margin:6px 0;text-align:'+(mine?'right':'left');
+  const b=document.createElement('span');
+  b.style.cssText='display:inline-block;max-width:82%;padding:6px 10px;border-radius:9px;'+(mine
+    ?'background:#d9e4d0;color:#2f3a26;'
+    :'background:#f7f0dd;color:#3a2f1e;border:1px solid #ddcda5;');
+  b.textContent=(mine?'':'（'+talkNpc+'）')+(text||'')+(pending?'……':'');
+  d.appendChild(b);return d;
+}
+function renderTalk(data){
+  const flow=document.getElementById('talkFlow');
+  flow.innerHTML='';
+  const list=((data&&data.replies)||[]).filter(r=>r.npc===talkNpc).sort((a,b)=>(a.rt||0)-(b.rt||0));
+  for(const r of list){
+    flow.appendChild(talkBubble(r.name||'客',r.text,true,false));
+    flow.appendChild(talkBubble(talkNpc,r.reply,false,false));
+    if(talkPending&&talkPending.text===r.text)talkPending=null;
+  }
+  if(talkPending&&talkNpc){
+    flow.appendChild(talkBubble((ME&&ME.name)||'客',talkPending.text,true,false));
+    flow.appendChild(talkBubble(talkNpc,'（想话中',false,true));
+  }
+  flow.scrollTop=flow.scrollHeight;
+}
+function pollTalk(){
+  if(talkTid)clearInterval(talkTid);
+  talkTid=setInterval(()=>{
+    if(!talkNpc)return;
+    ghGet('replies.json').then(({data})=>{if(talkNpc)renderTalk(data);}).catch(()=>{});
+  },8000);
+}
+function openTalk(name){
+  talkNpc=name;
+  document.getElementById('talkWho').textContent=name;
+  document.getElementById('talkUI').style.display='flex';
+  renderTalk({});
+  ghGet('replies.json').then(({data})=>{if(talkNpc===name)renderTalk(data);}).catch(()=>{});
+  pollTalk();
+}
+function closeTalk(){
+  document.getElementById('talkUI').style.display='none';
+  talkNpc=null;
+  if(talkTid){clearInterval(talkTid);talkTid=null;}
+}
+function sendTalk(){
+  const inp=document.getElementById('talkIn');
+  const text=(inp.value||'').trim();
+  if(!text||!talkNpc)return;
+  const item={id:'t'+Date.now()+Math.random().toString(36).slice(2,6),npc:talkNpc,name:(ME&&ME.name)||'客',text,t:Date.now()};
+  ghGet('talk_queue.json').then(({sha,data})=>{
+    const q=Array.isArray(data)?data:[];
+    q.push(item);
+    return ghPut('talk_queue.json',q,sha,'捎话：'+talkNpc);
+  }).catch(()=>{
+    /* 409/422：别人先写——拉最新合并重推一次 */
+    return ghGet('talk_queue.json').then(({sha,data})=>{
+      const q2=Array.isArray(data)?data:[];
+      if(!q2.some(x=>x.id===item.id))q2.push(item);
+      return ghPut('talk_queue.json',q2,sha,'捎话重试');
+    });
+  }).then(()=>{
+    talkPending={text};
+    renderTalk({});
+    inp.value='';
+    toast('话捎到了——'+talkNpc+'想好了才答，一分钟上下');
+  }).catch(()=>toast('话没捎到——再试一次'));
+}
 function bpCells(bp){
   const c=[],S=11,P=10,R=12,G=9,F=19,T=14,Q=27;
   if(bp===1){
@@ -3182,6 +3275,11 @@ document.getElementById('spadeNo').addEventListener('click',()=>{document.getEle
 document.getElementById('cpOk').addEventListener('click',()=>{cpExec();});
 document.getElementById('chronBack').addEventListener('click',()=>{document.getElementById('chronBody').style.display='none';document.getElementById('chronList').style.display='block';});
 document.getElementById('chronModal').addEventListener('click',(e)=>{if(e.target.id==='chronModal')document.getElementById('chronModal').style.display='none';});
+document.getElementById('talkGo').addEventListener('click',sendTalk);
+document.getElementById('talkIn').addEventListener('keydown',(e)=>{if(e.key==='Enter')sendTalk();});
+document.getElementById('talkX').addEventListener('click',closeTalk);
+document.getElementById('talkUI').addEventListener('click',(e)=>{if(e.target.id==='talkUI')closeTalk();});
+document.getElementById('btnTalk').addEventListener('click',()=>{const vn=document.getElementById('btnTalk').dataset.vn;if(vn)openTalk(vn);});
 document.getElementById('cpNo').addEventListener('click',()=>{document.getElementById('cpModal').style.display='none';cpBox=null;spClear();});
 document.getElementById('undoYes').addEventListener('click',()=>{undoPaste();});
 document.getElementById('btnDig').addEventListener('touchstart',e=>{e.preventDefault();AU.click();dig();},{passive:false});
@@ -3244,6 +3342,10 @@ requestAnimationFrame(loop);
   document.getElementById('btnBoard').style.display=nearBoard?'block':'none';
   document.getElementById('btnPortal').style.display='block';   /* v52.2：常驻——第一个门之前也得够得到传送（门只在我台上，鸡生蛋） */
   document.getElementById('btnMap').style.display='block';
+  /* v80：靠近村民宅地出「说」——talkUI开着时藏 */
+  {const vn80=nearVillName();const bt80=document.getElementById('btnTalk');
+   bt80.style.display=(vn80&&document.getElementById('talkUI').style.display!=='flex')?'block':'none';
+   bt80.dataset.vn=vn80||'';}
   if(mapOn)drawMapMarks();   /* 开图状态下玩家标记实时 */
   tickTeleport();
   // 水声：距河越近越响
