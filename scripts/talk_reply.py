@@ -20,7 +20,6 @@ try:
     if 'minds' not in M: M['minds'] = {}
 except Exception:
     M = {'moodDay': 0, 'minds': {}, 'mem': {}, 'today': {}}
-M.changed = False   # 有对话才commit memory文件
 
 if not Q:
     print('queue空，退出')
@@ -98,7 +97,6 @@ for item in Q:
         memall = M.setdefault('mem', {}).setdefault(npc, [])
         memall.append({'t': int(time.time() * 1000), 'name': who, 'text': text[:60], 'reply': reply[:60]})
         M['mem'][npc] = memall[-30:]
-        M.changed = True
         print('记进了%s的记忆（共%d条）' % (npc, len(M['mem'][npc])))
     except Exception as e:
         print('记忆写入失败(不挡答话)：', str(e)[:60])
@@ -107,6 +105,7 @@ for item in Q:
 if replied:
     R['replies'].extend(replied)
     R['replies'] = R['replies'][-300:]
+    json.dump(M, open('villagers_memory.json', 'w'), ensure_ascii=False)   # 对话记忆落盘
 json.dump(R, open('replies.json', 'w'), ensure_ascii=False)
 json.dump([q for q in Q if q.get('id') in failed], open('talk_queue.json', 'w'), ensure_ascii=False)   # 成功的清掉，失败的留队
 print('done', len(replied), 'failed', len(failed))
