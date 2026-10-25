@@ -7,6 +7,12 @@
 import json, urllib.request, urllib.error, time, sys
 
 V = json.load(open('villagers.json'))
+try:
+    M = json.load(open('villagers_memory.json'))
+    _talks = (M.get('today') or {}).get('talks') or []
+    talks_txt = ('今天村里的话（写章时可以化进来，让章里有对话）：' + '；'.join('%s对%s说「%s」' % (t.get('a'), t.get('b'), t.get('text')) for t in _talks[:4])) if _talks else ''
+except Exception:
+    talks_txt = ''
 C = json.load(open('chronicle.json'))
 UP = V['up']
 now = int(time.time() * 1000)
@@ -36,8 +42,9 @@ today_desc = ('今日大事：' + '；'.join(events)) if events else '今天村�
 prompt = """你是河滩世界村志的记史人。这个世界是3D像素村庄，两个部落安家在世界中部，村心各一堆火，九户村民，房屋按晴日进度慢慢盖，下雨停工。
 命定事实：九户=满仓、建军（单身）、秋生、秀兰、凤兰、爱香、长贵、来福、银锁。婚事：满仓配凤兰第4天、秋生配秀兰第7天、来福配爱香第7天、长贵配银锁第16天。孩子名册：%s（%s）——都还没出生（各自出生日见括号），别写他们出场。
 今天是安家后第%d天。%s
+%s
 用话本体写今天这一章，300字以内，标题自拟（四字内，不带「第」字）。要像村里人讲村里事，不要列清单，不要元叙述（不说「命运」「预示」这类话）。落款「——村志 第%d日」。
-只输出JSON：{"title":"...","text":"..."}。""" % (kids, kids_days, day, today_desc, day)
+只输出JSON：{"title":"...","text":"..."}。""" % (kids, kids_days, day, today_desc, talks_txt, day)
 
 def call(model):
     # max_tokens 1024：4.7-flash带思考链，800可能全花在思考上（finish=length content空——10/25实测）

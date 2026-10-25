@@ -14,6 +14,13 @@ try:
     if 'replies' not in R: R = {'replies': []}
 except Exception:
     R = {'replies': []}
+try:
+    M = json.load(open('villagers_memory.json'))
+    if 'mem' not in M: M['mem'] = {}
+    if 'minds' not in M: M['minds'] = {}
+except Exception:
+    M = {'moodDay': 0, 'minds': {}, 'mem': {}, 'today': {}}
+M.changed = False   # 有对话才commit memory文件
 
 if not Q:
     print('queue空，退出')
@@ -45,14 +52,17 @@ for item in Q:
     if not npc or not text:
         continue
     pers = PERS.get(npc, '村里人，实在')
-    hist = [r for r in R['replies'] if r.get('npc') == npc][-2:]
-    hist_txt = '\n'.join('（此前你跟%s说过）你对%s说过「%s」，TA答过「%s」' % (r.get('name'), r.get('name'), (r.get('text') or '')[:60], (r.get('reply') or '')[:60]) for r in hist) or '（还没跟TA说过话）'
+    # 该村民的记忆（最近5轮，跨天持久——v81意识层）
+    mem = M.get('mem', {}).get(npc) or []
+    hist_txt = '\n'.join('（%s对你说「%s」，你答了「%s」——你记得这事）' % (x.get('name'), (x.get('text') or '')[:50], (x.get('reply') or '')[:50]) for x in mem[-5:]) or '（还没跟TA说过话）'
+    # 今天的心事
+    mind = M.get('minds', {}).get(npc)
+    mind_txt = ('你今天心里正惦记着：%s——答话时可以从这里头带出来。\n' % mind.get('thought','')) if mind else ''
     prompt = """你是河滩村的村民「%s」。%s。
 村子现状（安家第%d天）：九户在河滩和营地两边盖房，婚事都定了：满仓配凤兰第4天、秋生配秀兰第7天、来福配爱香第7天、长贵配银锁第16天，建军单身。最近村里的事：%s
-%s
-现在%s（村里能看见的一个人，大家当稀客处，不当外人）对你说：「%s」
+%s%s现在%s（村里能看见的一个人，大家当稀客处，不当外人）对你说：「%s」
 你回一段话——豫北庄稼人口吻，实在，30到80字，不书面，不解释自己是村民，不提AI不提游戏。可以问回去一句。
-只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], hist_txt, who, text)
+只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], mind_txt, hist_txt, who, text)
 
     def call(model):
         # max_tokens 1024：4.7-flash带思考链，200全花在思考上（finish=length content空——10/25端到端实测）
@@ -83,6 +93,15 @@ for item in Q:
         failed.append(item.get('id'))
         continue   # 失败的留在queue，下个run再答
     replied.append({'id': item.get('id'), 'npc': npc, 'name': who, 'text': text, 'reply': reply[:200], 'rt': int(time.time() * 1000)})
+    # 记进该户的记忆（跨天持久，cap 30——v81）
+    try:
+        memall = M.setdefault('mem', {}).setdefault(npc, [])
+        memall.append({'t': int(time.time() * 1000), 'name': who, 'text': text[:60], 'reply': reply[:60]})
+        M['mem'][npc] = memall[-30:]
+        M.changed = True
+        print('记进了%s的记忆（共%d条）' % (npc, len(M['mem'][npc])))
+    except Exception as e:
+        print('记忆写入失败(不挡答话)：', str(e)[:60])
     print('%s答了：%s' % (npc, reply[:40]))
 
 if replied:

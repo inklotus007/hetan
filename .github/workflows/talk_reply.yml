@@ -14,8 +14,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: 村里人答话
+      - name: 村里人答话（带上各户记忆和今天的心事）
         run: python3 scripts/talk_reply.py
+        env:
+          ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
+      - name: 养村民今天的心思（每天第一次触发时生成：心事+村里的话）
+        run: python3 scripts/villager_minds.py || true
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
       - name: 顺路补村志（schedule不靠谱，答话是第二次机会）
@@ -25,6 +29,6 @@ jobs:
       - run: |
           git config user.name "村里人"
           git config user.email "villager@users.noreply.github.com"
-          git add replies.json talk_queue.json chronicle.json
-          git diff --cached --quiet || git commit -m "村里人答话+村志补章"
+          git add replies.json talk_queue.json chronicle.json villagers_memory.json
+          git diff --cached --quiet || git commit -m "村里人的心思：答话+心事+村志"
           git push
