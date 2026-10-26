@@ -26,10 +26,23 @@ jobs:
         run: python3 scripts/chronicle_gen.py || true
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
-      - run: |
+      - name: 推送（rebase重试，防push race——10/25三次生成全被吞的教训）
+        run: |
           git config user.name "村里人"
           git config user.email "villager@users.noreply.github.com"
           git add replies.json talk_queue.json chronicle.json 2>/dev/null || true
           git add villagers_memory.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "村里人的心思：答话+心事+村志"
-          git push
+          if git diff --cached --quiet; then
+            echo "没有要推的，正常结束"
+            exit 0
+          fi
+          git commit -m "村里人的心思：答话+心事+村志"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "推送成功（第${i}次）"
+              exit 0
+            fi
+            echo "push第${i}次失败，退避重试"
+            sleep 6
+          done
+          exit 1
