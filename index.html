@@ -568,7 +568,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v83';   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v84';   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1034,6 +1034,39 @@ function schedPos(name,dayT){
   }
   return null;
 }
+function villAt(npc,at){   /* v84：行程地点→世界坐标。公共场合按seed错开站——两人不叠在一个点上 */
+  const vh=(VH.homes||{})[npc.id];
+  const ox=Math.sin((npc.seed||7)*1.7)*1.8, oz=Math.cos((npc.seed||7)*2.3)*1.8;
+  if(at==='plot'&&vh)return[vh.plot[0]+2.5+ox*0.5,vh.plot[2]+1.5+oz*0.5];
+  if(at==='fire1'&&VH.camps&&VH.camps[0])return[VH.camps[0][0]+0.5+ox,VH.camps[0][2]+0.5+oz];
+  if(at==='fire2'&&VH.camps&&VH.camps[1])return[VH.camps[1][0]+0.5+ox,VH.camps[1][2]+0.5+oz];
+  if(at==='river'){
+    const x=(vh?vh.plot[0]:npc.home[0])+0.5+ox*0.6;
+    const rz=riverZAt(x);
+    const side=(vh&&vh.plot[2]<rz)?-1.5:1.5;
+    return[x,rz+side+oz*0.3];
+  }
+  return[npc.home[0]+0.5,npc.home[1]+0.5];
+}
+function villPeer(npc,cur){   /* v84：同段同地点的另一户——chat时朝他站（含各自错开位） */
+  const sch=(MINDS&&MINDS.sched)||{};
+  for(const n in sch){
+    if(n===npc.name)continue;
+    for(const l of sch[n]){
+      if(l.at===cur.at&&Math.abs(l.t-cur.t)<0.15){
+        const other=Object.values((VH.homes||{})).find(h=>h.name===n);
+        if(other){
+          const otherNpc={id:other.id,seed:0,name:n,home:[other.plot[0],other.plot[2]]};
+          const otherSeed=(npcObjsSeedCache[n]!=null)?npcObjsSeedCache[n]:(other.plot[0]*31+other.plot[2]);
+          otherNpc.seed=otherSeed;
+          return villAt(otherNpc,l.at);
+        }
+      }
+    }
+  }
+  return null;
+}
+const npcObjsSeedCache={};   /* v84：村民seed缓存（npcs.json拉到后填——chat朝向用同seed才算得出同偏移） */
 function npcPos(npc,tSec){
   const dayT=(tSec%DAY_LEN)/DAY_LEN;
   const s=schedPos(npc.name,dayT);
@@ -1044,6 +1077,29 @@ function npcPos(npc,tSec){
     else if(act==='lookWater')yaw=Math.atan2(0,riverZAt(s.x)-s.z);
     else yaw=Math.sin(dayT*220+npc.seed)*0.8;   // 站着的偶尔转身
     return[s.x,s.z,yaw,act];
+  }
+  /* v84：判定者行程——AI排的今天。村民按段走，说话的两户站在一起，夜里回家 */
+  if(MINDS&&MINDS.sched&&MINDS.sched[npc.name]&&(VH.homes||{})[npc.id]){
+    const legs=MINDS.sched[npc.name];
+    if(dayT<0.08||dayT>0.92)return[npc.home[0]+0.5,npc.home[1]+0.5,0,'stand'];   /* 深夜都回家 */
+    let cur=null;
+    for(const l of legs){if(dayT>=l.t)cur=l;else break;}
+    if(!cur)return[npc.home[0]+0.5,npc.home[1]+0.5,0,'stand'];   /* 天没亮没出门 */
+    const at=villAt(npc,cur.at);
+    let yaw=0;
+    if(cur.act==='chat'){
+      const peer=villPeer(npc,cur);
+      if(peer)yaw=Math.atan2(peer[0]-at[0],peer[1]-at[1]);
+      else yaw=Math.sin(dayT*180+npc.seed)*0.5;
+    }else if(cur.act==='lookWater')yaw=Math.atan2(0,riverZAt(at[0])-at[1]);
+    else if(cur.act==='build')yaw=Math.atan2(villAt(npc,'plot')[0]-at[0],villAt(npc,'plot')[1]-at[1]);
+    else yaw=Math.sin(dayT*160+npc.seed)*0.5;
+    /* build的：在工地附近小步挪——站在一格上像桩子 */
+    if(cur.act==='build'){
+      const a2b=tSec*0.31+npc.seed;
+      return[at[0]+Math.sin(a2b)*1.6,at[1]+Math.cos(a2b*0.9)*1.2,yaw,'build'];
+    }
+    return[at[0],at[1],yaw,cur.act];
   }
   if(npc.project){   /* 等指令的投影：站在home，指令到了才动 */
     return[npc.home[0]+0.5,npc.home[1]+0.5,Math.sin(dayT*160+npc.seed)*0.6,'stand'];
@@ -1075,6 +1131,7 @@ function renderNPCs(list,tSec){
     seen[npc.id]=true;
     let g=npcObjs[npc.id];
     if(!g){g=makeNPCBody(npc);npcGroup.add(g);npcObjs[npc.id]=g;}
+    if(npc.name)npcObjsSeedCache[npc.name]=npc.seed;   /* v84：chat朝向用 */
     let x,z,yaw;
     const isOnline=npc.online&&(Date.now()-npc.lastSeen<NPC_ONLINE_TTL);
     if(isOnline){
@@ -1088,8 +1145,9 @@ function renderNPCs(list,tSec){
       /* v47投影：按日程生活（或路人漫游）——离线也lerp，时段切换时人是从容走过去的，不是闪现 */
       const P=npcPos(npc,tSec);
       const tx=P[0],tz=P[1];yaw=P[2];
-      if(g.userData.sm){x=g.position.x+(tx-g.position.x)*0.04;z=g.position.z+(tz-g.position.z)*0.04;}
+      if(g.userData.sm){x=g.position.x+(tx-g.position.x)*0.045;z=g.position.z+(tz-g.position.z)*0.045;}
       else{x=tx;z=tz;g.userData.sm=1;}
+      if(Math.hypot(tx-x,tz-z)>1.2&&P[3]!=='chat')yaw=Math.atan2(tx-x,tz-z);   /* v84：走动时面朝路 */
       const act=P[3];
       if(g.userData.head)g.userData.head.rotation.x=act==='lookStele'?0.5:(act==='lookWater'?0.32:Math.max(0,Math.sin(tSec*0.4+npc.seed))*0.15);
     }
@@ -2391,6 +2449,7 @@ function openTalk(name){
 }
 /* v81意识层：心事渲染+boot自动dispatch */
 function renderMind(M){
+  if(M)MINDS=M;   /* v84：拉到就存全局——npcPos用 */
   if(!talkNpc)return;
   const mind=document.getElementById('talkMind'),vil=document.getElementById('talkVillage');
   const m=(M&&M.minds&&M.minds[talkNpc])||null;
@@ -2398,13 +2457,19 @@ function renderMind(M){
   const talks=(M&&M.today&&M.today.talks)||[];
   vil.innerHTML=talks.length?('【今天村里】'+talks.map(t=>'· '+t.a+(t.b&&t.b!==t.a?'对'+t.b:'')+'：'+t.text).join('<br>')):'';
 }
+let MINDS=null;   /* v84：判定者今天的心思+行程（游客也拉，同源副本） */
 let mindDispatched=false;
 function bootMindCheck(){
   if(mindDispatched)return;mindDispatched=true;
-  if(!NPC_TOKEN||rawMode||!VH||!VH.up)return;   // 无令牌（游客）不dispatch——看旧心事
+  if(!VH||!VH.up)return;
+  if(!NPC_TOKEN||rawMode){   /* v84：游客也拉行程数据（同源副本只读）——不dispatch */
+    ghSame('villagers_memory.json').then(({data})=>{if(data&&data.minds)MINDS=data;}).catch(()=>{});
+    return;
+  }
   ghGet('villagers_memory.json').then(({data})=>{
+    if(data&&data.minds)MINDS=data;   /* v84：拉到就存 */
     const day=Math.floor((Date.now()-VH.up)/86400000);
-    if(data&&data.moodDay===day)return;   // 今天养过了
+    if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});
   }).catch(()=>{});
 }

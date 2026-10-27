@@ -16,8 +16,10 @@ except Exception:
     M = {'moodDay': 0, 'minds': {}, 'mem': {}, 'today': {}}
 
 day = int((time.time() * 1000 - V['up']) / 86400000)
-if M.get('moodDay') == day:
-    print('今天(day %d)的心思已经养过了，跳过' % day)
+need_mood = M.get('moodDay') != day
+need_sched = M.get('schedDay') != day
+if not need_mood and not need_sched:
+    print('今天(day %d)的心思和行程都养过了，跳过' % day)
     sys.exit(0)
 
 names = sorted({vh['name'] for vh in V['homes'].values()})
@@ -36,10 +38,11 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 请生成：
 1. 每户今天的心事——第一人称，30到60字，像那人自己在心里过的一天（满仓在数日子、建军看别人成双是什么滋味、银锁盘的是什么账……各是各的，别全是婚礼话题）
 2. 今天村里的话——2到4条，谁对谁说的，一句一条（火塘边、门口、地头，贴着上面的事）
+3. 每户今天的行程——3到5段，从早到晚。地点只能从这些里选：home（自家）、plot（自家宅地工地）、fire1（东村火塘）、fire2（西村火塘）、river（河边）。九户的房都还没盖完，每户行程里要有一段在plot干活；上面说过话的两户，要有一段排在同一地点同一时段（他们今天会真的站在一起说话）。最后一段回home。
 
-九户每户都必须有一条心事，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
+九户每户都必须有一条心事和一份行程，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
 只输出JSON，不要别的文字：
-{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}]}""" % (day, recent[:240], mem_block)
+{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.75,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block)
 
 def call(model, backoff=0):
     if backoff:
@@ -67,7 +70,20 @@ def parse(txt):
     for x in d.get('talks', []):
         if isinstance(x, dict) and x.get('text'):
             talks.append({'a': str(x.get('a') or '村里人')[:12], 'b': str(x.get('b') or '')[:12], 'text': str(x['text'])[:120]})
-    return minds, talks
+    sched = {}
+    AT = {'home','plot','fire1','fire2','river'}
+    for n, legs in (d.get('sched') or {}).items():
+        if isinstance(legs, list) and legs:
+            clean = []
+            for leg in legs:
+                if isinstance(leg, dict) and leg.get('at') in AT:
+                    try: t = max(0.0, min(1.0, float(leg.get('t', 0.2))))
+                    except Exception: t = 0.2
+                    clean.append({'t': t, 'at': str(leg['at']), 'act': str(leg.get('act') or 'walk')[:10]})
+            if clean:
+                clean.sort(key=lambda x: x['t'])
+                sched[str(n)[:12]] = clean
+    return minds, talks, sched
 
 ok = False
 for attempt in range(3):
@@ -75,8 +91,8 @@ for attempt in range(3):
     backoff = [0, 0, 15][attempt]
     try:
         txt = call(model, backoff)
-        minds, talks = parse(txt)
-        if len(minds) >= 7:   # 九户至少七户有心事才算成
+        minds, talks, sched = parse(txt)
+        if len(minds) >= 7 and len(sched) >= 7:   # 九户至少七户有心事才算成
             ok = True
             break
         print('%s第%d次生成内容不足(%d minds)' % (model, attempt+1, len(minds)))
@@ -89,13 +105,19 @@ if not ok:
     print('两轮都失败——今天用旧心思（明天再养）')
     sys.exit(1)
 
-M['moodDay'] = day
-M['today'] = {'day': day, 'talks': talks}
-for x in minds:
-    M['minds'][x['npc']] = {'mood': x['mood'], 'thought': x['thought']}
+if need_mood:
+    M['moodDay'] = day
+    M['today'] = {'day': day, 'talks': talks}
+    for x in minds:
+        M['minds'][x['npc']] = {'mood': x['mood'], 'thought': x['thought']}
+if need_sched:
+    M['schedDay'] = day
+    M['sched'] = sched
 json.dump(M, open('villagers_memory.json', 'w'), ensure_ascii=False)
-print('养成了：day %d，%d户心思+%d句村里的话' % (day, len(minds), len(talks)))
+print('养成了：day %d，%d户心思+%d句村里的话+%d户行程' % (day, len(minds), len(talks), len(sched)))
 for x in minds:
     print(' ', x['npc'], '(%s)' % x['mood'], x['thought'][:36])
 for t in talks:
     print('  ·', t['a'], '对', t['b'], '：', t['text'][:44])
+for n, legs in sched.items():
+    print('  %s:' % n, ' '.join('%d@%s' % (int(l['t']*100), l['at']) for l in legs))
