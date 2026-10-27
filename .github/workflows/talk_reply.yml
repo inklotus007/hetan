@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: village-mind      # 10/26晚两run并发撞车（rebase冲突挂死→同志收失败邮件）——串行排队
+  cancel-in-progress: false
 jobs:
   reply:
     runs-on: ubuntu-latest
@@ -42,7 +45,13 @@ jobs:
               echo "推送成功（第${i}次）"
               exit 0
             fi
-            echo "push第${i}次失败，退避重试"
+            echo "push第${i}次失败，第${i}次恢复"
+            git rebase --abort 2>/dev/null || true
+            git merge --abort 2>/dev/null || true
             sleep 6
           done
-          exit 1
+          # 真冲突（同文件双改）：舍本run结果，回到远端最新——另一run的成果在，queue里没答的话也在，下个触发重答
+          git fetch origin main
+          git reset --hard origin/main
+          echo "并发冲突：本run结果弃了（数据无损，下个触发重跑）"
+          exit 0
