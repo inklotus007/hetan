@@ -568,7 +568,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v85.1';   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v86';   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2528,82 +2528,41 @@ function sendTalk(){
   }).catch(()=>toast('话没捎到——再试一次'));
 }
 function bpCells(bp){
-  const c=[],S=11,P=10,R=12,G=9,F=19,T=14,Q=27;
-  if(bp===1){
-    for(let x=0;x<5;x++)for(let z=0;z<4;z++)if(x===0||x===4||z===0||z===3)c.push([x,0,z,S]);
-    for(let y=1;y<=2;y++)for(let x=0;x<5;x++)for(let z=0;z<4;z++){
-      if(!(x===0||x===4||z===0||z===3))continue;
-      if(z===0&&x===2)continue;
-      if(z===0&&y===2&&(x===1||x===3))c.push([x,y,z,G]);else c.push([x,y,z,P]);
-    }
-    c.push([2,1,0,37]);
-    for(let x=0;x<5;x++)for(let z=0;z<4;z++)c.push([x,3,z,R]);
-    for(let x=1;x<4;x++)for(let z=1;z<3;z++)c.push([x,4,z,R]);
-    c.push([3,1,2,T]);
-    c.push([2,0,-1,Q]);
-  }else if(bp===2){
-    for(let x=0;x<4;x++)for(let z=0;z<4;z++)if(x===0||x===3||z===0||z===3)c.push([x,0,z,S]);
-    for(let y=1;y<=4;y++)for(let x=0;x<4;x++)for(let z=0;z<4;z++){
-      if(!(x===0||x===3||z===0||z===3))continue;
-      if(z===0&&x===1&&(y===1||y===2))continue;
-      if(x===3&&z===2&&(y===2||y===3))continue;
-      if(z===0&&x===2&&(y===3||y===4))c.push([x,y,z,G]);else c.push([x,y,z,P]);
-    }
-    c.push([1,1,0,37]);
-    c.push([3,2,2,G],[3,3,2,G]);
-    for(let x=1;x<3;x++)for(let z=1;z<3;z++)c.push([x,4,z,P]);
-    for(let x=0;x<4;x++)for(let z=0;z<4;z++)c.push([x,5,z,R]);
-    c.push([0,6,0,F],[3,6,0,F],[0,6,3,F],[3,6,3,F]);
-    c.push([2,1,1,T]);
-    c.push([1,0,-1,Q]);
-  }else if(bp===3){   /* v85：紧凑独户3×4——单身汉的屋（建军） */
-    for(let x=0;x<3;x++)for(let z=0;z<4;z++)if(x===0||x===2||z===0||z===3)c.push([x,0,z,S]);
-    for(let y=1;y<=2;y++)for(let x=0;x<3;x++)for(let z=0;z<4;z++){
-      if(!(x===0||x===2||z===0||z===3))continue;
-      if(z===0&&x===1)continue;
-      if(z===3&&y===2)c.push([x,y,z,G]);else c.push([x,y,z,P]);
-    }
-    c.push([1,1,0,37]);
-    for(let x=0;x<3;x++)for(let z=0;z<4;z++)c.push([x,3,z,R]);
-    c.push([1,1,3,T]);
-    c.push([1,0,-1,Q]);
-  }else if(bp===4){   /* v85：长屋带院6×4——手艺人家的（秋生、来福）：屋后半院篱笆 */
-    for(let x=0;x<6;x++)for(let z=0;z<4;z++)if(x===0||x===5||z===0||z===3)c.push([x,0,z,S]);
-    for(let y=1;y<=2;y++)for(let x=0;x<6;x++)for(let z=0;z<4;z++){
-      if(!(x===0||x===5||z===0||z===3))continue;
-      if(z===0&&x===2)continue;
-      if(z===3&&y===2&&(x===1||x===4))c.push([x,y,z,G]);else c.push([x,y,z,P]);
-    }
-    c.push([2,1,0,37]);
-    for(let x=0;x<6;x++)for(let z=0;z<4;z++)c.push([x,3,z,R]);
-    c.push([4,1,1,T]);
-    for(let x=0;x<6;x+=5)c.push([x,1,4,F]);   /* 院两角篱 */
-    for(let x=1;x<5;x+=3)c.push([x,0,4,S]);
-    c.push([3,1,5,F]);
-    c.push([2,0,-1,Q]);
-  }else if(bp===5){   /* v85：大堂屋5×5——娶亲的气派（满仓）：双层门洞、顶圈窗、门旁双炬、坡顶收分 */
-    for(let x=0;x<5;x++)for(let z=0;z<5;z++)if(x===0||x===4||z===0||z===4)c.push([x,0,z,S]);
-    for(let y=1;y<=3;y++)for(let x=0;x<5;x++)for(let z=0;z<5;z++){
-      if(!(x===0||x===4||z===0||z===4))continue;
-      if(z===0&&x===2&&y<=2)continue;
-      if((z===0||z===4)&&y===3&&x%2===1)c.push([x,y,z,G]);else c.push([x,y,z,P]);
-    }
-    c.push([2,1,0,37]);
-    for(let x=0;x<5;x++)for(let z=0;z<5;z++)c.push([x,4,z,R]);
-    for(let x=1;x<4;x++)for(let z=1;z<4;z++)c.push([x,5,z,R]);
-    c.push([1,1,0,T],[3,1,0,T]);
-    c.push([2,0,-1,Q]);
-  }else{
-    for(let x=0;x<6;x++)for(let z=0;z<3;z++)if(x===0||x===5||z===0||z===2)c.push([x,0,z,S]);
-    for(let y=1;y<=2;y++)for(let x=0;x<6;x++)for(let z=0;z<3;z++){
-      if(!(x===0||x===5||z===0||z===2))continue;
-      if(z===0&&x===3)continue;
-      if(z===0&&y===2&&(x===1||x===2||x===4))c.push([x,y,z,G]);else c.push([x,y,z,P]);
-    }
-    c.push([3,1,0,37]);
-    for(let x=0;x<6;x++)for(let z=0;z<3;z++)c.push([x,3,z,R]);
-    c.push([1,1,1,T]);
-    c.push([3,0,-1,Q]);
+  const c=[],S=11,P=10,R=12,G=9,F=19,T=14;
+  /* v86尺寸学：基座满铺(dy=0整层)——墙高3(y1-3)——门洞2格高——双坡顶(檐层+脊层)。比例对齐MC小屋(墙4顶2/7×7) */
+  const X=bp===3?3:(bp===2?4:(bp===4?6:5));      /* 宽 */
+  const Z=bp===5?5:4;                             /* 深 */
+  const wallH=bp===5?4:(bp===2?4:3);              /* 墙高：大堂屋和两层楼4格，其余3格 */
+  const doorX=bp===3?1:Math.floor(X/2);
+  /* 基座：满铺整层（悬空的根治——内圈外圈都铺） */
+  for(let x=0;x<X;x++)for(let z=0;z<Z;z++)c.push([x,0,z,S]);
+  /* 墙：外圈，y1到wallH。门洞y1-2两格高；窗在y2/y3前后对开 */
+  for(let y=1;y<=wallH;y++)for(let x=0;x<X;x++)for(let z=0;z<Z;z++){
+    if(!(x===0||x===X-1||z===0||z===Z-1))continue;
+    if(z===0&&x===doorX&&y<=2)continue;                                   /* 门洞两格高 */
+    const winY=(y===2&&bp!==2)||(y===3&&bp===2);
+    if(winY&&(z===0||z===Z-1)&&(x===1||x===X-2)&&X>=4)c.push([x,y,z,G]);  /* 前后窗 */
+    else c.push([x,y,z,P]);
+  }
+  c.push([doorX,1,0,37]);   /* 门：一格放置，doorGeo自带两格高视觉 */
+  /* 双坡顶：坡向z（前后两坡）。檐层y=wallH+1全铺；脊层只铺z中部（Z=4→z1-2；Z=5→z2） */
+  const yE=wallH+1;
+  for(let x=0;x<X;x++)for(let z=0;z<Z;z++)c.push([x,yE,z,R]);
+  const ridgeZ=Z===4?[1,2]:[1,2,3];
+  for(let x=0;x<X;x++)for(const z of ridgeZ)c.push([x,yE+1,z,R]);
+  /* 楼（bp2）：二层再加一圈矮墙+压顶 */
+  if(bp===2){
+    for(let x=0;x<X;x++)for(let z=0;z<Z;z++)c.push([x,5,z,R]);   /* 五层檐（两层楼更高） */
+    c.push([doorX,3,0,G]);
+  }
+  /* 门旁炬（大堂屋双炬） */
+  if(bp===5){c.push([1,1,0,T],[X-2,1,0,T]);}
+  /* 门口牌 */
+  c.push([doorX,0,-1,Q]);
+  /* 长屋的院（bp4）：屋后篱笆 */
+  if(bp===4){
+    c.push([0,1,Z+1,F],[X-1,1,Z+1,F],[Math.floor(X/2),1,Z+1,F]);   /* v86.1：篱和基座同z（错位悬空修掉） */
+    c.push([0,0,Z+1,S],[X-1,0,Z+1,S],[Math.floor(X/2),0,Z+1,S]);
   }
   return c;
 }
@@ -2660,6 +2619,31 @@ function relocateAnimals(){   /* v85.1：动物迁村——鸡啄村口、狗看
     }
   }
 }
+function carveRiver(){   /* v86：TA「连个河都没有就水滩滩」——给河滩一条河：两村连线北侧32格的弓形河道，正弦摆动，宽3格深2格。只动自然格（草/土/石/草丛），TA搭的任何方块不碰——河道遇建筑断流，两岸留TA自己改 */
+  if(!VH.camps||VH.camps.length<2)return;
+  const a=VH.camps[0], b=VH.camps[1];
+  const dx=b[0]-a[0], dz=b[2]-a[2], len=Math.hypot(dx,dz)||1;
+  let nx=-dz/len, nz=dx/len;
+  if(nz>0){nx=-nx;nz=-nz;}   /* 朝北（z小） */
+  const N=110;
+  for(let s=0;s<=N;s++){
+    const t=s/N;
+    const sway=Math.sin(t*7.3)*8;
+    const cx=Math.round(a[0]+dx*t+nx*(32+sway*0.35));
+    const cz=Math.round(a[2]+dz*t+nz*(32+sway*0.35)+Math.cos(t*5.1)*4);
+    for(let z2=cz-1;z2<=cz+1;z2++){
+      if(!inW(cx,1,z2))continue;
+      const y=surfaceY(cx,z2);
+      for(const yy of [y,y-1,y-2]){
+        if(!inW(cx,yy,z2))continue;
+        const t0=world[idx(cx,yy,z2)];
+        if(t0===1||t0===2||t0===3||t0===17||t0===AIR){
+          world[idx(cx,yy,z2)]=(yy===y-2)?8:AIR;
+        }
+      }
+    }
+  }
+}
 function villagerProgress(vh,now,startDay){   /* 晴日制·纯确定（v79.1修：雨天进度归零的bug——TA凌晨实测「房屋不见了就只有火塘了」）：
   开工日必晴（开工当天已经在干的活不算雨），后续按hash节奏；今天的实时天气只影响村民出不出工（渲染层），不影响进度。
   原v78的「今天clear+n+=spd」在day0+rain时n=0——工地清空，已修 */
@@ -2691,7 +2675,7 @@ function applyVillagers(now){
   if(!VH.homes)return;
   const day=Math.floor((now-VH.up)/86400000);
   /* v85：蓝图换代迁移——v4：清旧格重铺新蓝图（每端幂等，进度按天保留） */
-  if((VH.v||0)>=4&&!localStorage.getItem('hetan_mig_v4')){
+  if((VH.v||0)>=4&&!localStorage.getItem('hetan_mig_v86')){
     let wiped=0;
     for(const k in villCells){
       const parts=k.split(',').map(Number);
@@ -2700,7 +2684,7 @@ function applyVillagers(now){
     villCells={};villBuilt={};villTotals={};
     for(const id in villSignMesh){scene.remove(villSignMesh[id]);}
     villSignMesh={};
-    try{localStorage.setItem('hetan_mig_v4','1');}catch(e){}
+    try{localStorage.setItem('hetan_mig_v86','1');}catch(e){}
     console.log('v85迁移：清了'+wiped+'格旧村，换新蓝图');
   }
   if(day===villInitDay)return;   /* 一天一算；今天内部进度另由weather翻倍触发（rain/clear切换时强制重算一次） */
@@ -2737,7 +2721,8 @@ function applyVillagers(now){
       world[idx(x,y,z)]=t;villCells[k]=id;changed=true;
     }
   }
-  buildVillageRoads();   /* v85：村区街道+打谷场+水井（确定性，每端同算，只铺草上不碰玩家建筑） */
+  carveRiver();   /* v86：河滩要有河（world写，rebuild由后面的路网统一触发） */
+  buildVillageRoads();   /* v85：村区街道+打谷场+水井（确定性，每端同算，只铺草上不碰玩家建筑）+rebuild兜底 */
   relocateAnimals();   /* v85.1：动物从老地图迁村 */
   /* v78kin78婚礼：两宅门口红花+喜牌（一次性事件，办过永记） */
   if(VH.weddings)for(const wd of VH.weddings){
