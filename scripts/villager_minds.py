@@ -38,11 +38,11 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 请生成：
 1. 每户今天的心事——第一人称，30到60字，像那人自己在心里过的一天（满仓在数日子、建军看别人成双是什么滋味、银锁盘的是什么账……各是各的，别全是婚礼话题）
 2. 今天村里的话——2到4条，谁对谁说的，一句一条（火塘边、门口、地头，贴着上面的事）
-3. 每户今天的行程——3到5段，从早到晚。地点只能从这些里选：home（自家）、plot（自家宅地工地）、fire1（东村火塘）、fire2（西村火塘）、river（河边）。九户的房都还没盖完，每户行程里要有一段在plot干活；上面说过话的两户，要有一段排在同一地点同一时段（他们今天会真的站在一起说话）。最后一段回home。
+3. 每户今天的行程——3到5段，从早到晚。地点只能从这些里选：home（自家）、plot（自家宅地工地）、fire1（东村火塘）、fire2（西村火塘）、river（河边）、well（村口水井，打水洗衣）。九户的房都还没盖完，每户行程里要有一段在plot干活；上面说过话的两户，要有一段排在同一地点同一时段（他们今天会真的站在一起说话）。最后一段回home。
 
 九户每户都必须有一条心事和一份行程，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
 只输出JSON，不要别的文字：
-{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.75,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block)
+{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block)
 
 def call(model, backoff=0):
     if backoff:
@@ -71,7 +71,7 @@ def parse(txt):
         if isinstance(x, dict) and x.get('text'):
             talks.append({'a': str(x.get('a') or '村里人')[:12], 'b': str(x.get('b') or '')[:12], 'text': str(x['text'])[:120]})
     sched = {}
-    AT = {'home','plot','fire1','fire2','river'}
+    AT = {'home','plot','fire1','fire2','river','well'}
     for n, legs in (d.get('sched') or {}).items():
         if isinstance(legs, list) and legs:
             clean = []
