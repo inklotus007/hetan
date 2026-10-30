@@ -1181,7 +1181,8 @@ function renderNPCs(list,tSec){
       /* v47投影：按日程生活（或路人漫游）——离线也lerp，时段切换时人是从容走过去的，不是闪现 */
       const P=npcPos(npc,tSec);
       const tx=P[0],tz=P[1];yaw=P[2];
-      const nightSp=(dayT>0.8||dayT<0.1)?0.13:0.045;   /* v88.2：夜路提速三倍——走快点回家 */
+      const dayT2=(tSec%DAY_LEN)/DAY_LEN;   /* v88.2修：dayT是npcPos的局部变量，这里自己算 */
+      const nightSp=(dayT2>0.8||dayT2<0.1)?0.13:0.045;   /* 夜路提速三倍 */
       if(g.userData.sm){x=g.position.x+(tx-g.position.x)*nightSp;z=g.position.z+(tz-g.position.z)*nightSp;}
       else{x=tx;z=tz;g.userData.sm=1;}
       if(Math.hypot(tx-x,tz-z)>1.2&&P[3]!=='chat')yaw=Math.atan2(tx-x,tz-z);   /* v84：走动时面朝路 */
