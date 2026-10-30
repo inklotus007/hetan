@@ -425,10 +425,12 @@ diffs.r.forEach(([x,y,z])=>{if(inW(x,y,z))world[idx(x,y,z)]=AIR;});
 for(const k in diffs.a){const[x,y,z]=k.split(',').map(Number);if(inW(x,y,z))world[idx(x,y,z)]=diffs.a[k];}
 function saveDiff(x,y,z,t){
   const key=x+','+y+','+z;
+  if(t===AIR)dayActs.dig++;else dayActs.put++;
   if(t===AIR){if(!diffs.r.some(p=>p[0]===x&&p[1]===y&&p[2]===z))diffs.r.push([x,y,z]);delete diffs.a[key];}
   else{diffs.a[key]=t;diffs.r=diffs.r.filter(p=>!(p[0]===x&&p[1]===y&&p[2]===z));}
   try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
   worldDirty=true;   // 搭的东西要上云——别人也看得到
+let dayActs={put:0,dig:0,talk:0,d:0};   /* v88.1：今日动作账——saveDiff计，心跳报云端，判定者读 */
 }
 
 /* ---- 世界共享：diffs上云（伊卡洛斯的花台只在它自己的浏览器里——共享机制补上，搭一次全看得见） ---- */
@@ -1052,6 +1054,18 @@ function villAt(npc,at){   /* v84地点→坐标。v85.1：home=宅地屋里（n
   if(at==='plot'&&vh)return[vh.plot[0]+2.5+ox*0.5,vh.plot[2]+1.5+oz*0.5];
   if(at==='fire1'&&VH.camps&&VH.camps[0])return[VH.camps[0][0]+0.5+ox,VH.camps[0][2]+0.5+oz];
   if(at==='fire2'&&VH.camps&&VH.camps[1])return[VH.camps[1][0]+0.5+ox,VH.camps[1][2]+0.5+oz];
+  if(at==='help'){   /* v88.1：帮工点=本村进度最慢那家的plot——判定者说谁帮，本地算帮谁 */
+    const myCamp=((VH.homes||{})[npc.id]||{}).camp||0;
+    let worst=null,wv=1e9;
+    for(const id2 in (VH.homes||{})){
+      const vh2=VH.homes[id2];
+      if((vh2.camp||0)!==myCamp)continue;
+      const w=(villBuilt[id2]||0)/((villTotals[id2]||100)||100);
+      if(w<wv){wv=w;worst=vh2;}
+    }
+    if(worst)return[worst.plot[0]+2.5+ox*0.5,worst.plot[2]+1.5+oz*0.5];
+    return[npc.home[0]+0.5,npc.home[1]+0.5];
+  }
   if(at==='well'&&WELLS&&WELLS.length){
     const bx=vh?vh.plot[0]:npc.home[0], bz=vh?vh.plot[2]:npc.home[1];
     let w=WELLS[0];
@@ -1117,9 +1131,9 @@ function npcPos(npc,tSec){
     else if(cur.act==='build')yaw=Math.atan2(villAt(npc,'plot')[0]-at[0],villAt(npc,'plot')[1]-at[1]);
     else yaw=Math.sin(dayT*160+npc.seed)*0.5;
     /* build的：在工地附近小步挪——站在一格上像桩子 */
-    if(cur.act==='build'){
+    if(cur.act==='build'||cur.act==='collab'){
       const a2b=tSec*0.31+npc.seed;
-      return[at[0]+Math.sin(a2b)*1.6,at[1]+Math.cos(a2b*0.9)*1.2,yaw,'build'];
+      return[at[0]+Math.sin(a2b)*1.6,at[1]+Math.cos(a2b*0.9)*1.2,yaw,cur.act];
     }
     return[at[0],at[1],yaw,cur.act];
   }
@@ -1175,7 +1189,7 @@ function renderNPCs(list,tSec){
         if(dxp*dxp+dzp*dzp<25)yaw=Math.atan2(dxp,dzp);
       }
       const act=P[3];
-      if(g.userData.head)g.userData.head.rotation.x=act==='lookStele'?0.5:(act==='lookWater'?0.32:(act==='chat'?0.06+Math.sin(tSec*5.5+npc.seed)*0.16:Math.max(0,Math.sin(tSec*0.4+npc.seed))*0.15));   /* v85：chat=说话点头 */
+      if(g.userData.head)g.userData.head.rotation.x=act==='lookStele'?0.5:(act==='lookWater'?0.32:(act==='chat'?0.06+Math.sin(tSec*5.5+npc.seed)*0.16:(act==='build'?0.35:(act==='collab'?0.4+Math.sin(tSec*4.7+npc.seed)*0.12:(moodTilt(tSec,npc)||Math.max(0,Math.sin(tSec*0.4+npc.seed))*0.15)))));   /* v88.1：build低头/collab埋头/mood表情 */
     }
     const y=surfaceY(Math.floor(x),Math.floor(z));
     const bob=(!isOnline&&Math.sin(tSec*2.3+npc.seed)>0.92)?Math.abs(Math.sin(tSec*7))*0.12:0;
@@ -1224,8 +1238,11 @@ function syncNPCs(){
     const moved=Math.hypot(p.x-npcLastPutPos[0],p.z-npcLastPutPos[1])>=6;
     if(now-npcLastPut>=120000||moved){
       // 自己写进去（心跳）
+      const today=new Date().getDate();
+      if(dayActs.d!==today)dayActs={put:0,dig:0,talk:0,d:today};
       npcs[ME.id]={id:ME.id,name:ME.name,seed:ME.seed,coat:ME.coat,skin:ME.skin,
-        home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now};
+        home:ME.home,pos:[p.x,p.z],yaw:p.yaw,online:true,lastSeen:now,
+        act:{put:dayActs.put,dig:dayActs.dig,talk:dayActs.talk}};
       // 限数：砍最老的
       const keys=Object.keys(npcs);
       if(keys.length>40){
@@ -2484,7 +2501,7 @@ function openTalk(name){
 }
 /* v81意识层：心事渲染+boot自动dispatch */
 function renderMind(M){
-  if(M)MINDS=M;   /* v84：拉到就存全局——npcPos用 */
+  if(M){MINDS=M;for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情 */
   if(!talkNpc)return;
   const mind=document.getElementById('talkMind'),vil=document.getElementById('talkVillage');
   const m=(M&&M.minds&&M.minds[talkNpc])||null;
@@ -2493,6 +2510,15 @@ function renderMind(M){
   vil.innerHTML=talks.length?('【今天村里】'+talks.map(t=>'· '+t.a+(t.b&&t.b!==t.a?'对'+t.b:'')+'：'+t.text).join('<br>')):'';
 }
 let MINDS=null;   /* v84：判定者今天的心思+行程（游客也拉，同源副本） */
+const moodMap={};
+function moodTilt(tSec,npc){   /* v88.1：心情进脖颈——乐的抬头频率高，愁的沉头 */
+  const m=moodMap[npc.name];
+  if(!m)return 0;
+  if(/喜|乐|盼|期|兴|热|暖/.test(m))return -0.18+Math.sin(tSec*0.9+npc.seed)*0.12;
+  if(/愁|忧|烦|苦|闷|酸/.test(m))return 0.3+Math.sin(tSec*0.3+npc.seed)*0.03;
+  if(/稳|实|细|勤/.test(m))return 0.08;
+  return 0;
+}
 let mindDispatched=false;
 function bootMindCheck(){
   if(mindDispatched)return;mindDispatched=true;
@@ -2531,6 +2557,7 @@ function sendTalk(){
     });
   }).then(()=>{
     talkPending={text};
+    dayActs.talk++;   /* v88.1：今日说话数上账 */
     renderTalk({});
     inp.value='';
     toast('话捎到了——'+talkNpc+'想好了才答，一分钟上下');

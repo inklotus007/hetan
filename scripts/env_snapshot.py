@@ -43,7 +43,13 @@ def build(V, day, extra=''):
         blocks = len((W.get('diffs') or {}).get('a') or {})
     except Exception:
         blocks = 0
+    act = tong.get('act') or {}
+    acts = []
+    if act.get('put'): acts.append('搭了%d块' % act['put'])
+    if act.get('dig'): acts.append('挖了%d格' % act['dig'])
+    if act.get('talk'): acts.append('说了%d句话' % act['talk'])
     ta = '同志搭的方块累计约%d块（村西的大广场、石桥、东头的旅馆都是他搭的）' % blocks
+    if acts: ta += '，今天%s' % '、'.join(acts)
     if ago == 0: ta += '，今天来过村里'
     elif ago is not None and ago <= 2: ta += '，%d天前来过' % ago
     elif ago is not None: ta += '，有%d天没来了' % ago
