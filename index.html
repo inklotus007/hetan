@@ -417,6 +417,7 @@ const STX=42,STZ=18;   // v50.6：碑从(38,22)挪到(42,18)广场东北——�
 
 /* ---- 存档（diff） ---- */
 const SKEY='hetan_save_v1';
+let dayActs={put:0,dig:0,talk:0,d:0};   /* v88.1：今日动作账（全局——saveDiff计，心跳报云端，判定者读。v88.1雷：原插在saveDiff函数体内=TDZ炸「Cannot access before initialization」，村民系统全断——TA截图实锤） */
 let diffs={r:[],a:{}};
 try{const s=localStorage.getItem(SKEY);if(s)diffs=JSON.parse(s);}catch(e){}
 let worldDirty=false;   // 存量的搭也上云（声明必须在最前——v14的TDZ死法）
@@ -430,7 +431,6 @@ function saveDiff(x,y,z,t){
   else{diffs.a[key]=t;diffs.r=diffs.r.filter(p=>!(p[0]===x&&p[1]===y&&p[2]===z));}
   try{localStorage.setItem(SKEY,JSON.stringify(diffs));}catch(e){}
   worldDirty=true;   // 搭的东西要上云——别人也看得到
-let dayActs={put:0,dig:0,talk:0,d:0};   /* v88.1：今日动作账——saveDiff计，心跳报云端，判定者读 */
 }
 
 /* ---- 世界共享：diffs上云（伊卡洛斯的花台只在它自己的浏览器里——共享机制补上，搭一次全看得见） ---- */
@@ -1117,7 +1117,7 @@ function npcPos(npc,tSec){
   /* v84：判定者行程——AI排的今天。村民按段走，说话的两户站在一起，夜里回家 */
   if(MINDS&&MINDS.sched&&MINDS.sched[npc.name]&&(VH.homes||{})[npc.id]){
     const legs=MINDS.sched[npc.name];
-    if(dayT<0.08||dayT>0.92)return[npc.home[0]+0.5,npc.home[1]+0.5,0,'stand'];   /* 深夜都回家 */
+    if(dayT<0.08||dayT>0.82)return[npc.home[0]+0.5,npc.home[1]+0.5,0,'stand'];   /* v88.2：夜归提前到0.82——黄昏就走，夜路不拖 */
     let cur=null;
     for(const l of legs){if(dayT>=l.t)cur=l;else break;}
     if(!cur)return[npc.home[0]+0.5,npc.home[1]+0.5,0,'stand'];   /* 天没亮没出门 */
@@ -1181,7 +1181,8 @@ function renderNPCs(list,tSec){
       /* v47投影：按日程生活（或路人漫游）——离线也lerp，时段切换时人是从容走过去的，不是闪现 */
       const P=npcPos(npc,tSec);
       const tx=P[0],tz=P[1];yaw=P[2];
-      if(g.userData.sm){x=g.position.x+(tx-g.position.x)*0.045;z=g.position.z+(tz-g.position.z)*0.045;}
+      const nightSp=(dayT>0.8||dayT<0.1)?0.13:0.045;   /* v88.2：夜路提速三倍——走快点回家 */
+      if(g.userData.sm){x=g.position.x+(tx-g.position.x)*nightSp;z=g.position.z+(tz-g.position.z)*nightSp;}
       else{x=tx;z=tz;g.userData.sm=1;}
       if(Math.hypot(tx-x,tz-z)>1.2&&P[3]!=='chat')yaw=Math.atan2(tx-x,tz-z);   /* v84：走动时面朝路 */
       if(P[3]!=='chat'){   /* v85：玩家走近（5格）村民看他——MC：玩家足够接近时村民一直注视 */
