@@ -106,21 +106,24 @@ def parse(txt):
     return minds, talks, sched
 
 ok = False
-for attempt in range(3):
-    model = ['glm-4.7-flash', 'glm-4-flash', 'glm-4.7-flash'][attempt]
-    backoff = [0, 0, 15][attempt]
+MODELS = ['glm-4.7-flash', 'glm-4-flash', 'glm-4.7-flash', 'glm-4-flash', 'glm-4.7-flash']
+BACKOFF = [0, 0, 30, 60, 90]
+for attempt in range(5):   # v88.5：3轮→5轮，退避拉长——10/31凌晨免费档限流墙实测（两轮429全撞）
+    model = MODELS[attempt]
     try:
-        txt = call(model, backoff)
+        txt = call(model, BACKOFF[attempt])
         minds, talks, sched = parse(txt)
         if len(minds) >= 7 and len(sched) >= 7:   # 九户至少七户有心事才算成
             ok = True
             break
         print('%s第%d次生成内容不足(%d minds)' % (model, attempt+1, len(minds)))
+        time.sleep(20)
     except urllib.error.HTTPError as e:
         print('%s第%d次HTTP %s' % (model, attempt+1, e.code))
-        time.sleep(8)
+        time.sleep(30 if e.code == 429 else 8)
     except Exception as e:
         print('%s第%d次生成失败：%s' % (model, attempt+1, str(e)[:80]))
+        time.sleep(15)
 if not ok:
     print('两轮都失败——今天用旧心思（明天再养）')
     sys.exit(1)
