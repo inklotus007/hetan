@@ -25,6 +25,53 @@ def progress_line(V, day):
         else: parts.append('%s家%d成' % (vh['name'], pct))
     return done, parts
 
+def road_scan(V):
+    """路况快照（v90）：各家门前到本camp聚集点的直线，数diffs里已铺的路砖(id=20)。
+    这是判定者「看见环境」的眼睛——没路是他明天排修路的依据。全部本地计算零API。"""
+    try:
+        W = json.load(open('world.json'))
+        diffs = (W.get('diffs') or {}).get('a') or {}
+    except Exception:
+        return ''
+    road_set = set()
+    for k, v in diffs.items():
+        try:
+            if int(v) == 20:
+                p = k.split(',')
+                road_set.add((int(p[0]), int(p[2])))
+        except Exception:
+            pass
+    camps = {0: [0.0, 0.0, 0], 1: [0.0, 0.0, 0]}
+    for pid, vh in V['homes'].items():
+        c = camps.get(vh.get('camp', 0))
+        if c:
+            c[0] += vh['plot'][0] + 2.5
+            c[1] += vh['plot'][2] + 2
+            c[2] += 1
+    centers = {}
+    for ci, (sx, sz, n) in camps.items():
+        if n:
+            centers[ci] = (sx / n, sz / n)
+    lines = []
+    for pid, vh in V['homes'].items():
+        ci = vh.get('camp', 0)
+        if ci not in centers:
+            continue
+        cx, cz = centers[ci]
+        bx, bz = vh['plot'][0] + 2, vh['plot'][2] - 1
+        steps = max(2, int(math.hypot(cx - bx, cz - bz)))
+        total = paved = 0
+        for i in range(1, steps):
+            x = int(bx + (cx - bx) * i / steps)
+            z = int(bz + (cz - bz) * i / steps)
+            total += 1
+            if (x, z) in road_set:
+                paved += 1
+        if total:
+            pct = int((total - paved) / total * 100)
+            lines.append('%s家到火塘%d格里%d格无路' % (vh['name'], total, total - paved))
+    return lines
+
 def build(V, day, extra=''):
     """返回拼进prompt的环境段。extra可带：今天村里的话等（由调用方拼）。"""
     clear = jshash(day * 7.7, day * 3.3) < 0.72
@@ -61,8 +108,14 @@ def build(V, day, extra=''):
     if spoken: ta += '；跟%s说过话' % '、'.join(spoken[:4])
     month, mday = 4, day + 1
     date = '1995年4月%d日' % mday if mday <= 30 else '1995年5月%d日' % (mday - 30)
-    env = '【环境】今天是%s，安家第%d天。天气：%s。%s。%s。\n【物】每户家里有床有柜，工地堆着木料和瓦；村里公共：两口井、两个火塘、一条河；村西的大广场石桥是同志搭的（那是他的地界，村民不去动）。' % (date, day, weather, prog, ta)
+    rl = road_scan(V)
+    road_txt = ''
+    if rl:
+        road_txt = '【路况】' + '；'.join(rl) + '。无路走起来硌脚。'
+    env = '【环境】今天是%s，安家第%d天。天气：%s。%s。%s。\n【物】每户家里有床有柜，工地堆着木料和瓦；村里公共：两口井、两个火塘、一条河；村西的大广场石桥是同志搭的（那是他的地界，村民不去动）。%s' % (date, day, weather, prog, ta, road_txt)
     return env
 
 def rhythm():
     return '【活人的节奏】行程要贴生理：早饭后出工（plot）、晌午前后一段在fire（做饭吃饭歇晌）、傍晚收工、天黑前回home。下雨的日子全天只排home和fire，不出远门。'
+def road_rule():
+    return '【修路】看【路况】：哪家的门到火塘无路多，就让那个村民今天「看不过去」——上午或下午排一段road（at写路段中点坐标数组如[12,34]，在自家门前到火塘之间），村民会边走边把路铺上。排了road就不用排别的工。排之前先在talks里让他抱怨一句（如「这门到火塘的路该修了，硌脚」）——先嫌不便，再去修。路况好的家不排。'
