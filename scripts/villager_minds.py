@@ -6,6 +6,7 @@
    判重：villagers_memory.json的moodDay==今天则跳过。
    各户对话记忆（mem）由talk_reply.py负责写，本脚本只养心思。"""
 import json, urllib.request, urllib.error, time, os, re, sys
+import env_snapshot
 
 V = json.load(open('villagers.json'))
 C = json.load(open('chronicle.json'))
@@ -31,6 +32,21 @@ for n in names:
         mem_txt.append('%s记得的事：%s' % (n, '；'.join('同志说过「%s」他答了「%s」' % ((x.get('text') or '')[:40], (x.get('reply') or '')[:40]) for x in m[-3:])))
 mem_block = '\n'.join(mem_txt) if mem_txt else '（同志还没跟谁说过话）'
 
+def rel_block():
+    """v88：关系图谱段——骨架静态（婚配/两村）+动态（跟TA说过话的=见外但认得）"""
+    pairs = '、'.join('%s和%s' % (V['homes'][w['a']]['name'], V['homes'][w['b']]['name']) for w in V.get('weddings', []) if w['day'] <= day)
+    e = [V['homes'][k]['name'] for k, v in V['homes'].items() if v.get('camp', 0) == 0]
+    w_ = [V['homes'][k]['name'] for k, v in V['homes'].items() if v.get('camp', 0) == 1]
+    if not e or not w_:
+        e = ['满仓', '凤兰', '建军', '秋生', '秀兰']
+        w_ = ['来福', '爱香', '长贵', '银锁']
+    spoken = sorted((M.get('mem') or {}).keys())
+    ta = '同志是外来人（玩家），%s——还不熟，村里人对他客气但见外' % ('跟%s说过话' % '、'.join(spoken[:3]) if spoken else '没跟谁搭过话')
+    return '【关系】成了亲的：%s。建军单身（话冲心软）。东村：%s；西村：%s。%s。' % (pairs, '、'.join(e), '、'.join(w_), ta)
+
+ENV = env_snapshot.build(V, day)
+RY = env_snapshot.rhythm()
+REL = rel_block()
 prompt = """你是河滩村的「意识」——九户村民的心思由你养着。这是安家第%d天。
 村子底子（骨架，不许改）：满仓配凤兰第4天娶、秋生配秀兰第7天娶、来福配爱香第7天娶、长贵配银锁第16天娶，建军单身（二十七八，话冲心软）。性格底子：满仓实诚算婚期、秀兰利落眼睛毒、凤兰热肠爱张罗、秋生手巧话少哼梆子、爱香爽利嗓门亮、长贵老大哥稳当话慢、来福天不亮就起、银锁精细账清。
 最近村里发生：%s
