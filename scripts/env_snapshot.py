@@ -72,6 +72,70 @@ def road_scan(V):
             lines.append('%s家到火塘%d格里%d格无路' % (vh['name'], total, total - paved))
     return lines
 
+BIRD_RES = 8   # 鸟瞰图：每格=世界8格
+
+def birdseye(V):
+    """符号鸟瞰图（v91）：判定者的眼睛——宅地/进度/路/聚集点。
+    自然地形不在图上（脚本没有世界数组，也用不上：决策全在结构锚点上做）。
+    同志的石砖城在村西180格外，一句话交代方位。返回拼进env的两张图。"""
+    try:
+        W = json.load(open('world.json'))
+        diffs = (W.get('diffs') or {}).get('a') or {}
+    except Exception:
+        diffs = {}
+    roads = set()
+    for k, v in diffs.items():
+        try:
+            if int(v) == 20:
+                p = k.split(',')
+                roads.add((int(p[0]), int(p[2])))
+        except Exception:
+            pass
+    camps = {0: [0.0, 0.0, 0], 1: [0.0, 0.0, 0]}
+    for pid, vh in V['homes'].items():
+        c = camps.get(vh.get('camp', 0))
+        if c:
+            c[0] += vh['plot'][0]
+            c[1] += vh['plot'][2]
+            c[2] += 1
+    centers = {ci: (sx / n, sz / n) for ci, (sx, sz, n) in camps.items() if n}
+    out = []
+    for ci in (0, 1):
+        pts = [(vh['plot'][0], vh['plot'][2], vh['name'][0], vh['name'])
+               for pid, vh in V['homes'].items() if vh.get('camp', 0) == ci]
+        if not pts:
+            continue
+        xs = [p[0] for p in pts]
+        zs = [p[1] for p in pts]
+        x0, x1 = min(xs) - 12, max(xs) + 12
+        z0, z1 = min(zs) - 12, max(zs) + 12
+        gw = (x1 - x0) // BIRD_RES + 1
+        gh = (z1 - z0) // BIRD_RES + 1
+        grid = [['·'] * gw for _ in range(gh)]
+        name_map = {}
+        for px, pz, ch, full in pts:
+            gx, gz = (px - x0) // BIRD_RES, (pz - z0) // BIRD_RES
+            grid[gz][gx] = ch
+            name_map.setdefault(full, ch)
+        if ci in centers:
+            cx, cz = centers[ci]
+            gx, gz = int((cx - x0) // BIRD_RES), int((cz - z0) // BIRD_RES)
+            if 0 <= gz < gh and 0 <= gx < gw and grid[gz][gx] == '·':
+                grid[gz][gx] = '火'
+        for rx, rz in roads:
+            if x0 <= rx <= x1 and z0 <= rz <= z1:
+                gx, gz = (rx - x0) // BIRD_RES, (rz - z0) // BIRD_RES
+                if 0 <= gz < gh and 0 <= gx < gw and grid[gz][gx] == '·':
+                    grid[gz][gx] = '▪'
+        nm = '、'.join('%s(%s)' % (full, ch) for full, ch in name_map.items())
+        lines = ['【村%s鸟瞰图】每格=8步。%s=宅地，火=火塘（大家聚的地方），▪=已铺的路，·=空地。宅地：'
+                 % ('东' if ci == 0 else '西', '、'.join(name_map.values()))]
+        lines.append('\n'.join(''.join(row) for row in grid))
+        if ci == 0:
+            lines.append('（同志的石砖城不在这张图里——在村西约180步外，全是他的广场石桥房屋，别排村民去动）')
+        out.append('\n'.join(lines))
+    return '\n\n'.join(out)
+
 def build(V, day, extra=''):
     """返回拼进prompt的环境段。extra可带：今天村里的话等（由调用方拼）。"""
     clear = jshash(day * 7.7, day * 3.3) < 0.72
@@ -112,6 +176,12 @@ def build(V, day, extra=''):
     road_txt = ''
     if rl:
         road_txt = '【路况】' + '；'.join(rl) + '。无路走起来硌脚。'
+    try:
+        bird = birdseye(V)
+    except Exception as e:
+        bird = ''
+    if bird:
+        road_txt += '\n' + bird
     env = '【环境】今天是%s，安家第%d天。天气：%s。%s。%s。\n【物】每户家里有床有柜，工地堆着木料和瓦；村里公共：两口井、两个火塘、一条河；村西的大广场石桥是同志搭的（那是他的地界，村民不去动）。%s' % (date, day, weather, prog, ta, road_txt)
     return env
 

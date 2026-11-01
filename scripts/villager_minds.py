@@ -47,10 +47,12 @@ def rel_block():
 ENV = env_snapshot.build(V, day)
 RY = env_snapshot.rhythm()
 ROAD = env_snapshot.road_rule()
+BIRD = env_snapshot.birdseye(V) if True else ''
 REL = rel_block()
 prompt = """你是河滩村的「意识」——九户村民的心思由你养着。这是安家第%d天。
 村子底子（骨架，不许改）：满仓配凤兰第4天娶、秋生配秀兰第7天娶、来福配爱香第7天娶、长贵配银锁第16天娶，建军单身（二十七八，话冲心软）。性格底子：满仓实诚算婚期、秀兰利落眼睛毒、凤兰热肠爱张罗、秋生手巧话少哼梆子、爱香爽利嗓门亮、长贵老大哥稳当话慢、来福天不亮就起、银锁精细账清。
 最近村里发生：%s
+%s
 %s
 %s
 %s
@@ -64,7 +66,7 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 
 九户每户都必须有一条心事和一份行程，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
 只输出JSON，不要别的文字：
-{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD)
+{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD)
 
 def call(model, backoff=0):
     if backoff:

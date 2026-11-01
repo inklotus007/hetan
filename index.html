@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v90.2';   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v91';   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1065,7 +1065,17 @@ function campCenter(ci){   /* v90：camp聚集点=该camp各家plot均值（真�
 function villAt(npc,at){   /* v84地点→坐标。v85.1：home=宅地屋里（npc.home是v50老坐标不是家）；river=真水；加well */
   const vh=(VH.homes||{})[npc.id];
   const ox=Math.sin((npc.seed||7)*1.7)*1.8, oz=Math.cos((npc.seed||7)*2.3)*1.8;
-  if(Array.isArray(at))return[at[0],at[1]];   /* v90：判定者直接给路段中点（修路） */
+  if(Array.isArray(at)){   /* v91：判定者给的坐标过防幻觉校验（TA符号感知方案的对应物：本地知道每个格是什么，LLM报的坐标先查再走） */
+    const ax=Math.round(at[0]), az=Math.round(at[1]);
+    if(inW(ax,1,az)){
+      const ay=surfaceY(ax,az);
+      const tb=get(ax,ay,az);
+      if(tb!==8&&ay<H-2&&ay>3)return[ax+0.5,az+0.5];
+    }
+    const vh9=(VH.homes||{})[npc.id];   /* 校验不过：兜底自家门前，不站水里不站界外 */
+    if(vh9)return[vh9.plot[0]+2.5,vh9.plot[2]-0.8];
+    return[npc.home[0]+0.5,npc.home[1]+0.5];
+  }
   if(at==='home'&&vh)return[vh.plot[0]+2.5,vh.plot[2]-0.8];   /* v90：门前（旧点2.2是房正中=站房顶） */
   if(at==='plot'&&vh)return[vh.plot[0]+2.5+ox*0.5,vh.plot[2]+1.5+oz*0.5];
   if(at==='fire1'||at==='fire2'){   /* v90：火塘=同camp各家宅地均值（VH.camps从未存在过——旧代码永远兜到v50老坐标=「中午消失」的真根） */
