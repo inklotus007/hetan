@@ -1215,9 +1215,9 @@ function renderNPCs(list,tSec){
         const dxp=p.x-x,dzp=p.z-z;
         if(dxp*dxp+dzp*dzp<25)yaw=Math.atan2(dxp,dzp);
       }
+      const act=P[3];   /* v90.1：声明提到head tilt前（v90炸在TDZ——声明在用之后） */
       if(g.userData.head)g.userData.head.rotation.x=act==='lookStele'?0.5:(act==='lookWater'?0.32:(act==='chat'?0.06+Math.sin(tSec*5.5+npc.seed)*0.16:(act==='build'?0.35:(act==='collab'?0.4+Math.sin(tSec*4.7+npc.seed)*0.12:(moodTilt(tSec,npc)||Math.max(0,Math.sin(tSec*0.4+npc.seed))*0.15)))));   /* v88.1：build低头/collab埋头/mood表情 */
     }
-    const act=P[3];
     if(act==='inside'){   /* v90：在屋里——隐身（早上从门口出来） */
       if(g.visible)g.visible=false;
       return;
