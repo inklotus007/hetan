@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v91';   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v92';   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1317,8 +1317,8 @@ function npcLoop(){
     /* v47：没令牌的访客也看得见投影——npcs.json是公开的（同源副本），投影是给所有来的人看的 */
     ghSame(NPCS_URL).then(({data})=>{
       const npcs=(data&&data.npcs)||{};
-      renderNPCs(Object.values(npcs),performance.now()/1000); bubbleTick(performance.now()/1000);
-    }).catch(()=>{renderNPCs([],performance.now()/1000); bubbleTick(performance.now()/1000);});
+      renderNPCs(Object.values(npcs),worldSec());/*v92*/ bubbleTick(performance.now()/1000);
+    }).catch(()=>{renderNPCs([],worldSec());/*v92*/ bubbleTick(performance.now()/1000);});
     setTimeout(npcLoop,9000);return;
   }
   if(worldLoopCount%3===0)syncNPCs();     // v46：约每21秒读一次云端（顺带按需心跳），API和commit都从刷屏回到呼吸
@@ -1533,6 +1533,13 @@ let nextChirp=0;
    「按真实时辰活」是另一个设计选项（体检时记下，等同志定）：改 dayT=(Date.now()/1000%86400)/86400，
    天色会慢得看不见走，但「拂晓碑旁」变成真·拂晓。 */
 const DAY_LEN=600;   // 十分钟一天
+/* v92：世界钟——TA报「退出是白天进去一直黑天」的根：dayT从页面加载起算，刷新清零=每次重进都从游戏凌晨开始。
+   改为跨会话续接的累计秒：退出存锚，重进精确接相位（退在白天重进还是白天）。TA不在线时演出暂停，
+   村民的「日子」不受影响（判定者每天0点在云上想，晴天hash按安家天数走——两层分离） */
+let wT=0,wWall=Date.now();
+try{const s=JSON.parse(localStorage.getItem('hetan_worldT')||'null');if(s&&typeof s.t==='number'&&isFinite(s.t)){wT=s.t;wWall=s.wall;}}catch(e){}
+const worldSec=()=>wT+(Date.now()-wWall)/1000;
+const saveClock=()=>{try{localStorage.setItem('hetan_worldT',JSON.stringify({t:worldSec(),wall:Date.now()}));}catch(e){}};
 const SKY_KEYS=[     // [t, 天色, 雾色, 环境光, 日光, 日色]
   [0.00,0x0a1524,0x0a1524,0.30,0.06,0x8fa8cc],
   [0.22,0x0e1c30,0x0e1c30,0.32,0.08,0x8fa8cc],
@@ -2261,7 +2268,16 @@ function tickFloss(t){
 
 /* ================= 玩家与物理 ================= */
 const PW=0.30, PH=1.75, EYE=1.62;
-const p={x:STX+0.5,y:10,z:STZ-1.5,vx:0,vy:0,vz:0,yaw:Math.PI,pitch:-0.06,ground:false};   // v30：出生在广场碑脚下（y给10，落地物理接管）；v50：北移一格上平砖
+const p={x:STX+0.5,y:10,z:STZ-1.5,vx:0,vy:0,vz:0,yaw:Math.PI,pitch:-0.06,ground:false};
+/* v92：位置恢复——TA报「退出回默认位置」的根：p只在内存，从不落盘。恢复ME.pos（首次玩没有就用碑脚下出生点） */
+try{
+  const mp=(ME&&ME.pos&&Array.isArray(ME.pos))?ME.pos:null;
+  if(mp&&inW(Math.floor(mp[0]),1,Math.floor(mp[1]))){p.x=mp[0];p.z=mp[1];p.y=12;}
+}catch(e){}
+const savePosLocal=()=>{if(!ME)return;ME.pos=[+p.x.toFixed(1),+p.z.toFixed(1)];try{localStorage.setItem('hetan_me',JSON.stringify(ME));}catch(e){}};
+const saveAll=()=>{saveClock();savePosLocal();};   /* v92：本地兜底（云端saves/名字.json要令牌，令牌断了整条链静默失效——本地层无令牌也活） */
+window.addEventListener('beforeunload',saveAll);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveAll();});   // v30：出生在广场碑脚下（y给10，落地物理接管）；v50：北移一格上平砖
 /* v50 出生点：默认在碑正北两格的平砖上（原(38.5,21.5)在碑台北侧洼地，同志说「不平整没法改」——
    实底：碑台12高、北邻7，落差5格）。床=MC式重生锚：点床设出生点存localStorage（床拆了自动回落） */
 const spawn=()=>{
@@ -3702,13 +3718,14 @@ requestAnimationFrame(loop);
   camera.rotation.set(0,0,0);
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
   tickFloss(now);
-  tickSky(now);
+  tickSky(worldSec()*1000);   /* v92：世界钟 */
   tickTorch(now);
   if(waterTex){waterTex.offset.x=(now*0.00003)%1;waterTex.offset.y=(now*0.000016)%1;}   // 水在流
   checkStele();
   tickHighlight();
   if((now|0)%7===0)diag();
-  renderNPCs(npcList,now/1000); bubbleTick(performance.now()/1000);   // 来客NPC（离线的按seed漫游）
+   if((now/1000|0)%10===0)saveAll();   /* v92：十秒一拍存世界钟+位置 */
+  renderNPCs(npcList,worldSec());   /* v92：世界钟 */ bubbleTick(performance.now()/1000);   // 来客NPC（离线的按seed漫游）
   renderVillKids(now);   /* v78kin78：村民的孩子 */
   renderAnimals(now/1000,dt);   // v45：鸭漂鸡啄狗迎客，受惊四散有叫声；鱼影蜻蜓
   if(now>nextChirp){if(dayIsUp())AU.birdChirp();nextChirp=now+3500+Math.random()*9000;}   // 白天鸟鸣，夜里停
