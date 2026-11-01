@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v92';   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v95';   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -976,13 +976,14 @@ function npcClothSide(base){
     g.fillStyle='rgba(0,0,0,0.22)';g.fillRect(0,0,64,8);           // 肩线
     g.fillStyle='rgba(0,0,0,0.18)';g.fillRect(0,54,64,10);});       // 下摆
 }
-function npcClothFront(base){
+function npcClothFront(base,apron){
   return aTex(g=>{aMottle(g,base,['rgba(0,0,0,0.14)','rgba(255,255,255,0.10)'],18);
     g.fillStyle='rgba(0,0,0,0.30)';
     g.beginPath();g.moveTo(20,0);g.lineTo(32,14);g.lineTo(44,0);g.lineTo(44,10);g.lineTo(36,16);g.lineTo(28,16);g.lineTo(20,10);g.closePath();g.fill();   // 衣领
     g.fillRect(31,16,2,40);                                          // 门襟
     for(const y of[24,36,48]){g.beginPath();g.arc(32,y,1.8,0,7);g.fill();}   // 扣子
     g.fillStyle='rgba(0,0,0,0.20)';g.fillRect(10,34,12,12);g.fillRect(42,34,12,12);   // 双口袋
+    if(apron){g.fillStyle=apron;g.fillRect(18,30,28,34);g.fillStyle='rgba(0,0,0,0.16)';g.fillRect(18,30,28,3);}   /* v95围裙 */
     g.fillStyle='rgba(0,0,0,0.22)';g.fillRect(0,54,64,10);});
 }
 function npcFace(skin){
@@ -994,10 +995,14 @@ function npcFace(skin){
     g.fillStyle='rgba(0,0,0,0.25)';g.fillRect(26,42,12,2);});        // 嘴
 }
 function npcHeadTop(hair){return aTex(g=>{g.fillStyle=hair;g.fillRect(0,0,64,64);});}
+const APRON={   /* v95：九户围裙/腰带特征色 */
+ '满仓':'#4a5a6a','凤兰':'#8c3a3a','秀兰':'#2a3a4a','建军':'#3a4a3a','秋生':'#3a3a3a',
+ '爱香':'#a86a2a','长贵':'#4a3a2a','来福':'#2a2a3a','银锁':'#b8a888'
+};
 function makeNPCBody(npc){
   const g=new THREE.Group();
   const hairC=['#23180f','#171310','#3a2416'][npc.seed%3];
-  const clothS=npcClothSide(npc.coat),clothF=npcClothFront(npc.coat);
+  const clothS=npcClothSide(npc.coat),clothF=npcClothFront(npc.coat,APRON[npc.name]);
   const face=npcFace(npc.skin),top=npcHeadTop(hairC);
   const body=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.85,0.32),
     [aM(clothS),aM(clothS),aM(clothS),aM(clothS),aM(clothF),aM(clothS)]);
@@ -1047,6 +1052,18 @@ function findWater(nx,nz){   /* v85.1：向四周找最近水面（老riverZAt�
   }
   return best;
 }
+function safetySpot(x,z){   /* v93：落点安全网——同志三报「早上站房顶/中午消失」的根：villAt各语义点没过地面校验。plot点=房内地板（surfaceY=房顶→build全程房顶）；fire均值点可能落水（surfaceY跳过水返回河床顶→NPC站水底=消失）。出口统一校验，无效就近螺旋找可站格 */
+  const bx=Math.floor(x),bz=Math.floor(z);
+  const ok=(gx,gz)=>{if(!inW(gx,1,gz))return false;const y=surfaceY(gx,gz);if(y<=3)return false;return get(gx,y,gz)!==8;};
+  if(ok(bx,bz))return[x,z];
+  for(let r=1;r<10;r++){
+    for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+      if(Math.max(Math.abs(dx),Math.abs(dz))!==r)continue;
+      if(ok(bx+dx,bz+dz))return[bx+dx+0.5,bz+dz+0.5];
+    }
+  }
+  return[x,z];
+}
 const campCenterCache={};
 function campCenter(ci){   /* v90：camp聚集点=该camp各家plot均值（真数据） */
   if(campCenterCache[ci])return campCenterCache[ci];
@@ -1062,7 +1079,7 @@ function campCenter(ci){   /* v90：camp聚集点=该camp各家plot均值（真�
   campCenterCache[ci]=c;
   return c;
 }
-function villAt(npc,at){   /* v84地点→坐标。v85.1：home=宅地屋里（npc.home是v50老坐标不是家）；river=真水；加well */
+function villAtRaw(npc,at){   /* v84地点→坐标。v85.1：home=宅地屋里（npc.home是v50老坐标不是家）；river=真水；加well */
   const vh=(VH.homes||{})[npc.id];
   const ox=Math.sin((npc.seed||7)*1.7)*1.8, oz=Math.cos((npc.seed||7)*2.3)*1.8;
   if(Array.isArray(at)){   /* v91：判定者给的坐标过防幻觉校验（TA符号感知方案的对应物：本地知道每个格是什么，LLM报的坐标先查再走） */
@@ -1077,7 +1094,7 @@ function villAt(npc,at){   /* v84地点→坐标。v85.1：home=宅地屋里（n
     return[npc.home[0]+0.5,npc.home[1]+0.5];
   }
   if(at==='home'&&vh)return[vh.plot[0]+2.5,vh.plot[2]-0.8];   /* v90：门前（旧点2.2是房正中=站房顶） */
-  if(at==='plot'&&vh)return[vh.plot[0]+2.5+ox*0.5,vh.plot[2]+1.5+oz*0.5];
+  if(at==='plot'&&vh)return[vh.plot[0]+2.5+ox*0.6,vh.plot[2]-1.5+oz*0.35];   /* v93：房前院（旧点1.5在房内地板=build全程房顶——同志三报「早上站房顶」的根） */
   if(at==='fire1'||at==='fire2'){   /* v90：火塘=同camp各家宅地均值（VH.camps从未存在过——旧代码永远兜到v50老坐标=「中午消失」的真根） */
     const ci=at==='fire1'?0:1, cc=campCenter(ci);
     if(cc)return[cc[0]+ox,cc[1]+oz];
@@ -1112,6 +1129,10 @@ function villAt(npc,at){   /* v84地点→坐标。v85.1：home=宅地屋里（n
   }
   if(vh)return[vh.plot[0]+2.5,vh.plot[2]-0.8];   /* v90：兜底也站自家门前，不落v50老坐标 */
   return[npc.home[0]+0.5,npc.home[1]+0.5];
+}
+function villAt(npc,at){   /* v93：出口统一过安全网 */
+  const r=villAtRaw(npc,at);
+  return safetySpot(r[0],r[1]);
 }
 function villPeer(npc,cur){   /* v84：同段同地点的另一户——chat时朝他站（含各自错开位） */
   const sch=(MINDS&&MINDS.sched)||{};
@@ -2616,24 +2637,24 @@ function hideBubble(id){
   const b=bubbleSprites[id];
   if(b){b.spr.parent&&b.spr.parent.remove(b.spr);delete bubbleSprites[id];}
 }
-const GREET={   /* v94：九户人设问候池——走近即冒，不必chat段 */
+const GREET={   /* v94/v95：九户人设问候池——走近即冒，不必chat段 */
  '满仓':['哎，来了。','婚期越来越近喽，就等着那天。'],
  '凤兰':['哟！来啦？','屋里坐——哦，房还没盖利索，先站着说话。'],
  '秀兰':['嗯。看着呢。','眼睛离不开工地。'],
  '建军':['来干啥。……站会儿也行。','别碰我那堆料。'],
  '秋生':['嗯。（点头，梆子没停）','（哼着梆子，看了你一眼）'],
- '爱香':['大老远来的吧？喝水不？','哟——嗓门一亮：今儿风大！'],
+ '爱香':['大老远来的吧？喝水不？','哟——今儿风大！'],
  '长贵':['来了。慢走，地滑。','不急，一步步来，日子长着。'],
- '来福':['早啊——哦，这会儿不算早了。','天不亮我就起了，你猜我看见啥了。'],
+ '来福':['早啊——哦，这会儿不算早了。','天不亮我就起了。'],
  '银锁':['来了。账都记着呢。','今儿进出的，我都看着呢。']
 };
-function askLine(nm){   /* v94：问村里的事——天气+该户今天的心事（真数据，每天变） */
+function askLine(nm){   /* v94：问村里的事——天气+该户今天的心事（真数据每天变） */
   const w=weather==='rain'?'下雨呢，出不了工':(weather==='snow'?'落雪了，都猫着':(weather==='clear'?'晴天，正干活的天':'阴天'));
   const m2=MINDS&&MINDS.minds&&MINDS.minds[nm];
   const th=(m2&&m2.thought)?(' '+m2.thought):' 都在忙。';
   return w+'。'+th;
 }
-function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks（八卦）→今天心事→人设问候池 */
+function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks→今天心事→人设问候池 */
   const mine=(MINDS&&MINDS.today&&MINDS.today.talks||[]).filter(t=>t.a===nm);
   if(mine.length)return mine[Math.floor(tSec/4)%mine.length].text;
   const m2=MINDS&&MINDS.minds&&MINDS.minds[nm];
@@ -2641,19 +2662,20 @@ function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks（�
   const pool=GREET[nm];
   return pool?pool[Math.floor(tSec/9)%pool.length]:'……';
 }
+let bubbleHold=0;   /* v95：回应气泡9秒内不被自动内容覆盖（TA报「打招呼按没反应」的根：bubbleTick每帧自动showBubble顶掉npcOpt的回应） */
 window.__npcNearId=null;
-window.npcOpt=function(k){   /* v94：选项条——打招呼/问村里/捎话/离开 */
-  const nm=window.__npcNearId&&VH.homes[window.__npcNearId]?VH.homes[window.__npcNearId].name:null;
-  if(!nm)return;
+window.npcOpt=function(k){
   const id=window.__npcNearId;
-  if(k===0){const pool=GREET[nm]||['……'];showBubble(id,pool[Math.floor(Math.random()*pool.length)],worldSec());}
-  else if(k===1){showBubble(id,askLine(nm),worldSec());}
+  const nm=id&&VH.homes[id]?VH.homes[id].name:null;
+  if(!nm)return;
+  if(k===0){const pool=GREET[nm]||['……'];showBubble(id,pool[Math.floor(Math.random()*pool.length)],worldSec());bubbleHold=worldSec()+9;}
+  else if(k===1){showBubble(id,askLine(nm),worldSec());bubbleHold=worldSec()+9;}
   else if(k===2){openTalk(nm);}
-  else{hideBubble(id);document.getElementById('npcOpts').style.display='none';}
+  else{hideBubble(id);const o=document.getElementById('npcOpts');if(o)o.style.display='none';}
 };
-function bubbleTick(tSec){   /* v94：走近任何村民→冒气泡（talks→心事→问候池降级）+底部选项条；v89只认chat段且无选项——同志「仍然无法对话」的根 */
+function bubbleTick(tSec){   /* v94/v95：走近任何村民5格内→冒气泡+底部选项条；hold期内不覆盖回应 */
   for(const n in bubbleSprites){if(tSec-bubbleSprites[n].t0>9)hideBubble(n);}
-  let best=null,bd=25;   /* 5格内最近的一个 */
+  let best=null,bd=25;
   for(const id in (VH.homes||{})){
     const vh=VH.homes[id],nm=vh.name;
     const g=npcObjs[id];
@@ -2666,7 +2688,7 @@ function bubbleTick(tSec){   /* v94：走近任何村民→冒气泡（talks→�
   window.__npcNearId=best;
   const opts=document.getElementById('npcOpts');
   if(best){
-    showBubble(best,bubbleContent(VH.homes[best].name,tSec),tSec);
+    if(worldSec()>=bubbleHold)showBubble(best,bubbleContent(VH.homes[best].name,tSec),tSec);
     if(opts&&opts.style.display!=='flex')opts.style.display='flex';
   }else{
     if(opts&&opts.style.display!=='none')opts.style.display='none';
