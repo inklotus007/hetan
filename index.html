@@ -496,7 +496,7 @@ function pullWorld(attempt){
   attempt=attempt||0;
   if(Date.now()-lastPushT<60000)return Promise.resolve(0);   // v50.2推后刹车（v50.4加cb后缓存已绕开，留60秒防抖）；v50.2原2分钟
   return ghGet('world.json').then(({data})=>{
-    worldPulled=true;
+    worldPulled=true;taA=null;   /* v100：TA建筑集重算（首次进页diffs可能还空） */
     const rd=remoteDiffs(data);
     worldCells=Math.max(worldCells,rd.r.length+Object.keys(rd.a).length);   // v50.2：取max——缓存旧版格数偏少，别让计数倒退
     /* v50.2：本地还没推上去的改动是权威——diffs里的格一律不被云端数据覆盖（推前防刷，和推后刹车配对） */
