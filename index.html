@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v96';   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v97';   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -999,7 +999,7 @@ const APRON={   /* v95：九户围裙/腰带特征色 */
  '满仓':'#4a5a6a','凤兰':'#8c3a3a','秀兰':'#2a3a4a','建军':'#3a4a3a','秋生':'#3a3a3a',
  '爱香':'#a86a2a','长贵':'#4a3a2a','来福':'#2a2a3a','银锁':'#b8a888',
  '栓柱':'#3a4a3a','麦穗':'#7a5a2a','二愣':'#4a4a4a','杏花':'#8c5a6a','铁蛋':'#3a5a6a','老蔫':'#5a5a3a',
- '翠娥':'#8c3a5a','石头':'#3a4a4a','巧云':'#6a4a6a','柱子':'#5a4a3a','腊梅':'#6a3a3a','半仙':'#2a3a3a'
+ '翠娥':'#8c3a5a','石头':'#3a4a4a','巧云':'#6a4a6a','柱子':'#5a4a3a','桂枝':'#6a3a3a','半仙':'#2a3a3a'
 };
 function makeNPCBody(npc){
   const g=new THREE.Group();
@@ -1677,8 +1677,8 @@ function tickSky(now){
   tickWeather(now);applyVillagers(now);
   let seg=SEG_NAME[0][1];
   for(const [tt,name] of SEG_NAME){if(dayT>=tt)seg=name;}
-  if(seg!==lastSeg){lastSeg=seg;
-    const el=document.querySelector('#top small');if(el)el.textContent=VER+' · '+seg;   // v50.4：版本号常驻顶栏——同志一眼看到页面新旧
+  const cal=VH.homes?calNow():null;const calStr=cal?cal.SEAS+'·'+cal.jie:'';if(seg!==lastSeg||calStr!==lastSeg){lastSeg=calStr+'|'+seg;
+    const el=document.querySelector('#top small');if(el)el.textContent=VER+' · '+calStr+' · '+seg+' · 开村第'+(cal?cal.day:0)+'日';   // v50.4版本号；v97村历常驻
   }
 }
 
@@ -1688,7 +1688,8 @@ function tickWeather(now){
   if(!weatherUntil){weatherUntil=now+90000+Math.random()*150000;return;}
   if(now>weatherUntil){
     const r=Math.random();
-    weather=r<0.58?'clear':r<0.85?'rain':'snow';villInitDay=-999;
+    const wx=WXW[(VH.homes&&calNow().SEAS)||'春'];
+    weather=r<wx[0]?'clear':r<wx[0]+wx[1]?'rain':'snow';villInitDay=-999;
     weatherUntil=now+90000+Math.random()*150000;
     if(weather==='rain')toast('下雨了');
     else if(weather==='snow')toast('落雪了');
@@ -2659,7 +2660,7 @@ const GREET={   /* v94/v95：九户人设问候池——走近即冒，不必cha
  '石头':['嗯。','石头有的是，就缺盖房的灰。'],
  '巧云':['来了呀。','账我记着呢，别急。'],
  '柱子':['来了。','架子搭一半，风大停了工。'],
- '腊梅':['嗯，来了。','药晒好了，苦着呢。'],
+ '桂枝':['嗯，来了。','药晒好了，苦着呢。'],
  '半仙':['来了。','我看今儿宜动土。']
 };
 const GREET_ANY=['哎，来了。','忙着呢。','吃了没？','今儿天气不赖。','回头村里见。'];   /* v96兜底 */
@@ -2878,7 +2879,16 @@ function carveRiver(){   /* v86：TA「连个河都没有就水滩滩」——�
     }
   }
 }
-const DAY_MS=21600000;   /* v96：1游戏日=6现实小时——发展4倍速（工期/孩子成年/心事全按游戏日走；日夜天气照旧现实节奏） */
+const DAY_MS=21600000;
+/* ===== v97村历：一年360游戏日，四季各90，24节气各15，月30日。历元=开村日 ===== */
+const JIE24=['立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至','小寒','大寒'];
+const MON12=['正','二','三','四','五','六','七','八','九','十','冬','腊'];
+const CNUM=['','一','二','三','四','五','六','七','八','九','十'];
+function calNow(){const day=Math.max(0,Math.floor((Date.now()-VH.up)/DAY_MS));const d=day%360;const SEAS=d<90?'春':d<180?'夏':d<270?'秋':'冬';const jie=JIE24[Math.floor(d/15)];const mon=Math.floor(d/30),md=d%30+1;const mdC=md<=10?'初'+CNUM[md]:(md<20?'十'+CNUM[md-10]:(md===20?'二十':(md<30?'廿'+CNUM[md-20]:'三十')));return{day,SEAS,jie,mdC,monC:MON12[mon]+'月'};}
+const YI10=['动土','上梁','嫁娶','赶集','修屋','走亲','纳畜','酿酒','开市','栽种'],JI8=['远行','动土','口舌','下水','伐木','搬迁','争讼','夜行'];
+function yiJi(day){const h1=Math.abs(Math.sin(day*12.9898)*43758.5453)%1,h2=Math.abs(Math.sin(day*78.233+7)*24634.6345)%1;return{yi:YI10[Math.floor(h1*YI10.length)%YI10.length],ji:JI8[Math.floor(h2*JI8.length)%JI8.length]};}
+/* v97：天气挂季节——冬天真的下雪，春天真的多雨 */
+const WXW={春:[.5,.45,.05],夏:[.68,.28,.04],秋:[.66,.24,.10],冬:[.55,.05,.40]};   /* v96：1游戏日=6现实小时——发展4倍速（工期/孩子成年/心事全按游戏日走；日夜天气照旧现实节奏） */
 function villagerProgress(vh,now,startDay){   /* 晴日制·纯确定（v79.1修：雨天进度归零的bug——TA凌晨实测「房屋不见了就只有火塘了」）：
   开工日必晴（开工当天已经在干的活不算雨），后续按hash节奏；今天的实时天气只影响村民出不出工（渲染层），不影响进度。
   原v78的「今天clear+n+=spd」在day0+rain时n=0——工地清空，已修 */
@@ -3854,5 +3864,44 @@ bt.style.opacity=0;setTimeout(()=>bt.style.display='none',700);
 <button onclick="npcOpt(2)" style="background:rgba(255,252,244,.95);color:#3a2c1e;border:2px solid #8a6a48;border-radius:10px;padding:8px 14px;font-size:15px;font-family:inherit;">捎句话</button>
 <button onclick="npcOpt(3)" style="background:rgba(24,20,14,.6);color:#e8dcc8;border:2px solid #8a6a48;border-radius:10px;padding:8px 14px;font-size:15px;font-family:inherit;">不打扰了</button>
 </div>
+<!-- v97村志：点牌开河滩村史——国有国史，村先有历 -->
+<style>
+#zhiBtn{position:fixed;top:10px;right:10px;z-index:60;writing-mode:vertical-rl;letter-spacing:6px;padding:12px 7px;background:rgba(60,44,28,.88);color:#e8d9b0;border:1px solid #8a6d45;border-radius:4px;font-size:13px;cursor:pointer;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#zhiBtn:hover{background:rgba(80,60,38,.95)}
+#zhiPanel{position:fixed;inset:0;z-index:120;display:none;background:rgba(10,8,5,.55)}
+#zhiPanel.on{display:flex;align-items:center;justify-content:center}
+#zhiCard{width:min(420px,92vw);max-height:78vh;overflow-y:auto;background:#f3e9cf;border:2px solid #8a6d45;border-radius:8px;padding:16px 18px;color:#3a2c18;font-size:13px;line-height:1.7;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#zhiCard h3{margin:0 0 4px;font-size:17px;letter-spacing:4px;color:#5a3c1a}
+#zhiCard .zsub{font-size:12px;color:#8a6d45;margin-bottom:10px}
+#zhiCard .zyiji{background:#e8dcc0;border-radius:5px;padding:7px 10px;margin:8px 0;font-size:12.5px}
+#zhiCard .zitem{padding:5px 0;border-bottom:1px dashed #c9b88f;display:flex;gap:8px}
+#zhiCard .zday{color:#8a6d45;white-space:nowrap;min-width:64px;text-align:right}
+#zhiCard .zclose{float:right;cursor:pointer;color:#8a6d45;font-size:15px}
+</style>
+<div id="zhiBtn" title="河滩村志">河滩村志</div>
+<div id="zhiPanel"><div id="zhiCard"></div></div>
+<script>
+(function(){
+  const btn=document.getElementById('zhiBtn'),pan=document.getElementById('zhiPanel'),card=document.getElementById('zhiCard');
+  function chron(){
+    if(!VH.homes)return '<h3>河滩村志</h3><div class="zsub">村历未就绪，稍候再点。</div>';
+    const c=calNow(),yj=yiJi(c.day);
+    let rows=[{d:0,t:'开村。九户立宅，炊烟两岸。'}];
+    const NAMES={};for(const id in VH.homes)NAMES[id]=VH.homes[id].name;
+    for(const id in VH.homes){const vh=VH.homes[id];if(vh.startDay)rows.push({d:vh.startDay,t:NAMES[id]+'携家迁入，划宅于'+(vh.plot[2]>320?'河北':'河南')+'。'});}
+    (VH.weddings||[]).forEach(w=>rows.push({d:w.day,t:(NAMES[w.a]||'?')+'与'+(NAMES[w.b]||'?')+'成亲，全村吃席。'}));
+    (VH.children||[]).forEach(k=>{rows.push({d:k.bornDay,t:'村中添丁，唤作'+k.name+'。'});rows.push({d:k.adultDay,t:k.name+'成丁，自立门户，动工盖房。'});});
+    (VH.log||[]).forEach(l=>rows.push({d:c.day,t:l.t||l.d}));
+    rows.sort((a,b)=>a.d-b.d);
+    let list='';rows.forEach(r=>{list+='<div class="zitem"><span class="zday">'+(r.d===0?'开村日':'第'+r.d+'日')+'</span><span>'+r.t+'</span></div>';});
+    return '<h3>河滩村志<span class="zclose" onclick="document.getElementById(\'zhiPanel\').classList.remove(\'on\')">✕</span></h3>'
+      +'<div class="zsub">村历·开村第'+c.day+'日 · '+c.monC+c.mdC+' · '+c.SEAS+' · '+c.jie+'</div>'
+      +'<div class="zyiji">半仙说：今日宜'+yj.yi+'，忌'+yj.ji+'。</div>'
+      +list+'<div class="zsub" style="margin-top:10px">—— 历一村之事，记一村之人。</div>';
+  }
+  btn.addEventListener('click',()=>{card.innerHTML=chron();pan.classList.add('on');});
+  pan.addEventListener('click',e=>{if(e.target===pan)pan.classList.remove('on');});
+})();
+</script>
 </body>
 </html>
