@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v104';   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v105';   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2864,16 +2864,22 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
   }
   /* v99：正交街网——户与户连通。北岸纵街x=298/312/326/340，横街z=333/350/364/378；南岸纵x=442/456，横z=208/222/236。路到河岸为止（等桥）。 */
   const [tA,tR]=taSets();
-  const lay=(x,z)=>{   /* v102：groundY贴地——树冠不再当地面；树整列伐（干+冠+花） */
+  let refH=null;   /* v105：路面高程——主线维护，深坑架桥不follow进坑 */
+  const lay=(x,z,rh)=>{   /* 返回铺设层py；rh=主线当前高程。贴地+深坑架桥+桥身填实到坑底 */
     const gy=groundY(x,z);
     if(gy<1||!inW(x,gy,z))return false;
-    const k=x+','+gy+','+z;
-    if(tA.has(k)||tR.has(k))return true;   /* TA搭的/TA挖的：不铺不拆，算借道 */
-    const b=get(x,gy,z);
-    if(b===11)return true;   /* 已是路 */
-    world[idx(x,gy,z)]=11;changed=true;   /* v103：石砖不卡人 */
-    for(let cy=gy+1;cy<H-1;cy++){const tb=get(x,cy,z);if(tb===5||tb===6||tb===15||tb===16)world[idx(x,cy,z)]=AIR;else break;}
-    return true;
+    const base=(rh===null||rh===undefined)?gy:rh;
+    const py=(gy>=base-2)?gy:base;   /* 深2格以上的坑：桥面延续 */
+    for(let yy=Math.min(py,gy);yy<=Math.max(py,gy);yy++){
+      const k=x+','+yy+','+z;
+      if(tA.has(k)||tR.has(k))continue;   /* TA格跳过 */
+      const b=get(x,yy,z);
+      if(b===8)continue;   /* 水不填 */
+      if(b===11)continue;   /* 已是路 */
+      if(yy===gy||b===AIR){world[idx(x,yy,z)]=11;changed=true;}   /* 地表层+桥身空气全填实 */
+    }
+    for(let cy=py+1;cy<H-1;cy++){const tb=get(x,cy,z);if(tb===5||tb===6||tb===15||tb===16)world[idx(x,cy,z)]=AIR;else break;}
+    return py;
   };
   const roadSeg=(x1,z1,x2,z2)=>{
     const x1i=Math.round(x1),z1i=Math.round(z1),x2i=Math.round(x2),z2i=Math.round(z2);
@@ -2881,8 +2887,10 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
     const ox=dz!==0?1:0, oz=dx!==0?1:0;   /* v100：双宽——横路沿z加宽、纵路沿x加宽 */
     let x=x1i,z=z1i,guard=0;
     while(guard++<400){
-      if(!lay(x,z))break;   /* 主线碰水/界外=路断 */
-      lay(x+ox,z+oz);       /* 第二宽：水/界外只跳过不断路 */
+      const p1=lay(x,z,refH);
+      if(p1===false)break;   /* 主线碰水/界外=路断 */
+      refH=p1;               /* 高程只跟主线 */
+      lay(x+ox,z+oz,refH);   /* 第二宽：借主线高程，不回写 */
       if(x===x2i&&z===z2i)break;
       if(x!==x2i)x+=dx;else if(z!==z2i)z+=dz;else break;
     }
@@ -2893,19 +2901,26 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
   for(const hz of [208,222,236])roadSeg(426,hz,472,hz);
   /* v101：门前支线不再系统直铺——由迁入户自己修（先有路后有工地）；startDay前的老户视为已修成 */
   const gday0=Math.floor((Date.now()-VH.up)/DAY_MS);
+  let refR=null;
   for(const id in VH.homes){const vh=VH.homes[id];
     const rp=roadPeriodOf(vh,gday0);
     if(!rp)continue;
     const line=roadLineOf(vh);
     for(let i=0;i<rp.done;i++){
       const [rx,rz]=line[i];const gy=groundY(rx,rz);
-      const k=rx+','+gy+','+rz;
-      if(gy>=1&&inW(rx,gy,rz)&&!villCells[k]){const b=get(rx,gy,rz);
-        if(b===11){villCells[k]='road';}
-        else if(b===20){world[idx(rx,gy,rz)]=11;villCells[k]='road';changed=true;}
-        else{world[idx(rx,gy,rz)]=11;villCells[k]='road';changed=true;
-          for(let cy=gy+1;cy<H-1;cy++){const tb=get(rx,cy,rz);if(tb===5||tb===6||tb===15||tb===16)world[idx(rx,cy,rz)]=AIR;else break;}}
-      }else if(gy<1)break;
+      if(gy<1)break;
+      if(refR===null)refR=gy;
+      const py=(gy>=refR-2)?gy:refR;
+      refR=py;
+      for(let yy=Math.min(py,gy);yy<=Math.max(py,gy);yy++){
+        const k=rx+','+yy+','+rz;
+        if(!inW(rx,yy,rz)||villCells[k])continue;
+        const b=get(rx,yy,rz);
+        if(b===8)continue;
+        if(b===11){villCells[k]='road';continue;}
+        if(yy===gy&&(b===5||b===6||b===15||b===16)){for(let cy=gy+1;cy<H-1;cy++){const tb=get(rx,cy,rz);if(tb===5||tb===6||tb===15||tb===16)world[idx(rx,cy,rz)]=AIR;else break;}}
+        if(b!==8){world[idx(rx,yy,rz)]=11;villCells[k]='road';changed=true;}
+      }
     }
   }
   if(changed)rebuild();
@@ -3019,7 +3034,7 @@ function groundY(x,z){   /* v102：真地形层——surfaceY从上往下找「�
   for(let yy=surfaceY(x,z)-1;yy>=1;yy--){
     const b=get(x,yy,z);
     if(b===8)return -1;
-    if(b===1||b===2||b===3||b===4||b===17)return yy;
+    if(b===1||b===2||b===3||b===4||b===17||b===11||b===20)return yy;   /* v105：路/桥面可站 */
   }
   return -1;
 }
@@ -3117,7 +3132,7 @@ function applyVillagers(now){
   /* v96：房放大换代——清旧格重铺（云端villagers.json v6已重排21户，这里只清格+y校正） */
   /* v99：宅基坐地——plot[1]重采样为footprint五点surfaceY的最小值（治「半空房」：v96只采一角，坡上就悬空）；清格重铺+修入口台阶 */
   /* v104：清树冠残留——v99-v101的路/地基/台阶铺在树冠顶（surfaceY被树冠骗），v102修了代码没清存量；全清重铺+plot九点groundY重坐 */
-  if(!localStorage.getItem('hetan_mig_v104')&&(VH.v||0)>=6){
+  if(!localStorage.getItem('hetan_mig_v105x')&&(VH.v||0)>=6){
     let wiped=0;
     for(const k in villCells){const parts=k.split(',').map(Number);if(parts.length===3&&inW(parts[0],parts[1],parts[2])&&world[idx(parts[0],parts[1],parts[2])]!==AIR){world[idx(parts[0],parts[1],parts[2])]=AIR;wiped++;}}
     villCells={};villBuilt={};villTotals={};stepsDone={};
@@ -3127,12 +3142,12 @@ function applyVillagers(now){
     villSignMesh={};
     for(const id in mktSignMesh){scene.remove(mktSignMesh[id]);}
     mktSignMesh={};
-    const reseat=(plot)=>{let m=1e9;for(const [dx,dz] of [[0,0],[4,0],[8,0],[0,3],[4,3],[8,3],[0,6],[4,6],[8,6]]){const y=groundY(plot[0]+dx,plot[2]+dz);if(y>=1&&y<m)m=y;}return m-1;};
+    const reseat=(plot)=>{const ys=[];for(const [dx,dz] of [[0,0],[4,0],[8,0],[0,3],[4,3],[8,3],[0,6],[4,6],[8,6]]){const y=groundY(plot[0]+dx,plot[2]+dz);if(y>=1)ys.push(y);}if(!ys.length)return plot[1];ys.sort((a,b)=>a-b);return ys[Math.floor(ys.length/2)]-1;};   /* v105：九点中位数——单点深坑不再拽沉整宅 */
     for(const id in VH.homes){const vh=VH.homes[id];if(vh&&vh.plot)vh.plot[1]=reseat(vh.plot);}
     if(VH.children)for(const c of VH.children){if(c.p)c.p[1]=reseat(c.p);}
-    try{localStorage.setItem('hetan_mig_v104','1');}catch(e){}
-    console.log('v104迁移：清树冠残留'+wiped+'格，九点groundY重坐');
-    pushVillagersPut('v104清树冠残留重坐');
+    try{localStorage.setItem('hetan_mig_v105x','1');}catch(e){}
+    console.log('v105迁移：清旧路'+wiped+'格重铺（坑上架桥）');
+    pushVillagersPut('v105路重铺架桥');
   }
   if(!localStorage.getItem('hetan_mig_v100')&&(VH.v||0)>=6){
     let wiped=0;
