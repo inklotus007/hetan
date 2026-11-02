@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v95';   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v96';   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -997,7 +997,9 @@ function npcFace(skin){
 function npcHeadTop(hair){return aTex(g=>{g.fillStyle=hair;g.fillRect(0,0,64,64);});}
 const APRON={   /* v95：九户围裙/腰带特征色 */
  '满仓':'#4a5a6a','凤兰':'#8c3a3a','秀兰':'#2a3a4a','建军':'#3a4a3a','秋生':'#3a3a3a',
- '爱香':'#a86a2a','长贵':'#4a3a2a','来福':'#2a2a3a','银锁':'#b8a888'
+ '爱香':'#a86a2a','长贵':'#4a3a2a','来福':'#2a2a3a','银锁':'#b8a888',
+ '栓柱':'#3a4a3a','麦穗':'#7a5a2a','二愣':'#4a4a4a','杏花':'#8c5a6a','铁蛋':'#3a5a6a','老蔫':'#5a5a3a',
+ '翠娥':'#8c3a5a','石头':'#3a4a4a','巧云':'#6a4a6a','柱子':'#5a4a3a','腊梅':'#6a3a3a','半仙':'#2a3a3a'
 };
 function makeNPCBody(npc){
   const g=new THREE.Group();
@@ -2646,8 +2648,21 @@ const GREET={   /* v94/v95：九户人设问候池——走近即冒，不必cha
  '爱香':['大老远来的吧？喝水不？','哟——今儿风大！'],
  '长贵':['来了。慢走，地滑。','不急，一步步来，日子长着。'],
  '来福':['早啊——哦，这会儿不算早了。','天不亮我就起了。'],
- '银锁':['来了。账都记着呢。','今儿进出的，我都看着呢。']
+ '银锁':['来了。账都记着呢。','今儿进出的，我都看着呢。'],
+ '栓柱':['来了。','泥瓦活我熟，缺人手喊我。'],
+ '麦穗':['哎。','鸡都喂过了。'],
+ '二愣':['嗯！','力气有，往哪儿使？'],
+ '杏花':['哟，来啦。','针线活别找我，我笨。'],
+ '铁蛋':['嘿嘿，来了。','河里鱼多着呢。'],
+ '老蔫':['……嗯。','（半天）……坐呗。'],
+ '翠娥':['来了？炕上坐。','布晒好了，就等裁。'],
+ '石头':['嗯。','石头有的是，就缺盖房的灰。'],
+ '巧云':['来了呀。','账我记着呢，别急。'],
+ '柱子':['来了。','架子搭一半，风大停了工。'],
+ '腊梅':['嗯，来了。','药晒好了，苦着呢。'],
+ '半仙':['来了。','我看今儿宜动土。']
 };
+const GREET_ANY=['哎，来了。','忙着呢。','吃了没？','今儿天气不赖。','回头村里见。'];   /* v96兜底 */
 function askLine(nm){   /* v94：问村里的事——天气+该户今天的心事（真数据每天变） */
   const w=weather==='rain'?'下雨呢，出不了工':(weather==='snow'?'落雪了，都猫着':(weather==='clear'?'晴天，正干活的天':'阴天'));
   const m2=MINDS&&MINDS.minds&&MINDS.minds[nm];
@@ -2660,7 +2675,7 @@ function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks→�
   const m2=MINDS&&MINDS.minds&&MINDS.minds[nm];
   if(m2&&m2.thought)return '（自言自语）'+m2.thought;
   const pool=GREET[nm];
-  return pool?pool[Math.floor(tSec/9)%pool.length]:'……';
+  return pool?pool[Math.floor(tSec/9)%pool.length]:GREET_ANY[Math.floor(tSec/9)%GREET_ANY.length];
 }
 let bubbleHold=0;   /* v95：回应气泡9秒内不被自动内容覆盖（TA报「打招呼按没反应」的根：bubbleTick每帧自动showBubble顶掉npcOpt的回应） */
 window.__npcNearId=null;
@@ -2668,7 +2683,7 @@ window.npcOpt=function(k){
   const id=window.__npcNearId;
   const nm=id&&VH.homes[id]?VH.homes[id].name:null;
   if(!nm)return;
-  if(k===0){const pool=GREET[nm]||['……'];showBubble(id,pool[Math.floor(Math.random()*pool.length)],worldSec());bubbleHold=worldSec()+9;}
+  if(k===0){const pool=GREET[nm]||GREET_ANY;showBubble(id,pool[Math.floor(Math.random()*pool.length)],worldSec());bubbleHold=worldSec()+9;}
   else if(k===1){showBubble(id,askLine(nm),worldSec());bubbleHold=worldSec()+9;}
   else if(k===2){openTalk(nm);}
   else{hideBubble(id);const o=document.getElementById('npcOpts');if(o)o.style.display='none';}
@@ -2712,7 +2727,7 @@ function bootMindCheck(){
   }
   ghGet('villagers_memory.json').then(({data})=>{
     if(data&&data.minds)MINDS=data;   /* v84：拉到就存 */
-    const day=Math.floor((Date.now()-VH.up)/86400000);
+    const day=Math.floor((Date.now()-VH.up)/DAY_MS);
     if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});
   }).catch(()=>{});
@@ -2749,8 +2764,8 @@ function sendTalk(){
 function bpCells(bp){
   const c=[],S=11,P=10,R=12,G=9,F=19,T=14,Q=27;
   /* v86尺寸学：基座满铺(dy=0整层)——墙高3(y1-3)——门洞2格高——双坡顶(檐层+脊层)。比例对齐MC小屋(墙4顶2/7×7) */
-  const X=bp===3?3:(bp===2?4:(bp===4?6:5));      /* 宽 */
-  const Z=bp===5?5:4;                             /* 深 */
+  const X=bp===3?5:(bp===2?6:(bp===4?9:7));      /* v96：宽放大——单间级起步 */
+  const Z=bp===3?5:(bp===5?7:6);                             /* v96：深放大 */
   const wallH=bp===5?4:(bp===2?4:3);              /* 墙高：大堂屋和两层楼4格，其余3格 */
   const doorX=bp===3?1:Math.floor(X/2);
   /* 基座：满铺整层（悬空的根治——内圈外圈都铺） */
@@ -2767,7 +2782,7 @@ function bpCells(bp){
   /* 双坡顶：坡向z（前后两坡）。檐层y=wallH+1全铺；脊层只铺z中部（Z=4→z1-2；Z=5→z2） */
   const yE=wallH+1;
   for(let x=0;x<X;x++)for(let z=0;z<Z;z++)c.push([x,yE,z,R]);
-  const ridgeZ=Z===4?[1,2]:[1,2,3];
+  const ridgeZ=Z<=5?[1,2]:(Z<=6?[2,3]:[2,3,4]);
   for(let x=0;x<X;x++)for(const z of ridgeZ)c.push([x,yE+1,z,R]);
   /* 楼（bp2）：二层再加一圈矮墙+压顶 */
   if(bp===2){
@@ -2863,11 +2878,12 @@ function carveRiver(){   /* v86：TA「连个河都没有就水滩滩」——�
     }
   }
 }
+const DAY_MS=21600000;   /* v96：1游戏日=6现实小时——发展4倍速（工期/孩子成年/心事全按游戏日走；日夜天气照旧现实节奏） */
 function villagerProgress(vh,now,startDay){   /* 晴日制·纯确定（v79.1修：雨天进度归零的bug——TA凌晨实测「房屋不见了就只有火塘了」）：
   开工日必晴（开工当天已经在干的活不算雨），后续按hash节奏；今天的实时天气只影响村民出不出工（渲染层），不影响进度。
   原v78的「今天clear+n+=spd」在day0+rain时n=0——工地清空，已修 */
   const sd=startDay||0;   /* v78kin78：孩子户从成年日起算，不把童年算进工期 */
-  const days=Math.max(0,Math.floor((now-VH.up)/86400000)-sd);
+  const days=Math.max(0,Math.floor((now-VH.up)/DAY_MS)-sd);
   let n=0;
   for(let i=0;i<=days;i++){const d=i+sd;if(d===sd||hash(d*7.7,i*3.3)<0.72)n+=vh.spd;}   /* d===sd=开工日必晴 */
   return n;
@@ -2875,7 +2891,7 @@ function villagerProgress(vh,now,startDay){   /* 晴日制·纯确定（v79.1修
 function villPlotAt(x,y,z){   /* 宅地空域：6×6 footprint，地上8格——放置/粘贴查这个 */
   for(const id in VH.homes){
     const vh=VH.homes[id];
-    if(x>=vh.plot[0]&&x<vh.plot[0]+6&&z>=vh.plot[2]&&z<vh.plot[2]+6&&y>=vh.plot[1]&&y<=vh.plot[1]+8)return id;
+    if(x>=vh.plot[0]&&x<vh.plot[0]+10&&z>=vh.plot[2]&&z<vh.plot[2]+10&&y>=vh.plot[1]&&y<=vh.plot[1]+10)return id;
   }
   return null;
 }
@@ -2892,7 +2908,18 @@ function villSignMake(id,vh,x,y,z){   /* 封顶名牌：门前立牌，写名字
 }
 function applyVillagers(now){
   if(!VH.homes)return;
-  const day=Math.floor((now-VH.up)/86400000);
+  const day=Math.floor((now-VH.up)/DAY_MS);
+  /* v96：房放大换代——清旧格重铺（云端villagers.json v6已重排21户，这里只清格+y校正） */
+  if((VH.v||0)>=6&&!localStorage.getItem('hetan_mig_v96')){
+    let wiped=0;
+    for(const k in villCells){const parts=k.split(',').map(Number);if(parts.length===3&&inW(parts[0],parts[1],parts[2])&&world[idx(parts[0],parts[1],parts[2])]!==AIR){world[idx(parts[0],parts[1],parts[2])]=AIR;wiped++;}}
+    villCells={};villBuilt={};villTotals={};
+    for(const id in villSignMesh){scene.remove(villSignMesh[id]);}
+    villSignMesh={};
+    for(const id in VH.homes){const vh=VH.homes[id];if(vh&&vh.plot)vh.plot[1]=Math.round(height(vh.plot[0],vh.plot[2]));}
+    try{localStorage.setItem('hetan_mig_v96','1');}catch(e){}
+    console.log('v96迁移：清了'+wiped+'格旧村，房放大量级重铺+y校正');
+  }
   /* v85：蓝图换代迁移——v4：清旧格重铺新蓝图（每端幂等，进度按天保留） */
   if((VH.v||0)>=4&&!localStorage.getItem('hetan_mig_v87')){
     let wiped=0;
@@ -2914,7 +2941,7 @@ function applyVillagers(now){
   const active={};
   for(const id in VH.homes)active[id]=VH.homes[id];
   if(VH.children)for(const c of VH.children){
-    if(now<VH.up+c.adultDay*86400000||active[c.id])continue;
+    if(now<VH.up+c.adultDay*DAY_MS||active[c.id])continue;
     active[c.id]={plot:[c.plot[0],Math.round(height(c.plot[0],c.plot[2])),c.plot[2]],bp:c.bp||1,spd:c.spd||8,name:c.name,startDay:c.adultDay};
   }
   for(const id in active){
@@ -2994,11 +3021,11 @@ function renderVillKids(now){
   }
   for(const g of villKids){
     const c=g.userData.villKid;
-    const bornAt=VH.up+c.bornDay*86400000, adultAt=VH.up+c.adultDay*86400000;
-    if(now<bornAt+2*86400000||night||weather==='rain'||weather==='snow'){g.visible=false;continue;}   /* 婴幼儿在家；天黑/雨天回家 */
+    const bornAt=VH.up+c.bornDay*DAY_MS, adultAt=VH.up+c.adultDay*DAY_MS;
+    if(now<bornAt+2*DAY_MS||night||weather==='rain'||weather==='snow'){g.visible=false;continue;}   /* 婴幼儿在家；天黑/雨天回家 */
     g.visible=true;
     const grown=now>=adultAt;
-    const s=grown?1:0.55+Math.min(0.15,(now-bornAt)/86400000*0.02);
+    const s=grown?1:0.55+Math.min(0.15,(now-bornAt)/DAY_MS*0.02);
     g.scale.set(s,s,s);
     const cp=VH.camps[c.camp]||[c.plot[0],c.plot[1],c.plot[2]];
     const hx=grown?c.plot[0]+2:cp[0], hz=grown?c.plot[2]+1.5:cp[2];
