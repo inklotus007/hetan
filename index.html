@@ -570,7 +570,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v98';   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v99';   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2847,6 +2847,32 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
       }
     }
   }
+  /* v99：正交街网——户与户连通。北岸纵街x=298/312/326/340，横街z=333/350/364/378；南岸纵x=442/456，横z=208/222/236。路到河岸为止（等桥）。 */
+  const roadSeg=(x1,z1,x2,z2)=>{
+    const x1i=Math.round(x1),z1i=Math.round(z1),x2i=Math.round(x2),z2i=Math.round(z2);
+    const dx=x2i>x1i?1:(x2i<x1i?-1:0),dz=z2i>z1i?1:(z2i<z1i?-1:0);
+    let x=x1i,z=z1i,guard=0;
+    while(guard++<400){
+      const y=surfaceY(x,z);
+      if(inW(x,y,z)){const b=get(x,y,z);
+        if(b===8)break;
+        if(b===1||b===17){world[idx(x,y,z)]=20;changed=true;}
+      }
+      if(x===x2i&&z===z2i)break;
+      if(x!==x2i)x+=dx;else if(z!==z2i)z+=dz;else break;
+    }
+  };
+  for(const nx of [298,312,326,340])roadSeg(nx,390,nx,308);
+  for(const hz of [333,350,364,378])roadSeg(280,hz,352,hz);
+  for(const nx of [442,456])roadSeg(nx,186,nx,258);
+  for(const hz of [208,222,236])roadSeg(426,hz,472,hz);
+  const NB=[298,312,326,340],SB=[442,456];
+  for(const id in VH.homes){const vh=VH.homes[id];
+    const tx=vh.plot[0]+2,tz=vh.plot[2]-1;
+    const arr=vh.plot[2]>320?NB:SB;
+    let best=arr[0];for(const nx of arr){if(Math.abs(nx-tx)<Math.abs(best-tx))best=nx;}
+    if(best!==tx)roadSeg(tx,tz,best,tz);
+  }
   if(changed)rebuild();
 }
 function relocateAnimals(){   /* v85.1：动物迁村——鸡啄村口、狗看打谷场、鸭漂村边水（老地图的东滩/河离村310格） */
@@ -2949,6 +2975,23 @@ function tickMarket(now){
     console.log('v98：开集——六摊支起');
   }else console.log('v98：集散——摊收了');
 }   /* v96：1游戏日=6现实小时——发展4倍速（工期/孩子成年/心事全按游戏日走；日夜天气照旧现实节奏） */
+function pushVillagersPut(msg){
+  try{ghGet('villagers.json').then(({sha})=>ghPut('villagers.json',VH,sha,msg)).catch(()=>{});}catch(e){}
+}
+let stepsDone={};
+function buildSteps(vh){
+  const tx=vh.plot[0]+2,tz=vh.plot[2]-1,y0=vh.plot[1]+1;
+  let yy=y0-1;
+  for(let d=1;d<=4;d++){
+    const z=tz-d;if(!inW(tx,1,z))break;
+    const sy=surfaceY(tx,z);
+    if(sy>=y0)break;
+    for(let y=yy;y>=sy;y--){const k=tx+','+y+','+z;if(!villCells[k]&&world[idx(tx,y,z)]===AIR){world[idx(tx,y,z)]=20;villCells[k]='step';}}
+    yy=sy-1;
+    if(yy<sy)break;
+  }
+  rebuild();
+}
 function villagerProgress(vh,now,startDay){   /* 晴日制·纯确定（v79.1修：雨天进度归零的bug——TA凌晨实测「房屋不见了就只有火塘了」）：
   开工日必晴（开工当天已经在干的活不算雨），后续按hash节奏；今天的实时天气只影响村民出不出工（渲染层），不影响进度。
   原v78的「今天clear+n+=spd」在day0+rain时n=0——工地清空，已修 */
@@ -2980,6 +3023,20 @@ function applyVillagers(now){
   if(!VH.homes)return;
   const day=Math.floor((now-VH.up)/DAY_MS);
   /* v96：房放大换代——清旧格重铺（云端villagers.json v6已重排21户，这里只清格+y校正） */
+  /* v99：宅基坐地——plot[1]重采样为footprint五点surfaceY的最小值（治「半空房」：v96只采一角，坡上就悬空）；清格重铺+修入口台阶 */
+  if(!localStorage.getItem('hetan_mig_v99')&&(VH.v||0)>=6){
+    let wiped=0;
+    for(const k in villCells){const parts=k.split(',').map(Number);if(parts.length===3&&inW(parts[0],parts[1],parts[2])&&world[idx(parts[0],parts[1],parts[2])]!==AIR){world[idx(parts[0],parts[1],parts[2])]=AIR;wiped++;}}
+    villCells={};villBuilt={};villTotals={};stepsDone={};
+    for(const id in villSignMesh){scene.remove(villSignMesh[id]);}
+    villSignMesh={};
+    const reseat=(plot)=>{let m=1e9;for(const [dx,dz] of [[0,0],[6,0],[0,6],[6,6],[3,3]]){const y=surfaceY(plot[0]+dx,plot[2]+dz);if(y<m)m=y;}return m-1;};
+    for(const id in VH.homes){const vh=VH.homes[id];if(vh&&vh.plot)vh.plot[1]=reseat(vh.plot);}
+    if(VH.children)for(const c of VH.children){if(c.p)c.p[1]=reseat(c.p);}
+    try{localStorage.setItem('hetan_mig_v99','1');}catch(e){}
+    console.log('v99迁移：宅基坐地重采样，清了'+wiped+'格');
+    pushVillagersPut('v99宅基坐地');
+  }
   if((VH.v||0)>=6&&!localStorage.getItem('hetan_mig_v96')){
     let wiped=0;
     for(const k in villCells){const parts=k.split(',').map(Number);if(parts.length===3&&inW(parts[0],parts[1],parts[2])&&world[idx(parts[0],parts[1],parts[2])]!==AIR){world[idx(parts[0],parts[1],parts[2])]=AIR;wiped++;}}
@@ -3025,6 +3082,7 @@ function applyVillagers(now){
     const n=Math.min(cells.length,Math.max(0,Math.round(villagerProgress(vh,now,vh.startDay))));
     const prev=villBuilt[id]||0;
     villBuilt[id]=n;villTotals[id]=cells.length;
+    if(n>=cells.length&&!stepsDone[id]){stepsDone[id]=1;buildSteps(vh);console.log('v99：'+(vh.name||id)+'家门口的台阶修好了');}
     if(n<=prev&&!firstTime)continue;
     for(let i=(firstTime?0:prev);i<n;i++){
       const[dx,dy,dz,t]=cells[i];
