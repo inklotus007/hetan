@@ -40,18 +40,25 @@ for c in V.get('children', []):
 kids = '、'.join(c['name'] for c in V.get('children', []))
 kids_days = '；'.join('%s生@第%d天成年@第%d天' % (c['name'], c['bornDay'], c['adultDay']) for c in V.get('children', []))
 
+try:
+    ECON = open('economy_summary.txt').read().strip()
+except Exception:
+    ECON = ''
 today_desc = ('今日大事：' + '；'.join(events)) if events else '今天村里没有大事——写日常：谁家房顶又上了一层、火塘边谁说了什么、天好天坏、孩子们绕着火塘跑。'
 
 prompt = """你是河滩世界村志的记史人。这个世界是3D像素村庄，两个部落安家在世界中部，村心各一堆火，九户村民，房屋按晴日进度慢慢盖，下雨停工。
 命定事实：九户=满仓、建军（单身）、秋生、秀兰、凤兰、爱香、长贵、来福、银锁。婚事：满仓配凤兰第4天、秋生配秀兰第7天、来福配爱香第7天、长贵配银锁第16天。孩子名册：%s（%s）——都还没出生（各自出生日见括号），别写他们出场。
 今天是安家后第%d天。%s
 %s
+%s
 今天这一章，标题自拟（四字内，不带「第」字），要像村里人讲村里事，不要列清单，不要元叙述（不说「命运」「预示」这类话），落款「——村志 第%d日」。
+村里的生计与交易（今天谁家有什么、惦记什么、谁跟谁换了什么——顺手写进村里事，别列账本）：
+%s
 今天的处境（写章的事实依据，别编）：
 %s
 %s
 用话本体写今天这一章，250字以内。**没有大事的日子就写短**（两三句，80字内，贴着今天的进度/天气/话）；实在无事可写，返回 {"title":"","text":"","skip":true} 跳过今天（空章比编出来的章好）。
-只输出JSON：{"title":"...","text":"...","skip":false}。""" % (kids, kids_days, day, today_desc, talks_txt, day, ENV, RY)
+只输出JSON：{"title":"...","text":"...","skip":false}。""" % (kids, kids_days, day, today_desc, talks_txt, day, ENV, RY, ECON)
 
 def call(model):
     # max_tokens 1024：4.7-flash带思考链，800可能全花在思考上（finish=length content空——10/25实测）

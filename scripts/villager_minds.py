@@ -45,6 +45,13 @@ def rel_block():
     return '【关系】成了亲的：%s。建军单身（话冲心软）。东村：%s；西村：%s。%s。' % (pairs, '、'.join(e), '、'.join(w_), ta)
 
 ENV = env_snapshot.build(V, day)
+# v109：生计/心愿/交易摘要（village_economy.py先跑，落了economy_summary.txt）
+try:
+    ECON = open('economy_summary.txt').read().strip()
+except Exception:
+    ECON = '（账本还没建——今天照常）'
+HUNGRY = M.get('hungry') or []
+HUNGRY_TXT = ('【断顿】%s——这两天正是揭不开锅的难处，心事和村里的话里要有这个急。' % '、'.join(HUNGRY)) if HUNGRY else ''
 RY = env_snapshot.rhythm()
 ROAD = env_snapshot.road_rule()
 BIRD = env_snapshot.birdseye(V) if True else ''
@@ -58,6 +65,8 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 %s
 %s
 %s
+%s
+%s
 请生成：
 1. 每户今天的心事——第一人称，30到60字，像那人自己在心里过的一天（满仓在数日子、建军看别人成双是什么滋味、银锁盘的是什么账……各是各的，别全是婚礼话题）
 2. 今天村里的话——2到4条，谁对谁说的，一句一条（火塘边、门口、地头，贴着上面的事）。b也可以写「同志」（那个外来人，环境里说了他今天干了什么）——村民对同志说的话会比一般的客气、带点打量
@@ -65,8 +74,10 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 4. 帮工与匀料：各家的料跟着自家进度走——完工早的户有余料。判定者可以排「帮工」：一户行程里排一段{at:"help",act:"collab"}（去本村进度最慢那家一起干活），两户的帮工段排同一时段；talks里可以写匀料帮工的话（「我家瓦剩两捆，明儿给你捎去」）。每天排帮工0到2段，别多——各家的活还是各家的。
 
 九户每户都必须有一条心事和一份行程，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
+4.5 生计与心愿（v109新）：【生计】段是各户家底和心里惦记的东西（心愿）。心事要贴着生计写——惦记新锄头的会在心里过锄头的事，断顿的愁吃的；村里的话可以带赶集/换东西/借粮的闲话（「明儿逢集，把鸡蛋捎上」）。行程里粮紧的户可以排一段at:"market"（集市街心）。
+4.6 新心愿提议：家底变了（成交了、东西攒够了）的户，可以起新的惦记。在输出里加"wishes"字段——只给你觉得该起心愿的户（现在没惦记的、或东西够了该换个念想的），每条{"npc":"谁","item":"粮/柴/蛋/布/线/鱼/铁/木/盐/油/钱之一","qty":数量数字,"note":"第一人称短句说清想要什么、为什么"}。别每户都起——一天1到2户正好，心意要有过程。
 只输出JSON，不要别的文字：
-{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD)
+{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"wishes":[{"npc":"满仓","item":"铁","qty":1,"note":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD, ECON, HUNGRY_TXT)
 
 def call(model, backoff=0):
     if backoff:
@@ -116,7 +127,7 @@ for attempt in range(5):   # v88.5：3轮→5轮，退避拉长——10/31凌晨
     model = MODELS[attempt]
     try:
         txt = call(model, BACKOFF[attempt])
-        minds, talks, sched = parse(txt)
+        minds, talks, sched, wishes_new = parse(txt)
         if len(minds) >= 7 and len(sched) >= 7:   # 九户至少七户有心事才算成
             ok = True
             break
@@ -137,6 +148,16 @@ if need_mood:
     M['today'] = {'day': day, 'talks': talks}
     for x in minds:
         M['minds'][x['npc']] = {'mood': x['mood'], 'thought': x['thought']}
+    # v109：GLM新心愿提议挂账（只挂空位；挂超24天的旧心愿自然过期换新）
+    M.setdefault('wishes', {})
+    for w in (wishes_new or []):
+        n = w['npc']
+        if n not in M['store']: continue
+        cur = M['wishes'].get(n)
+        if cur and (day - cur.get('from', day)) < 24: continue
+        w['from'] = day
+        M['wishes'][n] = w
+        print('  新心愿挂账：', n, '想要', w['note'][:24])
 if need_sched:
     M['schedDay'] = day
     M['sched'] = sched

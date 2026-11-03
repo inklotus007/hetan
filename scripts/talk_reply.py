@@ -5,6 +5,14 @@
    「村里人想好了才答话」——异步，延迟1-2分钟。
    并发说明：TA连说两句可能两个run并发——答重了前端按id去重，不做锁。"""
 import json, urllib.request, urllib.error, time, os, sys
+# v109：生计/心愿状态进答话（问「你想要啥」答得出来）
+try:
+    ECO_M = json.load(open('villagers_memory.json'))
+    ECO_STORE = ECO_M.get('store') or {}
+    ECO_WISH = ECO_M.get('wishes') or {}
+    ECO_HUNGRY = ECO_M.get('hungry') or []
+except Exception:
+    ECO_STORE, ECO_WISH, ECO_HUNGRY = {}, {}, []
 
 V = json.load(open('villagers.json'))
 Q = json.load(open('talk_queue.json'))
@@ -53,15 +61,23 @@ for item in Q:
     pers = PERS.get(npc, '村里人，实在')
     # 该村民的记忆（最近5轮，跨天持久——v81意识层）
     mem = M.get('mem', {}).get(npc) or []
+    st = ECO_STORE.get(npc) or {}
+    st_txt = '、'.join('%s%s' % (k, v) for k, v in sorted(st.items(), key=lambda x: -x[1]) if v > 0) or '家底薄'
+    w = ECO_WISH.get(npc)
+    w_txt = ('心里正惦记：%s' % w.get('note', '')) if w else '眼下没什么特别想要的'
+    eco_txt = '\n他家里的家底：%s。%s。%s' % (st_txt, w_txt, ('家里正断顿，愁吃的，话里要有这个难处。' if npc in ECO_HUNGRY else ''))
     hist_txt = '\n'.join('（%s对你说「%s」，你答了「%s」——你记得这事）' % (x.get('name'), (x.get('text') or '')[:50], (x.get('reply') or '')[:50]) for x in mem[-5:]) or '（还没跟TA说过话）'
     # 今天的心事
     mind = M.get('minds', {}).get(npc)
     mind_txt = ('你今天心里正惦记着：%s——答话时可以从这里头带出来。\n' % mind.get('thought','')) if mind else ''
     prompt = """你是河滩村的村民「%s」。%s。
 村子现状（安家第%d天）：九户在河滩和营地两边盖房，婚事都定了：满仓配凤兰第4天、秋生配秀兰第7天、来福配爱香第7天、长贵配银锁第16天，建军单身。最近村里的事：%s
-%s%s现在%s（村里能看见的一个人，大家当稀客处，不当外人）对你说：「%s」
+%s
+%s
+%s
+现在%s（村里能看见的一个人，大家当稀客处，不当外人）对你说：「%s」
 你回一段话——豫北庄稼人口吻，实在，30到80字，不书面，不解释自己是村民，不提AI不提游戏。可以问回去一句。
-只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], mind_txt, hist_txt, who, text)
+只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], mind_txt, eco_txt, hist_txt, who, text)
 
     def call(model):
         # max_tokens 1024：4.7-flash带思考链，200全花在思考上（finish=length content空——10/25端到端实测）

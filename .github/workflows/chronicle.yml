@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: 村里的生计与交易（食物消耗+营生+心愿撮合，本地确定性零API）
+        run: python3 scripts/village_economy.py || true
       - run: python3 scripts/chronicle_gen.py
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
