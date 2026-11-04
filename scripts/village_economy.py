@@ -4,6 +4,7 @@
    架构（11/1同志定的）：事件库自己建（本脚本=账本引擎），GLM管决策与说话（minds/talk_reply/chronicle把账说成人话）。
    数据挂在 villagers_memory.json：store（各户库存）+ wishes（心愿）+ trades（成交）+ hungry（断顿标记）。
    幂等：econDay 标记（叙事日），漏跑的叙事日按顺序补账。
+   v110：同志送礼入账（gift_queue.json→giftDone标记防重复消费）——对上心愿了结心愿，对不上收进家底；favor记情分，答话/村志走这里。
    集日判定与前端 isMarketDay 同式：游戏日 g=(now-up)/21600000，(g%30)%5==0 开集（逢五逢十）。"""
 import json, math, time, sys
 
@@ -78,6 +79,44 @@ def mouths(name):
 def rnd(name, day, salt):
     return jshash(day * 12.9898 + ord(name[0]) * 7.13, salt * 3.7 + day * 1.7)
 
+def process_gifts(M, day):
+    """v110：同志的礼入账。对上心愿=了结（favor+2），对不上=收进家底（favor+1）。
+       giftDone标记防重复消费；回赠叙事进trades（kind:'give-back'），答话时GLM递话。"""
+    try:
+        Q = json.load(open('gift_queue.json'))
+    except Exception:
+        return
+    if not isinstance(Q, list) or not Q:
+        return
+    done = set(M.get('giftDone', []))
+    M.setdefault('favor', {})
+    for g in Q:
+        gid = g.get('id') or ''
+        if not gid or gid in done: continue
+        n, item, qty = g.get('npc'), g.get('item'), float(g.get('qty') or 1)
+        if n not in M['store'] or item not in ('粮','柴','蛋','布','线','鱼','铁','木','盐','油','钱'):
+            done.add(gid); continue
+        w = M['wishes'].get(n)
+        note = ''
+        if w and w.get('item') == item:
+            M.setdefault('fulfilled', []).append({'npc': n, 'item': item, 'note': w.get('note',''), 'day': day, 'by': g.get('by') or '同志'})
+            M['wishes'][n] = None
+            M['favor'][n] = M['favor'].get(n, 0) + 2
+            note = w.get('note','')[:16]
+        else:
+            M['store'][n][item] = round(M['store'][n].get(item, 0) + qty, 1)
+            M['favor'][n] = M['favor'].get(n, 0) + 1
+        M.setdefault('trades', []).append({'day': day, 'a': g.get('by') or '同志', 'b': n, 'give': '%s%g' % (item, qty), 'get': '情分' if note else '收下', 'kind': 'gift'})
+        if note:
+            rich = sorted(((k, v) for k, v in M['store'][n].items() if v >= 1 and k != '钱'), key=lambda x: -x[1])
+            if rich:
+                bk, bv = rich[0]
+                give_b = min(bv, 2 if bk != '铁' else 1)
+                M['store'][n][bk] = round(M['store'][n][bk] - give_b, 1)
+                M.setdefault('trades', []).append({'day': day, 'a': n, 'b': g.get('by') or '同志', 'give': '%s%g' % (bk, give_b), 'get': '回礼', 'kind': 'give-back'})
+        done.add(gid)
+    M['giftDone'] = sorted(done)[-200:]
+
 def fmt_store(st):
     return '、'.join('%s%s' % (k, v) for k, v in sorted(st.items(), key=lambda x: -x[1]) if v > 0) or '空'
 
@@ -93,6 +132,9 @@ if 'store' not in M:
     M['hungry'] = []
     M.setdefault('fulfilled', [])
     print('v109首日初始化：九户家底+心愿入账')
+
+# ---------- v110：同志的礼先入账（答话在workflow里跟在本脚本后面，情分即时可见） ----------
+process_gifts(M, day)
 
 # ---------- 补账：从 econDay+1 到今天，一天一天跑 ----------
 start = M.get('econDay', day - 1) + 1

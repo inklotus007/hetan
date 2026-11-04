@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'talk_queue.json'
+      - 'gift_queue.json'
   workflow_dispatch:
 permissions:
   contents: write
@@ -17,12 +18,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: 村里的生计与交易（食物消耗+营生+心愿撮合+同志的礼入账，本地确定性零API）
+        run: python3 scripts/village_economy.py || true
       - name: 村里人答话（带上各户记忆和今天的心事）
         run: python3 scripts/talk_reply.py
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
-      - name: 村里的生计与交易（食物消耗+营生+心愿撮合，本地确定性零API）
-        run: python3 scripts/village_economy.py || true
       - name: 养村民今天的心思（每天第一次触发时生成：心事+村里的话）
         run: python3 scripts/villager_minds.py || true
         env:

@@ -65,7 +65,15 @@ for item in Q:
     st_txt = '、'.join('%s%s' % (k, v) for k, v in sorted(st.items(), key=lambda x: -x[1]) if v > 0) or '家底薄'
     w = ECO_WISH.get(npc)
     w_txt = ('心里正惦记：%s' % w.get('note', '')) if w else '眼下没什么特别想要的'
-    eco_txt = '\n他家里的家底：%s。%s。%s' % (st_txt, w_txt, ('家里正断顿，愁吃的，话里要有这个难处。' if npc in ECO_HUNGRY else ''))
+    fav = (ECO_M.get('favor') or {}).get(npc, 0)
+    fav_txt = ''
+    if fav >= 2:
+        my_gifts = [t for t in (ECO_M.get('trades') or []) if t.get('kind') == 'gift' and t.get('b') == npc][-2:]
+        my_backs = [t for t in (ECO_M.get('trades') or []) if t.get('kind') == 'give-back' and t.get('a') == npc][-1:]
+        g_txt = '；'.join('%s送过你家%s' % (t.get('a'), t.get('give')) for t in my_gifts)
+        b_txt = ('你回过%s' % my_backs[0].get('give')) if my_backs else ''
+        fav_txt = '\n这位同志跟你家有交情（帮过忙、送过东西：%s%s）。答话带着这份熟络——道谢、念旧情，或者把回礼的话递出去（「这你拿着」）。' % (g_txt, ('，' + b_txt) if b_txt else '')
+    eco_txt = '\n他家里的家底：%s。%s。%s%s' % (st_txt, w_txt, ('家里正断顿，愁吃的，话里要有这个难处。' if npc in ECO_HUNGRY else ''), fav_txt)
     hist_txt = '\n'.join('（%s对你说「%s」，你答了「%s」——你记得这事）' % (x.get('name'), (x.get('text') or '')[:50], (x.get('reply') or '')[:50]) for x in mem[-5:]) or '（还没跟TA说过话）'
     # 今天的心事
     mind = M.get('minds', {}).get(npc)
