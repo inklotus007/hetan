@@ -589,7 +589,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v111';   /* v111农业+营生家什：麦田四季循环（芒种收麦寒露播种村历驱动）+九户渔网鸡窝缝纫机柴垛粮囤长在宅边，粮囤高度跟账本走；收成入经济（v109隐藏错账一并修：集日改相对游戏日对齐前端村历）  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v112';   /* v112判定者建设权：GLM提意图（type+near语义锚，无坐标无Y），本地物理全检（findSpotNear只落草土避TA宅田路）+蓝图程序化（凉亭花圃灯柱石凳水井树）+ack回账异步闭环（judge_build.py：成败原因进明天prompt——文章四层的批处理落地）；修v109生产坏账：minds parse 3元组vs调用方4元组，11/4起心事心愿行程全断，parse直测落定  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -2667,7 +2667,7 @@ function openTalk(name){
 }
 /* v81意识层：心事渲染+boot自动dispatch */
 function renderMind(M){
-  if(M){MINDS=M;updateGrainBins();for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情 */
+  if(M){MINDS=M;updateGrainBins();setTimeout(executeJudgePlans,500);for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情 */
   if(!talkNpc)return;
   const mind=document.getElementById('talkMind'),vil=document.getElementById('talkVillage');
   const m=(M&&M.minds&&M.minds[talkNpc])||null;
@@ -2802,7 +2802,7 @@ function bootMindCheck(){
     return;
   }
   ghGet('villagers_memory.json').then(({data})=>{
-    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);}   /* v84：拉到就存；v111：账本到手码粮囤 */
+    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);}   /* v84：拉到就存；v111码粮囤；v112判定者的建设落地 */
     const day=Math.floor((Date.now()-VH.up)/DAY_MS);
     if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});
@@ -3176,6 +3176,126 @@ function buildFishRack(vh){
   if(land2){world[idx(land2[0],land2[1]+1,land2[2])]=19;villCells[land2[0]+','+land2[1]+','+land2[2]]='prop_来福';}
 }
 let propsBuilt=false;
+/* ===== v112判定者建设（TA 11/6四层架构·批处理版）：GLM只出意图（无坐标无Y），物理全在本地；
+   蓝图程序化锚定地表；选址失败/蓝图被占→ack回账，判定者明天见回音换地方——异步试错闭环 ===== */
+function judgeAnchor(near){
+  if(near==='fire1'||near==='fire2'){const c=campCenter(near==='fire1'?0:1);return[c[0],c[1]];}
+  if(near==='market')return[MKT_FLAG[0],MKT_FLAG[1]];
+  if(near==='center'&&VH.camps){const a=campCenter(0),b=campCenter(1);return[Math.round((a[0]+b[0])/2),Math.round((a[1]+b[1])/2)];}
+  if(near&&near.indexOf('villager:')===0){const nm=near.slice(9);const vh=Object.values(VH.homes||{}).find(h=>h.name===nm);if(vh)return[vh.plot[0],vh.plot[2]];}
+  const c=campCenter(0);return[c[0],c[1]];
+}
+function judgeSpotNear(ax,az,w,d){
+  const[taA,taR]=taSets();
+  for(let r=3;r<=14;r++)for(let a=0;a<12;a++){
+    const ang=a*Math.PI/6+r*0.31;
+    const bx=Math.round(ax+Math.cos(ang)*r),bz=Math.round(az+Math.sin(ang)*r);
+    let ok=true;
+    for(let dx=0;dx<w&&ok;dx++)for(let dz=0;dz<d;dz++){
+      const x=bx+dx,z=bz+dz;
+      if(!inW(x,1,z)){ok=false;break;}
+      const g=groundY(x,z);if(g<2){ok=false;break;}
+      const b=get(x,g,z);
+      if(b!==1&&b!==2&&b!==17){ok=false;break;}   /* 只落草/土——田路集市宅子都不压 */
+      const k=x+','+g+','+z;
+      if(villCells[k]||taA.has(k)||taR.has(k)){ok=false;break;}
+      const up=get(x,g+1,z);
+      if(up!==AIR&&up!==17){ok=false;break;}
+    }
+    if(ok)return[bx,bz];
+  }
+  return null;
+}
+function judgeCellsFor(type){
+  const c=[];
+  if(type==='凉亭'){for(const[px,pz]of[[0,0],[2,0],[0,2],[2,2]]){c.push([px,1,pz,5]);c.push([px,2,pz,5]);}for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++)c.push([dx,3,dz,10]);}
+  else if(type==='花圃'){c.push([0,1,0,15]);c.push([1,1,0,16]);c.push([2,1,0,15]);}
+  else if(type==='灯柱'){c.push([0,1,0,3]);c.push([0,2,0,22]);}
+  else if(type==='石凳'){c.push([0,1,0,26]);c.push([1,1,0,26]);}
+  else if(type==='水井'){for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++)c.push([dx,1,dz,(dx===1&&dz===1)?8:3]);}
+  return c;
+}
+let judgeAckT=null;
+function judgePushAck(items){
+  if(!NPC_TOKEN||!items.length)return;
+  const go=()=>{
+    ghGet('build_ack.json').then(({sha,data})=>{
+      const q=Array.isArray(data)?data:[];
+      const have=new Set(q.map(x=>x.id));
+      items.forEach(it=>{if(!have.has(it.id))q.push(it);});
+      return ghPut('build_ack.json',q.slice(-40),sha,'建设回执'+items.length+'条');
+    }).catch(()=>{});
+  };
+  clearTimeout(judgeAckT);judgeAckT=setTimeout(go,1500);
+}
+function executeJudgePlans(){
+  if(!MINDS||!MINDS.build_plans||!MINDS.build_plans.length||!VH.up)return;
+  let acks;
+  try{acks=JSON.parse(localStorage.getItem('hetan_judge_done')||'{}');}catch(e){acks={};}
+  const acksOut=[];
+  let anyPlaced=false;
+  const[taA,taR]=taSets();
+  for(const p of MINDS.build_plans){
+    if(!p||!p.id||acks[p.id])continue;
+    const day=Math.floor((Date.now()-VH.up)/DAY_MS);
+    if(p.type==='树'){
+      const a=judgeAnchor(p.near||'center');
+      let n=0;
+      for(const[dx,dz]of[[0,0],[3,1],[1,3],[-2,2],[2,-2]]){
+        const x=a[0]+dx,z=a[1]+dz;
+        if(!inW(x,1,z))continue;
+        const g=groundY(x,z);if(g<2)continue;
+        const b=get(x,g,z);
+        if(b!==1&&b!==2)continue;
+        const k=x+','+g+','+z;
+        if(villCells[k]||taA.has(k)||taR.has(k))continue;
+        if(get(x,g+1,z)!==AIR)continue;
+        plantTree(x,z,g,false);n++;
+      }
+      acks[p.id]=1;
+      acksOut.push({id:p.id,ok:n>0,why:n>0?('种下'+n+'棵树'):'周边没有能落树的空地',day:day});
+      if(n>0)anyPlaced=true;
+      continue;
+    }
+    const cells=judgeCellsFor(p.type);
+    if(!cells.length){acks[p.id]=1;continue;}
+    const big=(p.type==='凉亭'||p.type==='水井');
+    const a=judgeAnchor(p.near||'center');
+    const spot=judgeSpotNear(a[0],a[1],big?3:3,big?3:1);
+    if(!spot){
+      acks[p.id]=1;
+      acksOut.push({id:p.id,ok:false,why:'周边14格内没有平整空地——都让路宅田占了',day:day});
+      continue;
+    }
+    const g=groundY(spot[0],spot[1]);
+    let blocked=false;const placed=[];
+    for(const[dx,dy,dz,t]of cells){
+      const x=spot[0]+dx,y=g+dy,z=spot[1]+dz;
+      const k=x+','+y+','+z;
+      if(taA.has(k)||taR.has(k)){blocked=true;break;}
+      const cur=world[idx(x,y,z)];
+      if(cur!==AIR&&cur!==17&&cur!==15&&cur!==16){blocked=true;break;}
+      placed.push([x,y,z,t]);
+    }
+    if(blocked){
+      acks[p.id]=1;
+      acksOut.push({id:p.id,ok:false,why:'蓝图格被占——选址要再挪',day:day});
+      continue;
+    }
+    for(const[x,y,z,t]of placed){
+      world[idx(x,y,z)]=t;
+      villCells[x+','+y+','+z]='judge';
+    }
+    anyPlaced=true;acks[p.id]=1;
+    acksOut.push({id:p.id,ok:true,why:'建成',day:day});
+    console.log('v112：判定者的'+p.type+'立起来了——'+p.note);
+  }
+  if(Object.keys(acks).length){
+    try{localStorage.setItem('hetan_judge_done',JSON.stringify(acks));}catch(e){}
+  }
+  if(anyPlaced)rebuild();
+  if(acksOut.length)judgePushAck(acksOut);
+}
 function grainLevel(g){if(g===undefined||g===null||g<=0)return 1;return Math.max(1,Math.min(4,1+Math.floor(Math.sqrt(g/12))));}
 function updateGrainBins(){
   if(!VH.homes||!MINDS||!MINDS.store)return;

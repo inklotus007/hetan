@@ -52,6 +52,11 @@ except Exception:
     ECON = '（账本还没建——今天照常）'
 HUNGRY = M.get('hungry') or []
 HUNGRY_TXT = ('【断顿】%s——这两天正是揭不开锅的难处，心事和村里的话里要有这个急。' % '、'.join(HUNGRY)) if HUNGRY else ''
+# v112：建设回音与已有设施（judge_build.py维护）
+BUILT = M.get('built_summary') or []
+BUILT_TXT = ('村里已有的设施：' + '、'.join(BUILT[-8:])) if BUILT else '村里还没有公共设施——就火塘、井、集市、田'
+BFB = M.get('build_feedback') or []
+BFB_TXT = ('。'.join(('成了：' if f.get('ok') else '没成：') + (f.get('note') or '') + '（' + (f.get('why') or '')[:30] + '）' for f in BFB[-3:])) if BFB else '上一批建设还没有回音'
 RY = env_snapshot.rhythm()
 ROAD = env_snapshot.road_rule()
 BIRD = env_snapshot.birdseye(V) if True else ''
@@ -75,9 +80,10 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 
 九户每户都必须有一条心事和一份行程，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
 4.5 生计与心愿（v109新）：【生计】段是各户家底和心里惦记的东西（心愿）。心事要贴着生计写——惦记新锄头的会在心里过锄头的事，断顿的愁吃的；村里的话可以带赶集/换东西/借粮的闲话（「明儿逢集，把鸡蛋捎上」）。行程里粮紧的户可以排一段at:"market"（集市街心）。
+4.6 建设（v112）：村里的公共设施由你提议，type只能选：凉亭/花圃/灯柱/石凳/树/水井；near只能选：fire1/fire2/river/market/center/villager:某名。**一天最多2件，贴着村况和节气提**（天热提凉亭、入冬前提灯柱、人多了提石凳水井）——建了的会真出现在地里，村里人看得到用得到。输出加"build_plans"字段：[{"action":"build","type":"凉亭","near":"fire1","note":"不超16字的理由"}]。村里已有的设施：%s。上批工的回音：%s。没有合适的就不提，给空表
 4.6 新心愿提议：家底变了（成交了、东西攒够了）的户，可以起新的惦记。在输出里加"wishes"字段——只给你觉得该起心愿的户（现在没惦记的、或东西够了该换个念想的），每条{"npc":"谁","item":"粮/柴/蛋/布/线/鱼/铁/木/盐/油/钱之一","qty":数量数字,"note":"第一人称短句说清想要什么、为什么"}。别每户都起——一天1到2户正好，心意要有过程。
 只输出JSON，不要别的文字：
-{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"wishes":[{"npc":"满仓","item":"铁","qty":1,"note":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD, ECON, HUNGRY_TXT)
+{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"wishes":[{"npc":"满仓","item":"铁","qty":1,"note":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD, ECON, HUNGRY_TXT, BUILT_TXT, BFB_TXT)
 
 def call(model, backoff=0):
     if backoff:
@@ -105,6 +111,24 @@ def parse(txt):
     for x in d.get('talks', []):
         if isinstance(x, dict) and x.get('text'):
             talks.append({'a': str(x.get('a') or '村里人')[:12], 'b': str(x.get('b') or '')[:12], 'text': str(x['text'])[:120]})
+    wishes = []
+    ITEMS_OK = {'粮','柴','蛋','布','线','鱼','铁','木','盐','油','钱'}
+    for x in (d.get('wishes') or []):
+        if isinstance(x, dict) and x.get('npc') and x.get('item') and x.get('note'):
+            item = str(x['item'])[:4]
+            if item in ITEMS_OK:
+                wishes.append({'npc': str(x['npc'])[:12], 'item': item,
+                               'qty': max(1, min(20, float(x.get('qty') or 1))),
+                               'note': str(x['note'])[:60]})
+    plans = []
+    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井'}
+    for x in (d.get('build_plans') or [])[:4]:
+        if isinstance(x, dict) and x.get('type') in TYPES_OK:
+            near = str(x.get('near') or 'center')
+            if near.startswith('villager:') or near in {'fire1', 'fire2', 'river', 'market', 'center'}:
+                plans.append({'id': 'b%03d' % (len(plans) + 1),
+                              'action': 'build', 'type': str(x['type'])[:6],
+                              'near': near[:20], 'note': str(x.get('note') or '')[:20]})
     sched = {}
     AT = {'home','plot','fire1','fire2','river','well'}
     for n, legs in (d.get('sched') or {}).items():
@@ -118,7 +142,7 @@ def parse(txt):
             if clean:
                 clean.sort(key=lambda x: x['t'])
                 sched[str(n)[:12]] = clean
-    return minds, talks, sched
+    return minds, talks, sched, wishes, plans
 
 ok = False
 MODELS = ['glm-4.7-flash', 'glm-4-flash', 'glm-4.7-flash', 'glm-4-flash', 'glm-4.7-flash']
@@ -127,7 +151,7 @@ for attempt in range(5):   # v88.5：3轮→5轮，退避拉长——10/31凌晨
     model = MODELS[attempt]
     try:
         txt = call(model, BACKOFF[attempt])
-        minds, talks, sched, wishes_new = parse(txt)
+        minds, talks, sched, wishes_new, plans_new = parse(txt)
         if len(minds) >= 7 and len(sched) >= 7:   # 九户至少七户有心事才算成
             ok = True
             break
@@ -158,6 +182,11 @@ if need_mood:
         w['from'] = day
         M['wishes'][n] = w
         print('  新心愿挂账：', n, '想要', w['note'][:24])
+    # v112：建设提案权——意图入库（物理全在客户端执行，ack回账见judge_build.py）
+    M.setdefault('build_plans', [])
+    for p in (plans_new or [])[:2]:
+        M['build_plans'].append(p)
+        print('  建设提案：', p['type'], '@', p['near'], '—', p['note'][:18])
 if need_sched:
     M['schedDay'] = day
     M['sched'] = sched

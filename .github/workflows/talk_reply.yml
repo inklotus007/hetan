@@ -20,6 +20,8 @@ jobs:
           python-version: '3.11'
       - name: 村里的生计与交易（食物消耗+营生+心愿撮合+同志的礼入账，本地确定性零API）
         run: python3 scripts/village_economy.py || true
+      - name: 判定者建设账（ack回执→build_done+feedback，物理全在客户端）
+        run: python3 scripts/judge_build.py || true
       - name: 村里人答话（带上各户记忆和今天的心事）
         run: python3 scripts/talk_reply.py
         env:
@@ -37,7 +39,7 @@ jobs:
           git config user.name "村里人"
           git config user.email "villager@users.noreply.github.com"
           git add replies.json talk_queue.json chronicle.json 2>/dev/null || true
-          git add villagers_memory.json 2>/dev/null || true
+          git add villagers_memory.json build_ack.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "没有要推的，正常结束"
             exit 0
