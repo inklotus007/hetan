@@ -142,6 +142,7 @@ def build(V, day, extra=''):
     weather = '晴，正是干活的天' if clear else '雨，出不了工（人窝在家和火塘，行程别排远门）'
     done, parts = progress_line(V, day)
     prog = '房盖到：' + ('、'.join(parts) if parts else '都在收尾') + ('；封顶完工：' + '、'.join(done) if done else '') + '。雨天停工、晴日推进'
+    tong = {}   # v113修：npcs.json缺失时tong未定义——157行UnboundLocalError（测试床暴露的潜伏雷）
     try:
         N = json.load(open('npcs.json'))
         tong = next((t for t in (N.get('npcs') or {}).values() if t.get('name') == '同志'), {})
