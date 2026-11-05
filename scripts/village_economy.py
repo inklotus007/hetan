@@ -30,6 +30,21 @@ SPOUSE = {'满仓': '凤兰', '凤兰': '满仓', '秋生': '秀兰', '秀兰': 
 PRICE = {'粮': 1, '柴': 0.5, '蛋': 0.25, '布': 3, '线': 1, '鱼': 0.5, '铁': 12, '木': 3, '盐': 2, '油': 4, '钱': 4}   # 单位：斤粮（12/3测试跑太快，抬价出过程感）
 SELLBACK = {'鱼': 0.35, '蛋': 0.08, '柴': 0.2, '木': 1.2}   # 集日粜货换钱（收购价低于卖价——1995年贩子的规矩）
 
+# v111农事：收成与地里阶段（与前端farmStageCal同表——芒种开镰/秋收/寒露播种）
+HARVEST = {120: ('麦子', 150), 238: ('秋粮', 100)}
+GRAIN_KEEP = 60      # 囤底：低于60斤不粜
+GRAIN_SELL_PX = 0.2  # 粜粮价：0.2元/斤（1995年市价的账面折算）
+def farm_stage_name(gd):
+    if gd >= 242 or gd <= 25: return '麦苗（冬前趴着）'
+    if gd <= 104: return '麦青（返青起身）'
+    if gd <= 119: return '麦黄（灌浆待镰）'
+    if gd <= 122: return '麦茬（开镰刚过）'
+    if gd <= 125: return '整地（等播玉米）'
+    if gd <= 222: return '玉米青（夏田正长）'
+    if gd <= 237: return '玉米黄（秋收在望）'
+    if gd <= 239: return '麦茬（秋收刚过）'
+    return '整地（等播麦）'
+
 # 九户家底（首日初始化——人设化，贫富拉开，不是均匀的）
 SEED_STORE = {
     '满仓': {'粮': 10, '柴': 6, '蛋': 2, '钱': 1},
@@ -150,9 +165,9 @@ for d in range(start, day + 1):
         for (item, base, jit) in LIVELIHOOD[n]:
             gain = max(0, round(base + (rnd(n, d, hash(item) % 97) - 0.5) * 2 * jit, 1))
             if gain > 0: S[n][item] = round(S[n].get(item, 0) + gain, 1)
-    # 3. 集日判定（游戏日窗口，与前端isMarketDay同式）
-    g_lo = (V['up'] + d * 86400000 - 21600000) // 21600000
-    g_hi = g_lo + 4
+    # 3. 游戏日窗口（v111改相对游戏日——原用绝对纪元日取模，和前端村历差一个up偏移，集日/收成全歪：v109隐藏错账今天对齐）
+    g_lo = 4 * d - 1
+    g_hi = 4 * d + 3
     has_market = any((g % 30) % 5 == 0 for g in range(g_lo, g_hi + 1))
     # 4. 断顿互助（粮快见底的户先找粮最厚的借——提前到1.5斤，别饿过了才借）
     for n in NAMES:
@@ -162,6 +177,17 @@ for d in range(start, day + 1):
                 S[giver]['粮'] = round(S[giver]['粮'] - 2, 1)
                 S[n]['粮'] = round(S[n].get('粮', 0) + 2, 1)
                 today_trades.append({'day': d, 'a': giver, 'b': n, 'give': '粮二斤', 'get': '情分', 'kind': 'help'})
+    # 3.5 农事收成（v111：芒种收麦/秋分收秋粮——与前端村历同日历，账上的粮从地里长出来）
+    farm_done = M.setdefault('farm_done', [])
+    for g in range(g_lo, g_hi + 1):
+        gd = g % 360
+        if gd in HARVEST and g not in farm_done:
+            farm_done.append(g)
+            cname, camount = HARVEST[gd]
+            for n in NAMES:
+                S[n]['粮'] = round(S[n].get('粮', 0) + camount, 1)
+            today_trades.append({'day': d, 'a': '地里', 'b': '全村', 'give': cname, 'get': '各入囤%d斤' % camount, 'kind': 'harvest'})
+    M['farm_done'] = farm_done[-16:]
     # 4.5 集日籴粮（断粮户拿钱买粮——1元籴2斤，1995年粮站的价）
     if has_market:
         for n in NAMES:
@@ -181,6 +207,16 @@ for d in range(start, day + 1):
                     S[n][item] = round(S[n][item] - extra, 1)
                     S[n]['钱'] = round(S[n].get('钱', 0) + money, 2)
                     today_trades.append({'day': d, 'a': n, 'b': '集市', 'give': '%s%g' % (item, extra), 'get': '钱%g元' % money, 'kind': 'sell'})
+    # 4.7 集日粜粮（v111：余粮过囤底60斤的粜给粮站——1995年卖粮的进项，钱从此有源头）
+    if has_market:
+        for n in NAMES:
+            surplus = S[n].get('粮', 0) - GRAIN_KEEP
+            if surplus >= 5:
+                surplus = int(surplus)
+                money = round(surplus * GRAIN_SELL_PX, 2)
+                S[n]['粮'] = round(S[n]['粮'] - surplus, 1)
+                S[n]['钱'] = round(S[n].get('钱', 0) + money, 2)
+                today_trades.append({'day': d, 'a': n, 'b': '粮站', 'give': '粮%d斤' % surplus, 'get': '钱%g元' % money, 'kind': 'sell'})
     # 5. 双愿撮合：A想换的B有，B想换的A也有 → 各让各的
     for a in NAMES:
         wa = W.get(a)
@@ -202,6 +238,14 @@ for d in range(start, day + 1):
                 M.setdefault('fulfilled', []).append({'npc': b, 'item': ib, 'note': wb.get('note', ''), 'day': d})
                 W[a] = None; W[b] = None
                 break
+        # 5.6 攒钱型心愿达成（v111：钱有了源头——攒够即了，by自己）
+    for n in NAMES:
+        w = W.get(n)
+        if w and w.get('item') == '钱':
+            target = w.get('qty') or 25
+            if S[n].get('钱', 0) >= target:
+                M.setdefault('fulfilled', []).append({'npc': n, 'item': '钱', 'note': w.get('note', ''), 'day': d, 'by': '自己攒够'})
+                W[n] = None
     # 6. 单愿：出粮/钱买（集日可向摊主买，非集日只能向有货的乡邻买）
     for a in NAMES:
         wa = W.get(a)
@@ -253,7 +297,7 @@ for n in NAMES:
     w = M['wishes'].get(n)
     ws = ('心里惦记：%s' % w['note']) if w else ''
     lines.append('%s家：%s。%s' % (n, fmt_store(M['store'][n]), ws))
-summary = '\n'.join(lines)
+summary = '【地里】' + farm_stage_name(g4x % 360) + '。\n' + '\n'.join(lines)
 recent_trades = M.get('trades', [])[-6:]
 tr_txt = '；'.join('第%g天%s拿%s从%s那儿换了/买了「%s」' % (t['day'], t['a'], t['give'], t['b'], t['get']) for t in recent_trades) or '近期没有交易'
 open('economy_summary.txt', 'w').write(summary + '\n\n【近期成交】' + tr_txt)

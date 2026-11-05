@@ -298,7 +298,15 @@ const TYPES={
   36:{n:'锹', c:0x7a5b3a, tool:true},             // 大锹——工具：选中后点「挖」圈地，两点定范围只挖自然地形
   41:{n:'填', c:0x9a8f7a, tool:true},             // v64快速填充——选中后点「搭」圈地，两点定范围整体填入最后选中的方块材质
   42:{n:'梯', c:0x8a6a48, tool:true},             // v70：两点式体素折返楼梯——基点+落点，阶块可走+两侧篱笆栏杆   // v69楼梯=整体geo大件（踏步+栏杆+扶手），踏步位置另写隐形阶块保证可走，潜行拆=geo+阶块全消
-  44:{n:'复制', c:0x3a6a8a, tool:true},   /* v76cpv76：点挖圈选复制（牌子连字），点搭放预览再点确认粘贴，粘错十秒内可撤 */
+  44:{n:'复制', c:0x3a6a8a, tool:true},
+  /* v111农业：耕地+庄稼——村历驱动四季循环（TA：纸面上的账要在地里看得见） */
+  45:{n:'耕地', tex:'farm'},
+  46:{n:'麦苗', plant:'wheat_y'},
+  47:{n:'麦青', plant:'wheat_g'},
+  48:{n:'麦黄', plant:'wheat_r'},
+  49:{n:'玉米青', plant:'corn_g'},
+  50:{n:'玉米黄', plant:'corn_r'},
+  51:{n:'麦茬', plant:'stubble'},   /* v76cpv76：点挖圈选复制（牌子连字），点搭放预览再点确认粘贴，粘错十秒内可撤 */
   43:{n:'梯阶', tex:'stone', hidden:true},   // v69楼梯踏面（隐藏可走块——渲染无mesh自动跳过）
   37:{n:'门', mats:['wood_side','wood_side','wood_side','wood_side','door','door'], door:true, c:0x8a6a48},   // v62：两格高
   39:{n:'宅门', mats:['gate_side','gate_side','gate_top','gate_top','gate_front','gate_side'], gate:true, c:0x8d8d8a},   // v63：四格高石门楼（gate:true接gateGeo——v62实底：door:true让它误走了doorGeo）
@@ -581,7 +589,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v110';   /* v110委托与情分：送礼口信通道（对话modal「送礼」→gift_queue→判定者入账→心愿了结/情分+回赠叙事，村长mod的任务声望接进v109生计引擎）  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v111';   /* v111农业+营生家什：麦田四季循环（芒种收麦寒露播种村历驱动）+九户渔网鸡窝缝纫机柴垛粮囤长在宅边，粮囤高度跟账本走；收成入经济（v109隐藏错账一并修：集日改相对游戏日对齐前端村历）  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1711,7 +1719,7 @@ function tickSky(now){
   cloudGroup.children.forEach(c=>{
     c.position.x=(((c.userData.x0+now*0.001*c.userData.spd)%220)+220)%220-110;
   });
-  tickWeather(now);applyVillagers(now);tickMarket(now);
+  tickWeather(now);applyVillagers(now);tickMarket(now);tickFarm();
   let seg=SEG_NAME[0][1];
   for(const [tt,name] of SEG_NAME){if(dayT>=tt)seg=name;}
   const cal=VH.homes?calNow():null;const calStr=cal?cal.SEAS+'·'+cal.jie:'';if(seg!==lastSeg||calStr!==lastSeg){lastSeg=calStr+'|'+seg;
@@ -1809,6 +1817,34 @@ function makeTex(kind){
   }else if(kind==='dirt'){
     g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
     dot(150,'#75583c',1);dot(90,'#9a7a54',1);dot(30,'#6a6a66',1);
+  }else if(kind==='farm'){
+    g.fillStyle='#5a4328';g.fillRect(0,0,64,64);
+    for(let y=6;y<64;y+=10){g.fillStyle='#46331d';g.fillRect(0,y,64,3);}
+    dot(50,'#6a5030',1);dot(26,'#3e2d18',1);dot(18,'#7c5e3a',1);
+  }else if(kind==='wheat_y'){
+    g.clearRect(0,0,64,64);
+    g.strokeStyle='#8fb35c';g.lineWidth=2;
+    for(let i=0;i<22;i++){const x=4+Math.random()*56,y=42+Math.random()*20;g.beginPath();g.moveTo(x,y);g.lineTo(x+(Math.random()*3-1.5),y-8-Math.random()*6);g.stroke();}
+  }else if(kind==='wheat_g'){
+    g.clearRect(0,0,64,64);
+    g.strokeStyle='#6f9c42';g.lineWidth=2;
+    for(let i=0;i<30;i++){const x=3+Math.random()*58;g.beginPath();g.moveTo(x,52);g.lineTo(x+(Math.random()*4-2),52-20-Math.random()*12);g.stroke();g.fillStyle='#8fb35c';g.fillRect(x-1,52-30,3,4);}
+  }else if(kind==='wheat_r'){
+    g.clearRect(0,0,64,64);
+    g.strokeStyle='#c8a842';g.lineWidth=2;
+    for(let i=0;i<30;i++){const x=3+Math.random()*58;g.beginPath();g.moveTo(x,52);g.lineTo(x+(Math.random()*4-2),52-22-Math.random()*12);g.stroke();g.fillStyle='#e2c35c';g.fillRect(x-1,52-32,3,8);}
+  }else if(kind==='corn_g'){
+    g.clearRect(0,0,64,64);
+    g.strokeStyle='#4f8a3a';g.lineWidth=3;
+    for(let i=0;i<13;i++){const x=5+i*4.5;g.beginPath();g.moveTo(x,54);g.lineTo(x+(Math.random()*7-3.5),16+Math.random()*10);g.stroke();}
+  }else if(kind==='corn_r'){
+    g.clearRect(0,0,64,64);
+    g.strokeStyle='#b09040';g.lineWidth=3;
+    for(let i=0;i<13;i++){const x=5+i*4.5;g.beginPath();g.moveTo(x,54);g.lineTo(x+(Math.random()*7-3.5),16+Math.random()*10);g.stroke();g.fillStyle='#d8b458';g.fillRect(x-2,22+Math.random()*10,4,9);}
+  }else if(kind==='stubble'){
+    g.clearRect(0,0,64,64);
+    g.strokeStyle='#b8a060';g.lineWidth=2;
+    for(let i=0;i<26;i++){const x=3+Math.random()*58;g.beginPath();g.moveTo(x,54);g.lineTo(x+(Math.random()*2-1),46+Math.random()*4);g.stroke();}
   }else if(kind==='stone'){
     g.fillStyle='#8d8d8a';g.fillRect(0,0,64,64);
     dot(150,'#7c7c79',1);dot(100,'#9c9c99',1);dot(50,'#84847e',1);
@@ -2631,7 +2667,7 @@ function openTalk(name){
 }
 /* v81意识层：心事渲染+boot自动dispatch */
 function renderMind(M){
-  if(M){MINDS=M;for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情 */
+  if(M){MINDS=M;updateGrainBins();for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情 */
   if(!talkNpc)return;
   const mind=document.getElementById('talkMind'),vil=document.getElementById('talkVillage');
   const m=(M&&M.minds&&M.minds[talkNpc])||null;
@@ -2766,7 +2802,7 @@ function bootMindCheck(){
     return;
   }
   ghGet('villagers_memory.json').then(({data})=>{
-    if(data&&data.minds)MINDS=data;   /* v84：拉到就存 */
+    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);}   /* v84：拉到就存；v111：账本到手码粮囤 */
     const day=Math.floor((Date.now()-VH.up)/DAY_MS);
     if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});
@@ -2988,6 +3024,198 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
     }
   }
   if(changed)rebuild();
+}
+/* ===== v111农业与营生家什（TA：账上的粮要长在地里，打鱼的家里该有渔网） ===== */
+let farmCells=null,farmStageCur=null,farmBuilt=false,binCells={},binLevels={};
+const FARM_STAGE=[[242,25,'wheat_y'],[26,104,'wheat_g'],[105,119,'wheat_r'],[120,122,'stubble'],[123,125,null],[126,222,'corn_g'],[223,237,'corn_r'],[238,239,'stubble'],[240,241,null]];
+function farmStageCal(d){
+  for(let i=0;i<FARM_STAGE.length;i++){const seg=FARM_STAGE[i];
+    if(seg[0]<=seg[1]){if(d>=seg[0]&&d<=seg[1])return seg[2];}
+    else{if(d>=seg[0]||d<=seg[1])return seg[2];}
+  }
+  return null;
+}
+function findFarmPatch(cx,cz){
+  const[taA,taR]=taSets();
+  for(let r=16;r<=42;r+=2){
+    for(let a=0;a<16;a++){
+      const ang=a*Math.PI/8+((r%8)*0.19);
+      const px=Math.round(cx+Math.cos(ang)*r),pz=Math.round(cz+Math.sin(ang)*r);
+      let ok=true;
+      for(let dx=0;dx<12&&ok;dx++)for(let dz=0;dz<8;dz++){
+        const x=px+dx,z=pz+dz;
+        if(!inW(x,1,z)){ok=false;break;}
+        const g=groundY(x,z);if(g<2){ok=false;break;}
+        const b=get(x,g,z);
+        if(b!==1||villCells[x+','+g+','+z]){ok=false;break;}
+        if(taA.has(x+','+g+','+z)||taR.has(x+','+g+','+z)){ok=false;break;}
+        for(const pid in VH.homes){const ph=VH.homes[pid].plot;if(Math.abs(x-ph[0])<=8&&Math.abs(z-ph[2])<=7){ok=false;break;}}
+        if(!ok)break;
+      }
+      if(!ok)continue;
+      let edgeOk=true;
+      for(let dx=-1;dx<13&&edgeOk;dx++){for(let dz=-1;dz<9;dz+=9){
+        const x=px+dx,z=pz+dz;if(!inW(x,1,z)){edgeOk=false;break;}
+        const g=groundY(x,z);if(g<1||get(x,g,z)===8){edgeOk=false;break;}
+      }}
+      if(edgeOk)return[px,pz];
+    }
+  }
+  return null;
+}
+function buildFarm(){
+  if(!VH.camps||farmBuilt)return;
+  farmBuilt=true;farmCells=[];
+  const[taA,taR]=taSets();
+  for(const c of VH.camps){
+    const patch=findFarmPatch(c[0],c[2]);
+    if(!patch)continue;
+    for(let dx=0;dx<12;dx++)for(let dz=0;dz<8;dz++){
+      const x=patch[0]+dx,z=patch[1]+dz;
+      const g=groundY(x,z);if(g<2)continue;
+      const k=x+','+g+','+z;
+      if(taA.has(k)||taR.has(k))continue;
+      if(world[idx(x,g,z)]!==1)continue;
+      world[idx(x,g,z)]=45;
+      farmCells.push([x,g+1,z]);
+    }
+  }
+  if(farmCells.length){
+    farmStageCur=farmStageCal(calNow().day%360);
+    applyFarmStage(farmStageCur);
+    console.log('v111：麦田落成——'+farmCells.length+'格，当前'+(farmStageCur||'整地'));
+  }else console.log('v111：没找到整块麦田地——营地周边都占了，明版再挪');
+}
+function applyFarmStage(st){
+  if(!farmCells)return;
+  const[taA,taR]=taSets();
+  const MAP={'wheat_y':46,'wheat_g':47,'wheat_r':48,'corn_g':49,'corn_r':50,'stubble':51};
+  for(let i=0;i<farmCells.length;i++){
+    const x=farmCells[i][0],y=farmCells[i][1],z=farmCells[i][2];
+    const k=x+','+y+','+z;
+    if(taA.has(k)||taR.has(k))continue;
+    const cur=world[idx(x,y,z)];
+    if(cur!==AIR&&!(cur>=46&&cur<=51))continue;
+    world[idx(x,y,z)]=st?MAP[st]:AIR;
+  }
+}
+function tickFarm(){
+  if(!farmCells||!VH||!VH.up)return;
+  const st=farmStageCal(calNow().day%360);
+  if(st===farmStageCur)return;
+  farmStageCur=st;
+  applyFarmStage(st);
+  rebuild();
+  if(st==='stubble')console.log('v111：开镰了——地里换茬');
+}
+/* 营生家什：每户的营生在地上要有物件（TA：纸面系统要看得见） */
+function propCellsFor(nm){
+  const cells=[];
+  const add=(dx,dz,dy,t)=>cells.push([dx,dz,dy,t]);
+  if(nm==='满仓'){add(-2,-1,0,5);add(-2,-1,1,5);add(-1,-1,0,5);add(-1,-1,1,5);add(-2,-2,0,5);}
+  else if(nm==='凤兰'||nm==='爱香'){add(5,-1,0,19);add(6,-1,0,19);add(5,0,0,19);add(6,0,0,19);add(5,-1,1,10);add(6,-1,1,10);add(5,0,1,10);add(6,0,1,10);}
+  else if(nm==='建军'){add(-2,-1,0,3);add(-2,-1,1,3);add(-1,-1,0,3);}
+  else if(nm==='秋生'){add(-2,-1,0,5);add(-2,-1,1,5);add(-1,-1,0,5);add(-1,-1,1,5);add(-1,0,0,5);add(-2,0,0,5);add(5,-1,0,21);}
+  else if(nm==='秀兰'){add(5,-1,0,21);add(5,-1,1,3);add(6,-1,0,31);}
+  else if(nm==='银锁'){add(5,-1,0,4);add(6,-1,0,4);add(5,-1,1,4);}
+  else return null;
+  return cells;
+}
+function placePropGroup(nm,cells){
+  const[taA,taR]=taSets();
+  const placed=[];
+  const baseY={};   /* v111：同组基座统一取高——dy=1的格在dy=0放上后再算groundY会爬到桌上（机头上天的实底） */
+  for(const c of cells){if(c[2]===0){const x=cells._bx+c[0],z=cells._bz+c[1];const g=groundY(x,z);if(g>=1)baseY[c[0]+','+c[1]]=g;}}
+  for(const c of cells){
+    const x=cells._bx+c[0],z=cells._bz+c[1],dy=c[2],t=c[3];
+    let g;
+    if(dy===0){g=groundY(x,z);}else{g=baseY[c[0]+','+c[1]];if(g===undefined)continue;}
+    if(g<1)continue;
+    const base=get(x,g,z),kk=x+','+g+','+z;
+    if(dy===0){if(base!==1&&base!==17&&base!==2)continue;if(villCells[kk]||taA.has(kk)||taR.has(kk))continue;}
+    const up=x+','+(g+1+dy)+','+z;
+    if(world[idx(x,g+1+dy,z)]!==AIR&&!(dy===0&&(base===17||base===2)))continue;
+    if(dy>0&&(taA.has(up)||taR.has(up)))continue;
+    world[idx(x,g+1+dy,z)]=t;villCells[kk]=villCells[kk]||('prop_'+nm);
+    placed.push([x,g+1+dy,z]);
+  }
+  return placed;
+}
+function buildHouseholdProps(){
+  if(!VH.homes||propsBuilt)return;
+  propsBuilt=true;
+  for(const id in VH.homes){
+    const vh=VH.homes[id],nm=vh.name;
+    if(nm==='来福'){buildFishRack(vh);continue;}
+    const cells=propCellsFor(nm);
+    if(!cells)continue;
+    cells._bx=vh.plot[0];cells._bz=vh.plot[2];
+    placePropGroup(nm,cells);
+  }
+}
+function buildFishRack(vh){
+  const[taA,taR]=taSets();
+  const spot=findWater(vh.plot[0],vh.plot[2]);
+  if(!spot)return;
+  const wx=Math.round(spot[0]),wz=Math.round(spot[1]);
+  let land=null,land2=null;
+  for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
+    const x=wx+dx,z=wz+dz;
+    if(!inW(x,1,z))continue;
+    const g=groundY(x,z);if(g<1)continue;
+    const b=get(x,g,z);
+    if((b===1||b===2)&&!villCells[x+','+g+','+z]&&!taA.has(x+','+g+','+z)&&!taR.has(x+','+g+','+z)){
+      if(!land){land=[x,g,z];}
+      else if(!land2&&Math.abs(x-land[0])+Math.abs(z-land[2])===1){land2=[x,g,z];break;}
+    }
+  }
+  if(!land)return;
+  const k0=land[0]+','+land[1]+','+land[2];
+  if(villCells[k0])return;
+  world[idx(land[0],land[1]+1,land[2])]=19;villCells[k0]='prop_来福';
+  if(land2){world[idx(land2[0],land2[1]+1,land2[2])]=19;villCells[land2[0]+','+land2[1]+','+land2[2]]='prop_来福';}
+}
+let propsBuilt=false;
+function grainLevel(g){if(g===undefined||g===null||g<=0)return 1;return Math.max(1,Math.min(4,1+Math.floor(Math.sqrt(g/12))));}
+function updateGrainBins(){
+  if(!VH.homes||!MINDS||!MINDS.store)return;
+  const[taA,taR]=taSets();
+  let changed=false;
+  for(const id in VH.homes){
+    const vh=VH.homes[id],nm=vh.name;
+    if(!MINDS.store[nm])continue;
+    const lv=grainLevel(MINDS.store[nm].粮);
+    if(binLevels[nm]===lv)continue;
+    /* 清旧囤 */
+    if(binCells[nm])for(const[x,y,z]of binCells[nm]){
+      const k=x+','+y+','+z;
+      if(taA.has(k)||taR.has(k))continue;   /* v111：TA搭过的格不碰 */
+      const b=world[idx(x,y,z)];
+      if(b===5||b===10)world[idx(x,y,z)]=AIR;
+    }
+    binCells[nm]=[];
+    /* 找位：宅侧（6,-2）起 2×2 */
+    const px=vh.plot[0],pz=vh.plot[2];
+    let ok=true;const spot=[];
+    for(let dx=0;dx<2&&ok;dx++)for(let dz=0;dz<2;dz++){
+      const x=px+6+dx,z=pz-2+dz;
+      if(!inW(x,1,z)){ok=false;break;}
+      const g=groundY(x,z);if(g<1){ok=false;break;}
+      const k=x+','+g+','+z;
+      if(villCells[k]||taA.has(k)||taR.has(k)){ok=false;break;}
+      const b=get(x,g,z);
+      if(b!==1&&b!==17&&b!==2){ok=false;break;}
+      spot.push([x,g,z,k]);
+    }
+    if(!ok)continue;
+    for(const[x,g,z]of spot){
+      if(world[idx(x,g+1,z)]!==AIR)world[idx(x,g+1,z)]=AIR;
+      for(let dy=1;dy<=lv;dy++){world[idx(x,g+dy,z)]=5;binCells[nm].push([x,g+dy,z]);}
+      world[idx(x,g+lv+1,z)]=10;binCells[nm].push([x,g+lv+1,z]);
+    }
+    binLevels[nm]=lv;changed=true;
+  }
+  if(changed){rebuild();console.log('v111：粮囤按账本码好了');}
 }
 function relocateAnimals(){   /* v85.1：动物迁村——鸡啄村口、狗看打谷场、鸭漂村边水（老地图的东滩/河离村310格） */
   if(!VH.camps)return;
@@ -3318,6 +3546,9 @@ function applyVillagers(now){
   carveRiver();   /* v86：河滩要有河（world写，rebuild由后面的路网统一触发） */
   buildVillageRoads();   /* v85：村区街道+打谷场+水井（确定性，每端同算，只铺草上不碰玩家建筑）+rebuild兜底 */
   relocateAnimals();   /* v85.1：动物从老地图迁村 */
+  buildFarm();   /* v111：麦田——芒种开镰寒露播种，村历驱动（TA：账上的粮要长在地里） */
+  buildHouseholdProps();   /* v111：营生家什——渔网鸡窝缝纫机柴垛长在宅边 */
+  updateGrainBins();   /* v111：粮囤按账本的粮码高 */
   /* v78kin78婚礼：两宅门口红花+喜牌（一次性事件，办过永记） */
   if(VH.weddings)for(const wd of VH.weddings){
     if(now<wd.at)continue;
