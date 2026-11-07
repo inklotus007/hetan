@@ -589,7 +589,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v113';   /* v113房子住人：竣工三件套（清屋——屋内存留的土块草丛树叶全清/家具进场——床灶柜桌凳按户型落位/门口双向台阶——门外地形高于门槛挖土铺阶）+蓝图格强制落位（TA优先其余清：门不再被土顶掉）。v112判定者建设已上（a2597bb）  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v114';   /* v114直播化——照面对话（村民相遇<2.1格停下面对面，今天talks优先、礼节性招呼兜底：吃了吗/这天要变/家里都好——1995年村口的招呼本来就是套话是礼不是编）全场最多3对冷却90秒，bubbleHold压制ambient不被顶；炊烟（火塘/灶烟源44粒sprite池上升扩散渐隐，TA周边50格内6源0.3秒一粒）；村民 userData带vname/isOnline。TA：徒有其形没有灵魂——村子从凌晨排好的录播变成现在时的直播  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1273,6 +1273,7 @@ function renderNPCs(list,tSec){
     if(npc.name)npcObjsSeedCache[npc.name]=npc.seed;   /* v84：chat朝向用 */
     let x,z,yaw;
     const isOnline=npc.online&&(Date.now()-npc.lastSeen<NPC_ONLINE_TTL);
+    g.userData.vname=npc.name||'';g.userData.isOnline=!!isOnline;   /* v114：照面对话要名字和在线态 */
     if(isOnline){
       /* v46：云端位置约二十秒才刷一次——本地朝它缓动，人看着是在走，不在跳。
          刚从漫游转在线的身体也从原地走过去，不从天上掉下来。 */
@@ -1293,7 +1294,13 @@ function renderNPCs(list,tSec){
         const dxp=p.x-x,dzp=p.z-z;
         if(dxp*dxp+dzp*dzp<25)yaw=Math.atan2(dxp,dzp);
       }
-      const act=P[3];   /* v90.1：声明提到head tilt前（v90炸在TDZ——声明在用之后） */
+      const cpk=chatPairs[npc.id];   /* v114：照面对话——停下转身面对面 */
+      if(cpk&&pairRuns[cpk]){
+        const R2=pairRuns[cpk],oid=(R2.a===npc.id)?R2.b:R2.a,og=npcObjs[oid];
+        x=g.position.x;z=g.position.z;
+        if(og)yaw=Math.atan2(og.position.x-x,og.position.z-z);
+      }
+      let act=cpk?'chat':P[3];   /* v90.1：声明提到head tilt前（v90炸在TDZ——声明在用之后）；v114：对话复用chat点头 */
       if(g.userData.head)g.userData.head.rotation.x=act==='lookStele'?0.5:(act==='lookWater'?0.32:(act==='chat'?0.06+Math.sin(tSec*5.5+npc.seed)*0.16:(act==='build'?0.35:(act==='collab'?0.4+Math.sin(tSec*4.7+npc.seed)*0.12:(moodTilt(tSec,npc)||Math.max(0,Math.sin(tSec*0.4+npc.seed))*0.15)))));   /* v88.1：build低头/collab埋头/mood表情 */
       if(act==='inside'){   /* v90.2：在屋里——隐身（早上从门口出来）。块挪进else（v90.1修TDZ时删了顶层声明，顶层没act——TA截图报act is not defined@1221） */
         if(g.visible)g.visible=false;
@@ -1385,7 +1392,7 @@ function npcLoop(){
     /* v47：没令牌的访客也看得见投影——npcs.json是公开的（同源副本），投影是给所有来的人看的 */
     ghSame(NPCS_URL).then(({data})=>{
       const npcs=(data&&data.npcs)||{};
-      renderNPCs(Object.values(npcs),worldSec());/*v92*/ bubbleTick(performance.now()/1000);
+      renderNPCs(Object.values(npcs),worldSec());/*v92*/ bubbleTick(performance.now()/1000);pairChatTick(worldSec());smokeTick(worldSec(),0.05);
     }).catch(()=>{renderNPCs([],worldSec());/*v92*/ bubbleTick(performance.now()/1000);});
     setTimeout(npcLoop,9000);return;
   }
@@ -2713,6 +2720,109 @@ function hideBubble(id){
   const b=bubbleSprites[id];
   if(b){b.spr.parent&&b.spr.parent.remove(b.spr);delete bubbleSprites[id];}
 }
+/* ===== v114直播化：村子从录播变直播（TA：徒有其形没有灵魂）=====
+   照面——村民相遇停下面对面说话（今天talks优先，礼节性招呼兜底——1995年村口的招呼本来就是套话，这不是编的是礼）；
+   炊烟——火塘/灶冒烟，村子远远看着就是活的 */
+let chatPairs={},pairRuns={},pairCool={},smokeSrc=[],smokePool=null,smokeTexCache=null,smokeAcc=0;
+const RITUAL=[
+ ['吃了吗？','吃过了，锅上温着。','那中午来，添双筷子。'],
+ ['忙着呢？','哎，忙着呢。','那你先忙，回头见。'],
+ ['这天要变。','可不是，云都压下来了。','早些收吧。'],
+ ['东头集去不？','去，等我一块儿。','那你麻利点。'],
+ ['家里都好？','都好，都好。','那就中。']
+];
+function pairChatTick(tSec){
+  /* 清场：散了的/下线的 */
+  for(const key in pairRuns){
+    const R=pairRuns[key];
+    if(tSec>R.until||!npcObjs[R.a]||!npcObjs[R.b]||!npcObjs[R.a].visible||!npcObjs[R.b].visible){
+      delete chatPairs[R.a];delete chatPairs[R.b];pairCool[key]=tSec+90;delete pairRuns[key];
+    }
+  }
+  /* 说话：交替冒泡 */
+  for(const key in pairRuns){
+    const R=pairRuns[key];
+    if(tSec>=R.nextAt&&R.idx<R.lines.length){
+      const L=R.lines[R.idx];
+      showBubble(L.w,L.x,tSec);
+      bubbleHold=tSec+3.2;   /* 压ambient——对话不被路过问候顶掉 */
+      R.idx++;R.nextAt=tSec+2.6;
+    }
+  }
+  /* 组对：一次最多一对，全场最多三对 */
+  if(Object.keys(pairRuns).length>=3)return;
+  const free=[];
+  for(const id in npcObjs){
+    const g=npcObjs[id];
+    if(!g||!g.visible||g.userData.isOnline||chatPairs[id])continue;
+    if(g.userData.vname==='同志')continue;
+    free.push(id);
+  }
+  for(let i=0;i<free.length;i++)for(let j=i+1;j<free.length;j++){
+    const a=free[i],b=free[j],ga=npcObjs[a],gb=npcObjs[b];
+    const dx=ga.position.x-gb.position.x,dz=ga.position.z-gb.position.z;
+    if(dx*dx+dz*dz>4.4)continue;
+    const key=a<b?a+'|'+b:b+'|'+a;
+    if(pairCool[key]&&tSec<pairCool[key])continue;
+    const na=ga.userData.vname,nb=gb.userData.vname;
+    if(!na||!nb)continue;
+    let lines=[];
+    const tl=(MINDS&&MINDS.today&&MINDS.today.talks)||[];
+    for(const t of tl){
+      if((t.a===na&&t.b===nb)||(t.a===nb&&t.b===na)){lines.push({w:(t.a===na)?a:b,x:String(t.text||'').slice(0,44)});if(lines.length>=4)break;}
+    }
+    if(lines.length<2){
+      const R2=RITUAL[(Math.floor(tSec/7)+na.length*3+nb.length)%RITUAL.length];
+      lines=[{w:a,x:R2[0]},{w:b,x:R2[1]},{w:a,x:R2[2]||'哎。'}];
+    }
+    pairRuns[key]={a:a,b:b,lines:lines,idx:0,nextAt:tSec+0.5,until:tSec+2.6*lines.length+4};
+    chatPairs[a]=key;chatPairs[b]=key;
+    break;
+  }
+}
+function smokeTick(tSec,dt){
+  if(!smokeSrc.length)return;
+  if(!smokeTexCache){
+    const cv=document.createElement('canvas');cv.width=32;cv.height=32;
+    const g=cv.getContext('2d');
+    const gr=g.createRadialGradient(16,16,2,16,16,15);
+    gr.addColorStop(0,'rgba(225,222,215,0.55)');gr.addColorStop(1,'rgba(225,222,215,0)');
+    g.fillStyle=gr;g.fillRect(0,0,32,32);
+    smokeTexCache=new THREE.CanvasTexture(cv);
+  }
+  if(!smokePool){
+    smokePool=[];
+    for(let i=0;i<44;i++){
+      const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTexCache,transparent:true,opacity:0,depthWrite:false}));
+      spr.visible=false;smokePool.push({spr,life:0,max:1,vx:0,vy:0,vz:0});
+      scene.add(spr);
+    }
+  }
+  /* 生成：TA周边50格内的火源，每0.3秒一处一粒 */
+  smokeAcc+=dt;
+  const near=smokeSrc.filter(s=>{const dx=s[0]-p.x,dz=s[2]-p.z;return dx*dx+dz*dz<2500;}).slice(0,6);
+  if(smokeAcc>0.3){
+    smokeAcc=0;
+    for(const src of near){
+      const slot=smokePool.find(o=>o.life<=0);
+      if(!slot)break;
+      slot.life=slot.max=3.5+Math.random()*1.5;
+      slot.spr.position.set(src[0]+0.5+(Math.random()-0.5)*0.2,src[1]+1.1,src[2]+0.5+(Math.random()-0.5)*0.2);
+      slot.vx=(Math.random()-0.5)*0.08;slot.vy=0.32+Math.random()*0.14;slot.vz=(Math.random()-0.5)*0.08;
+      slot.spr.visible=true;
+    }
+  }
+  for(const o of smokePool){
+    if(o.life<=0)continue;
+    o.life-=dt;
+    if(o.life<=0){o.spr.visible=false;continue;}
+    o.spr.position.x+=o.vx*dt;o.spr.position.y+=o.vy*dt;o.spr.position.z+=o.vz*dt;
+    const k=1-o.life/o.max;
+    const sc=0.3+k*0.75;
+    o.spr.scale.set(sc,sc,1);
+    o.spr.material.opacity=0.42*(1-k)*(k<0.12?k/0.12:1);
+  }
+}
 const GREET={   /* v94/v95：九户人设问候池——走近即冒，不必chat段 */
  '满仓':['哎，来了。','婚期越来越近喽，就等着那天。'],
  '凤兰':['哟！来啦？','屋里坐——哦，房还没盖利索，先站着说话。'],
@@ -3532,6 +3642,7 @@ function furnishHouse(vh,bp){
     if(!inW(x,y,z)||taA.has(k)||taR.has(k))return;
     if(world[idx(x,y,z)]!==AIR)return;
     world[idx(x,y,z)]=t;villCells[k]='furn';
+    if(t===33&&!smokeSrc.some(q=>q[0]===x&&q[2]===z))smokeSrc.push([x,y,z]);   /* v114：灶进烟源 */
   };
   put(1,1,33);            /* 灶：西北角——锅里总得有东西 */
   put(X-2,Z-2,23);        /* 床：东南角贴墙 */
@@ -3741,6 +3852,7 @@ function applyVillagers(now){
   if(VH.camps)for(const c of VH.camps){
     const cx=c[0],cy=c[1]+1,cz=c[2],k=cx+','+cy+','+cz;
     if(!villCells[k]&&inW(cx,cy,cz)&&world[idx(cx,cy,cz)]===AIR){world[idx(cx,cy,cz)]=35;villCells[k]='camp';changed=true;}
+    smokeSrc.push([cx,cy-1,cz]);   /* v114：火塘进烟源 */
   }
   if(changed)rebuild();
 }
@@ -4564,7 +4676,7 @@ requestAnimationFrame(loop);
   tickHighlight();
   if((now|0)%7===0)diag();
    if((now/1000|0)%10===0)saveAll();   /* v92：十秒一拍存世界钟+位置 */
-  renderNPCs(npcList,worldSec());   /* v92：世界钟 */ bubbleTick(performance.now()/1000);   // 来客NPC（离线的按seed漫游）
+  renderNPCs(npcList,worldSec());   /* v92：世界钟 */ bubbleTick(performance.now()/1000);pairChatTick(worldSec());smokeTick(worldSec(),0.05);   // 来客NPC（离线的按seed漫游）
   renderVillKids(now);   /* v78kin78：村民的孩子 */
   renderAnimals(now/1000,dt);   // v45：鸭漂鸡啄狗迎客，受惊四散有叫声；鱼影蜻蜓
   if(now>nextChirp){if(dayIsUp())AU.birdChirp();nextChirp=now+3500+Math.random()*9000;}   // 白天鸟鸣，夜里停
