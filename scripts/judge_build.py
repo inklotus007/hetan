@@ -41,7 +41,7 @@ for k2 in CK0:
 if ck.get('lastDay') != day and isinstance(day, int):
     ck['木'] = ck.get('木', 0) + 2
     ck['石'] = ck.get('石', 0) + 1
-    ck['粮'] = ck.get('粮', 0) + 3
+    ck['粮'] = ck.get('粮', 0) + 3 - 4   # v120粮线（经营三角第一格）：全村吃饭-4，拾穗+3——净-1/天，慢线；收成日大补（下格）
     ck['lastDay'] = day
 done = M.get('build_done') or []
 feedback = M.get('build_feedback') or []
@@ -79,6 +79,10 @@ for p in plans:
         still.append(p)
 
 # ②-feedback（当天没新ack就沿用旧的，压缩保留6条）
+# v120粮荒预警：粮<40——判定者明天prompt里看见（解法管道下格：买粮/粮税/开荒）
+if ck.get('粮', 99) < 40:
+    new_feedback.append({'ok': False, 'note': '粮荒', 'why': '粮只剩%s，全村一天一天地吃——想想办法' % ck.get('粮', 0), 'day': day})
+    changed = True
 if new_feedback:
     feedback = (new_feedback + feedback)[:6]
     M['build_feedback'] = feedback
