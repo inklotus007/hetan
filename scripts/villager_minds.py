@@ -52,6 +52,9 @@ except Exception:
     ECON = '（账本还没建——今天照常）'
 HUNGRY = M.get('hungry') or []
 HUNGRY_TXT = ('【断顿】%s——这两天正是揭不开锅的难处，心事和村里的话里要有这个急。' % '、'.join(HUNGRY)) if HUNGRY else ''
+# v119经营：村库——判定者从「提装饰」升到「做经营」（TA：让大模型像玩经营建造游戏一样发展）
+CK = M.get('cunKu') or {}
+CK_TXT = ('【村库】钱%s 粮%s 木%s 石%s。你是管村库的人——每笔工都扣库：凉亭木12石6／水井石15木4／灯柱石4／石凳石3／铁匠铺木30石20钱15（建成全村盖房快三成，最值）；花圃树不要钱。每天进项：木+2石+1粮+3。库见底村子停摆——先建有用的，不够就攒，别透支' % (CK.get('钱', 30), CK.get('粮', 120), CK.get('木', 60), CK.get('石', 50)))
 # v112：建设回音与已有设施（judge_build.py维护）
 BUILT = M.get('built_summary') or []
 BUILT_TXT = ('村里已有的设施：' + '、'.join(BUILT[-8:])) if BUILT else '村里还没有公共设施——就火塘、井、集市、田'
@@ -80,10 +83,11 @@ prompt = """你是河滩村的「意识」——九户村民的心思由你养�
 
 九户每户都必须有一条心事和一份行程，一个都不能少：满仓、凤兰、建军、秋生、秀兰、来福、爱香、长贵、银锁。心事要从各人自己的处境和性子里长出来，别照抄村志和村里的话里已有的句子。
 4.5 生计与心愿（v109新）：【生计】段是各户家底和心里惦记的东西（心愿）。心事要贴着生计写——惦记新锄头的会在心里过锄头的事，断顿的愁吃的；村里的话可以带赶集/换东西/借粮的闲话（「明儿逢集，把鸡蛋捎上」）。行程里粮紧的户可以排一段at:"market"（集市街心）。
+4.6 经营（v119）：%s
 4.6 建设（v112）：村里的公共设施由你提议，type只能选：凉亭/花圃/灯柱/石凳/树/水井；near只能选：fire1/fire2/river/market/center/villager:某名。**一天最多2件，贴着村况和节气提**（天热提凉亭、入冬前提灯柱、人多了提石凳水井）——建了的会真出现在地里，村里人看得到用得到。输出加"build_plans"字段：[{"action":"build","type":"凉亭","near":"fire1","note":"不超16字的理由"}]。村里已有的设施：%s。上批工的回音：%s。没有合适的就不提，给空表
 4.6 新心愿提议：家底变了（成交了、东西攒够了）的户，可以起新的惦记。在输出里加"wishes"字段——只给你觉得该起心愿的户（现在没惦记的、或东西够了该换个念想的），每条{"npc":"谁","item":"粮/柴/蛋/布/线/鱼/铁/木/盐/油/钱之一","qty":数量数字,"note":"第一人称短句说清想要什么、为什么"}。别每户都起——一天1到2户正好，心意要有过程。
 只输出JSON，不要别的文字：
-{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"wishes":[{"npc":"满仓","item":"铁","qty":1,"note":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD, ECON, HUNGRY_TXT, BUILT_TXT, BFB_TXT)
+{"minds":[{"npc":"满仓","mood":"一个字","thought":"……"}],"talks":[{"a":"满仓","b":"秋生","text":"……"}],"wishes":[{"npc":"满仓","item":"铁","qty":1,"note":"……"}],"sched":{"满仓":[{"t":0.25,"at":"plot","act":"build"},{"t":0.5,"at":"fire1","act":"chat"},{"t":0.65,"at":"well","act":"drawWater"},{"t":0.78,"at":"river","act":"lookWater"},{"t":0.92,"at":"home"}]}}""" % (day, recent[:240], mem_block, ENV, REL, RY, ROAD, BIRD, ECON, HUNGRY_TXT, BUILT_TXT, BFB_TXT, CK_TXT)
 
 def call(model, backoff=0):
     if backoff:
@@ -121,7 +125,7 @@ def parse(txt):
                                'qty': max(1, min(20, float(x.get('qty') or 1))),
                                'note': str(x['note'])[:60]})
     plans = []
-    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井'}
+    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井', '铁匠铺'}
     for x in (d.get('build_plans') or [])[:4]:
         if isinstance(x, dict) and x.get('type') in TYPES_OK:
             near = str(x.get('near') or 'center')

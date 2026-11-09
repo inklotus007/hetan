@@ -24,6 +24,25 @@ except Exception:
 
 day = M.get('moodDay', 0)
 plans = M.get('build_plans') or []
+
+# ===== v119村库：判定者的经营本金 =====
+# 价目表（前端executeJudgePlans里有一份同样的——两处必须一致，注释互指）
+PRICE = {'凉亭': {'木': 12, '石': 6}, '水井': {'石': 15, '木': 4}, '灯柱': {'石': 4},
+         '石凳': {'石': 3}, '铁匠铺': {'木': 30, '石': 20, '钱': 15}, '花圃': {}, '树': {}}
+CK0 = {'钱': 30, '粮': 120, '木': 60, '石': 50, 'smithyDay': None, 'lastDay': None}
+ck = M.get('cunKu')
+if not isinstance(ck, dict) or '木' not in ck:
+    ck = dict(CK0)
+    M['cunKu'] = ck
+for k2 in CK0:
+    if k2 not in ck:
+        ck[k2] = CK0[k2]
+# 每天进项（游戏日变了才加）：村里人日常拾荒+田里拾穗——慢进快出，决策才有重量
+if ck.get('lastDay') != day and isinstance(day, int):
+    ck['木'] = ck.get('木', 0) + 2
+    ck['石'] = ck.get('石', 0) + 1
+    ck['粮'] = ck.get('粮', 0) + 3
+    ck['lastDay'] = day
 done = M.get('build_done') or []
 feedback = M.get('build_feedback') or []
 
@@ -40,6 +59,20 @@ for p in plans:
         ack = next((a for a in A if a.get('id') == p.get('id')), {})
         ok = ack.get('ok', False)
         why = (ack.get('why') or ('建成：' + (p.get('note') or '')))[:60]
+        # v119扣账：建成才扣——客户端校验是主防线（同批本地扣），这里兜底防透支
+        if ok:
+            cost = PRICE.get(p.get('type'), {})
+            short = {k3: v3 - ck.get(k3, 0) for k3, v3 in cost.items() if ck.get(k3, 0) < v3}
+            if short:
+                ok = False
+                why = ('村库透支，账面归零：缺' + '、'.join('%s%d' % (k3, v3) for k3, v3 in short.items()))[:60]
+                for k3 in cost:
+                    ck[k3] = 0
+            else:
+                for k3, v3 in cost.items():
+                    ck[k3] = ck.get(k3, 0) - v3
+            if p.get('type') == '铁匠铺' and ok and ck.get('smithyDay') is None:
+                ck['smithyDay'] = day   # v119第一根因果链：铁匠铺落成日——此后盖房spd×1.3（villagerProgress读）
         new_feedback.append({'ok': ok, 'note': (p.get('note') or '')[:24], 'why': why, 'day': day})
         changed = True
     else:
