@@ -590,7 +590,7 @@ function claimBody(){
 function ghHeaders(){return{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json','User-Agent':'hetan-guest'};}
 /* 读：有令牌走API（实时）；没令牌走同源（github.io Pages，和页面同一条网络路，访客必达）
    同源副本有部署延迟（几分钟），写后自动触发重建 */
-const VER='v120';   /* v120公仓+村长+粮线（TA：公仓实体/加个村长找他就能知道机制有没有上线/经营三角=人口金钱资源互牵制循环）：①公仓实体（打谷场西侧304,330——石基5×3+四柱+顶板+仓内两垛粮堆49+门口账台灯，villCells登记cunku防拆）②村长=npcs.json注册p_cunzhang（home=公仓门口，守仓人随机漫游）+本地守恒（npcs缺则补渲染不写云）+bubbleContent特判报账——走近就念村库四项+在建+上次经营回音（MINDS实时数据，不异步）③粮线第一格：全村吃饭粮-4拾穗+3=净-1/天，粮<40粮荒预警进feedback——判定者明天看见；解法管道（买粮/粮税）下格  */   /* v119经营层——村库+第一根因果链（TA：像玩经营建造游戏一样发展，根儿没有）：①村库=memory.cunKu（钱30粮120木60石50起步），judge_build过账扣库（客户端executeJudgePlans校验是主防线同批本地扣，服务器兜底防透支归零）；价目：凉亭木12石6/水井石15木4/灯柱石4/石凳石3/铁匠铺木30石20钱15；进项每天木+2石+1粮+3（lastDay防重）②第一根因果链：铁匠铺（蓝图石基3×3+四柱+顶板+炉砧）落成日smithyDay写memory+localStorage，villagerProgress只加速落成日之后的晴天spd×1.3——历史不改写（沙箱210==210）③稀缺验出：两座铁匠铺掏空村库第三座三项全缺——「想建建不起」从第一笔账开始；判定者prompt经营段（你是管村库的人——每笔工都扣库，库见底村子停摆，先建有用的不够就攒）  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
+const VER='v121';   /* v121三修（TA：公仓没找到两个村都有吗/地图标名字/NPC看不见坑往下走/树挡路不清）：①两村各一公仓——campCenter旁探位（向西找5×3可落地）各落一仓+门口「公仓」名字牌（画布牌本地mesh），村长守北岸仓报全村账②NPC避坑——safetySpot外环16格判据：≥6块地面比目标高2+=坑里/坑沿→螺旋挪平地（一跳邻查不出大坑——坑底的邻格也在坑里；缓坡/崖顶不误伤）③路网扫树日切——本列有树干5号且本列/4邻列有路面11号=挡路树→整列伐+半径2树冠全清（纵向找树干——surfaceY是树冠顶靠它判定会漏；从y1清会被土层break）  */   /* v119经营层——村库+第一根因果链（TA：像玩经营建造游戏一样发展，根儿没有）：①村库=memory.cunKu（钱30粮120木60石50起步），judge_build过账扣库（客户端executeJudgePlans校验是主防线同批本地扣，服务器兜底防透支归零）；价目：凉亭木12石6/水井石15木4/灯柱石4/石凳石3/铁匠铺木30石20钱15；进项每天木+2石+1粮+3（lastDay防重）②第一根因果链：铁匠铺（蓝图石基3×3+四柱+顶板+炉砧）落成日smithyDay写memory+localStorage，villagerProgress只加速落成日之后的晴天spd×1.3——历史不改写（沙箱210==210）③稀缺验出：两座铁匠铺掏空村库第三座三项全缺——「想建建不起」从第一笔账开始；判定者prompt经营段（你是管村库的人——每笔工都扣库，库见底村子停摆，先建有用的不够就攒）  */   /* 真桥：桥面悬空+每3格桥墩+桥身中空——TA：桥不是实心墙 */   /* 路遇深坑架桥+桥下填实（TA：路在坑底掉下去了）；groundY可站路桥；宅基中位数坐地 */   /* 清树冠残留：渲染层贴真地面+全量重铺+集场清树 */   /* 路面20(path卡人)全线换11石砖；旧20格每日自动升级 */   /* groundY真地形层：路/地基/台阶贴地不再被树冠骗，树整列伐 */   /* 村民自己修路：迁入前8日户主修门前线，路通→立工地→成建筑 */   /* 路修对层+双宽连续+避让TA建筑+伐树；宅基九点坐地；地基柱+真楼梯 */   /* 街网入户+宅基坐地+封顶修台阶 */   /* 集市：逢五逢十开集，北岸街心六摊 */   /* 村历系统：360日历/节气/宜忌/村志木牌/天气挂季节 */   /* 房放大量级+10格宅地+4倍速+21户扩村 */   /* v93安全网保留+v94气泡选项+v95围裙/hold */   /* v90：生活痕迹——①夜里真进屋（act=inside，渲染层隐身，天亮从门口出来——不再站房顶：home点从房正中改门前，门口=plot+2.5,plot-0.8，门在z=0面）②fire1/fire2根治（VH.camps从未赋值——永远兜到v50老坐标=中午消失的真根；改camp聚集点=同camp各家plot均值，惰性算永不落空）③坐姿（lunch/dusk蹲坐）④脚步铺路（TA原话期望：环境感知之后村民自己觉得没路不方便——判定者据路况快照排road段，村民走到路上脚下实时铺路砖id20，走一段铺一段，diffs通道上云，villCells登记防拆） */   /* v89：村民开腔——预排的话变头顶气泡（走近chat段村民，4秒轮换说「村里的话」）；直接对话跟活人走（nearVillName从宅地改村民mesh位置）；判定者可排对同志的话 */   /* v88：判定者开眼（环境快照：天气/施工进度/同志动向进prompt）+关系图谱（婚配/两村/见外）+生理节奏行程+村志无事不书+对话走远自动收 */   /* v87：宅地重选散开（互距≥30贴水避TA建筑）+spd22（day7全村成型）——TA：建筑太近+发展太慢 */   /* v86：TA点死穴「对建筑尺寸不了解」——按MC尺寸学重写全部蓝图：基座满铺（不悬空）、墙高3（层高够人）、双坡顶（脊+两坡，不是平秃包）、门洞2格高。程序河另加 */   /* v85.1：v84埋的雷全拔——home是v50老坐标（村民夜里回荒野）、river指向310格外老河（改找真水，缓存）、井进行程点（well）、动物从老地图迁村（鸡村口鸭村边水狗打谷场）、小孩串成追圈 */   /* v85：资料驱动——MC村庄结构学（8种小屋变体+街道拼图+水井）+村民AI（注视玩家+聚集交谈）。蓝图扩5种/村区街道+打谷场+水井/v4迁移重铺 */   /* v84：判定者排行程——AI从写心事进到排村民一天的身体。村民按villagers_memory.sched在村里走动（home/plot/fire/river），说话的两户真的站在一起，夜里回家 */   /* v83：看名牌按「挖」=开对话——名牌不是世界方块，DDA raycast够不着它，单独对mesh求交。同志两天报「看不到对话选项」的产品缝：入口要长在TA最熟的交互上 */   /* v82：村民名牌不等封顶——宅地激活即立（蓝图牌格在门口地面）；牌走vill_系统，铺格跳过27避免双牌重叠。同志「没有门牌」的修法 */   /* v81意识层：九户每天有心事（villager_minds.py生成，boot自动dispatch）+对话modal显示「今天他在想」+「今天村里」；答话带记忆跨天持久（villagers_memory.json mem） */   /* v80对话talk80：靠近村民宅地「说」→talk_queue.json→talk-reply workflow（GLM按九户人设答话）→replies.json→前端轮询。村里人想好了才答（异步1-2分钟）。答话归判定者，婚育骨架它改不了 */   /* hotfix：雨天进度归零bug（TA凌晨实测抓到）——进度纯确定化，雨天停工改为人不出工 */   /* v79村志chron：点村心火塘翻阅《河滩村志》，判定者（GLM）每日执笔一章（Actions写chronicle.json） */   /* v78人口繁育kin78：婚配表+出生表全预计算（villagers.json v3），婚礼红花喜牌，孩子出生（小体型绕火塘）+一天当一岁成年分家；婚期/孕期/名字全hash命定 */   /* v77居民安家vil77：九户村民晴日进度盖房（确定性f(种子,时间)），宅地保护，名牌，施工日程 */   /* fBm真大陆+boot自救 */   /* v50.6竖排NaN修+半格上阶；v51潜行（贴边不掉+潜行点拆床牌，双点退役） */   // v50：床（=出生点）柜幌石凳牌+招牌题字（signs.json）+物品栏wrap两行+出生点北移上平砖
 try{document.getElementById('bootVer').textContent=VER;}catch(e){}
 try{document.getElementById('menuVer').textContent=VER;}catch(e){}
 
@@ -1076,7 +1076,14 @@ function findWater(nx,nz){   /* v85.1：向四周找最近水面（老riverZAt�
 }
 function safetySpot(x,z){   /* v93：落点安全网——同志三报「早上站房顶/中午消失」的根：villAt各语义点没过地面校验。plot点=房内地板（surfaceY=房顶→build全程房顶）；fire均值点可能落水（surfaceY跳过水返回河床顶→NPC站水底=消失）。出口统一校验，无效就近螺旋找可站格 */
   const bx=Math.floor(x),bz=Math.floor(z);
-  const ok=(gx,gz)=>{if(!inW(gx,1,gz))return false;const y=surfaceY(gx,gz);if(y<=3)return false;return get(gx,y,gz)!==8;};
+  const ok=(gx,gz)=>{if(!inW(gx,1,gz))return false;const y=surfaceY(gx,gz);if(y<=3)return false;if(get(gx,y,gz)===8)return false;
+    /* v121坑检查（TA：看不见建筑结构，周围有坑还在往下走）：外环16格里≥8块地面比它高2+=它在坑里/坑沿→不算可站（一跳邻格查不出大坑——坑底的邻格也在坑里，得看外环） */
+    const gy=groundY(gx,gz);if(gy<1)return false;
+    let rim=0;for(let dx2=-2;dx2<=2;dx2++)for(let dz2=-2;dz2<=2;dz2++){
+      if(!dx2&&!dz2)continue;if(Math.abs(dx2)===2&&Math.abs(dz2)===2)continue;   /* 内环8+外环8 */
+      const gyN=groundY(gx+dx2,gz+dz2);if(gyN>=1&&gyN>gy+1)rim++;
+    }
+    return rim<6;};   /* v121：4×4取土坑的外环高沿=6——阈值6（大坑更多更稳） */
   if(ok(bx,bz))return[x,z];
   for(let r=1;r<10;r++){
     for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
@@ -3280,12 +3287,30 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
   if(changed)rebuild();
 }
 /* ===== v120公仓：村库的脸——建筑+粮堆+账台（账在memory.cunKu，仓是它的身体） ===== */
-const CUNKU_POS=[304,330];   /* 打谷场西侧：避开纵街x312/井316/满仓宅300-309,338-347 */
+const CUNKU_POS=[304,330];   /* 北岸打谷场西侧：避开纵街x312/井316/满仓宅300-309,338-347 */
 function buildCunKuWan(){
   if(!VH.homes||cunkuBuilt)return;
   cunkuBuilt=true;
   const[taA,taR]=taSets();
-  const[wx,wz]=CUNKU_POS;
+  /* v121：两村各一仓（TA：只建了一个村的吗）——campCenter旁探位：从中心向西找5×3可落地 */
+  for(const ci of [0,1]){
+    const c0=campCenter(ci);
+    if(!c0)continue;
+    let wx=Math.round(c0[0])-4, wz=Math.round(c0[1])-2, ok0=false;
+    for(let t=0;t<6;t++){
+      const tx=wx-t*2, tz=wz-((t%2)?2:0);
+      let spot=true;
+      for(let dx=0;dx<5&&spot;dx++)for(let dz=0;dz<3&&spot;dz++){
+        const g=groundY(tx+dx,tz+dz);
+        if(g<1||villCells[(tx+dx)+','+g+','+(tz+dz)]||taA.has((tx+dx)+','+(g+1)+','+(tz+dz)))spot=false;
+      }
+      if(spot){wx=tx;wz=tz;ok0=true;break;}
+    }
+    if(!ok0)continue;
+    buildOneCunKu(wx,wz,taA,taR,ci);
+  }
+}
+function buildOneCunKu(wx,wz,taA,taR,ci){
   let placed=0;
   const baseY={};   /* v120修：基座统一预取（v111/v113同坑三踩——顶板落下后surfaceY变，groundY漂移，dy1粮堆算到石台自己的格子上被villCells拒） */
   for(let dx=0;dx<5;dx++)for(let dz=0;dz<3;dz++){const g=groundY(wx+dx,wz+dz);baseY[dx+','+dz]=(g<1)?11:g;}
@@ -3306,15 +3331,63 @@ function buildCunKuWan(){
   put(2,0,1,8);put(2,1,1,49);put(3,0,1,8);put(3,1,1,49);   /* 两垛粮堆：石台上麦黄 */
   put(2,0,2,8);put(2,1,2,22);   /* 账台：石台+灯（村长的案头） */
   put(4,1,1,13);   /* 门口台阶13（南侧开口进出） */
-  if(placed)console.log('v120：公仓落成——'+placed+'格（村库有脸了）');
-  /* 村长守恒：npcs.json没他就本地补渲染条目（不写云——云上注册走API一次性） */
-  if(typeof npcs==='object'&&npcs&&!npcs['p_cunzhang']){
+  if(placed){
+    console.log('v121：公仓落成camp'+ci+'——'+placed+'格');
+    /* 名字牌（TA：在地图上标一下名字）——复用村民牌画布，本地mesh */
+    try{
+      const gy=groundY(wx+2,wz+3);
+      if(gy>=1&&!villSignMesh['vill_cunku'+ci]){
+        const g2=new THREE.Group();
+        const pm=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.1,0.08),new THREE.MeshLambertMaterial({map:texOf('wood_side')}));
+        pm.position.y=0.55;g2.add(pm);
+        const cv=document.createElement('canvas');cv.width=64;cv.height=64;const cx2=cv.getContext('2d');
+        cx2.fillStyle='#e8dcc0';cx2.fillRect(0,0,64,64);cx2.fillStyle='#3a2a1a';
+        cx2.font='bold 26px serif';cx2.textAlign='center';cx2.textBaseline='middle';
+        cx2.fillText('公',32,20);cx2.fillText('仓',32,48);
+        const tx2=new THREE.CanvasTexture(cv);
+        const board=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.7,0.06),[new THREE.MeshLambertMaterial({map:tx2}),new THREE.MeshLambertMaterial({map:tx2}),new THREE.MeshLambertMaterial({color:0x8a6a48}),new THREE.MeshLambertMaterial({color:0x8a6a48}),new THREE.MeshLambertMaterial({map:tx2}),new THREE.MeshLambertMaterial({map:tx2})]);
+        board.position.y=1.15;g2.add(board);
+        g2.position.set(wx+2.5,gy+1,wz+3.5);
+        scene.add(g2);villSignMesh['vill_cunku'+ci]=g2;
+      }
+    }catch(e){}
+  }
+  /* 村长守恒（守北岸仓）：npcs.json没他就本地补渲染条目（不写云） */
+  if(ci===0&&typeof npcs==='object'&&npcs&&!npcs['p_cunzhang']){
     npcs['p_cunzhang']={id:'p_cunzhang',name:'村长',seed:30001,coat:'#3a3a44',skin:'#e8c39e',home:[wx+2,wz+3],pos:[wx+2.5,wz+3.5],yaw:0,online:true,lastSeen:Date.now()};
     npcList=Object.values(npcs);
-    console.log('v120：村长守仓（本地补）');
+    console.log('v121：村长守北岸仓（本地补）');
   }
 }
 let cunkuBuilt=false;
+let lastTreeSweep=-1;
+function sweepRoadTrees(){   /* v121：树挡路（TA：有树把路挡着了也不会清理掉）——两村路网矩形日切一扫：树干脚下或4邻是路面→整列伐（树干+半径2树冠全清；v104同族） */
+  const gday=Math.floor((Date.now()-(VH.up||Date.now()))/DAY_MS);
+  if(gday===lastTreeSweep)return;
+  lastTreeSweep=gday;
+  if(!VH.homes)return;
+  const rects=[[296,458,198,402],[414,486,180,268]];
+  let cut=0;
+  for(const[x0,x1,z0,z1]of rects){
+    for(let x=x0;x<=x1;x++)for(let z=z0;z<=z1;z++){
+      /* v121修：纵向找树干（surfaceY是树冠顶，靠它判定树干格会漏）——本列有5号且本列/4邻列有11号路面=挡路树 */
+      let trunk=false,road=false;
+      for(let cy=1;cy<H-1;cy++){
+        if(get(x,cy,z)===5)trunk=true;
+        if(road)continue;
+        for(const[dx2,dz2]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]])if(get(x+dx2,cy,z+dz2)===11){road=true;break;}
+        if(trunk&&road)break;
+      }
+      if(!(trunk&&road))continue;
+      for(let cy=1;cy<H-1;cy++)if(get(x,cy,z)===5)world[idx(x,cy,z)]=AIR;   /* v121修：本列5号全清（从y1起会被土层break挡住） */
+      for(let dx2=-2;dx2<=2;dx2++)for(let dz2=-2;dz2<=2;dz2++)for(let cy=1;cy<H-1;cy++){
+        if(get(x+dx2,cy,z+dz2)===6)world[idx(x+dx2,cy,z+dz2)]=AIR;   /* 树冠半径2全清 */
+      }
+      cut++;
+    }
+  }
+  if(cut)console.log('v121：路网扫树——伐了'+cut+'棵挡路的');
+}
 /* ===== v117掌灯：路口灯柱+户门口灯+施工火炬（TA：一到夜晚黑漆漆的） ===== */
 function lampSpotFree(x,z){
   for(let dy=0;dy<3;dy++){
@@ -4107,7 +4180,8 @@ function applyVillagers(now){
   carveRiver();   /* v86：河滩要有河（world写，rebuild由后面的路网统一触发） */
   buildVillageRoads();   /* v85：村区街道+打谷场+水井（确定性，每端同算，只铺草上不碰玩家建筑）+rebuild兜底 */
   relocateAnimals();   /* v85.1：动物从老地图迁村 */
-  buildCunKuWan();   /* v120：公仓实体+村长守恒（TA：公仓实体+村长——机制的可见锚点，找他就能知道经营层有没有上线） */
+  buildCunKuWan();   /* v120/v121：两村公仓+名字牌+村长守北岸仓 */
+  sweepRoadTrees();   /* v121：树挡路日切清 */
   buildStreetLamps();   /* v117：掌灯——路口灯柱+户灯，施工户挂火炬（TA：一到夜晚黑漆漆的） */
   buildFarm();   /* v111：麦田——芒种开镰寒露播种，村历驱动（TA：账上的粮要长在地里） */
   buildHouseholdProps();   /* v111：营生家什——渔网鸡窝缝纫机柴垛长在宅边 */
