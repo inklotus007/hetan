@@ -29,7 +29,7 @@ plans = M.get('build_plans') or []
 # 价目表（前端executeJudgePlans里有一份同样的——两处必须一致，注释互指）
 PRICE = {'凉亭': {'木': 12, '石': 6}, '水井': {'石': 15, '木': 4}, '灯柱': {'石': 4},
          '石凳': {'石': 3}, '铁匠铺': {'木': 30, '石': 20, '钱': 15}, '花圃': {}, '树': {}}
-CK0 = {'钱': 30, '粮': 120, '木': 60, '石': 50, 'smithyDay': None, 'lastDay': None}
+CK0 = {'钱': 30, '粮': 120, '木': 60, '石': 50, '种子': 2, 'smithyDay': None, 'lastDay': None}
 ck = M.get('cunKu')
 if not isinstance(ck, dict) or '木' not in ck:
     ck = dict(CK0)
@@ -37,6 +37,42 @@ if not isinstance(ck, dict) or '木' not in ck:
 for k2 in CK0:
     if k2 not in ck:
         ck[k2] = CK0[k2]
+# v122农事账：种子→田→粮真流转（TA：种地得有种子得有锄头）——日历驱动，lastFarmDay防重
+# 农时（FARM_STAGE同源）：播玉米123-125／麦收120-122／播冬麦240-242／秋收238-239。两村各一份种子播一块田
+dd = day % 360 if isinstance(day, int) else 0
+if ck.get('lastFarmDay') != day and isinstance(day, int):
+    last = ck.get('lastFarmDay')
+    lastd = (last % 360) if isinstance(last, int) else None
+    if lastd is not None:
+        crossed = lambda win: any((lastd < w <= dd) or (dd < lastd and (w > lastd or w <= dd)) for w in win)
+        # 农事事件（首日lastd=None只记锚不跑——否则开村当天全年农时全触发白得1560粮）
+        if crossed([123]):   # 播玉米：两村各种一块田=扣2份种子
+            cost = 2
+            if ck.get('种子', 0) >= cost:
+                ck['种子'] -= cost
+                new_feedback.append({'ok': True, 'note': '夏播', 'why': '两村都播上了——种子扣2份，田里见苗', 'day': day})
+            else:
+                new_feedback.append({'ok': False, 'note': '夏播', 'why': '种子只剩%s份，播不全两村——秋后留种要算计' % ck.get('种子', 0), 'day': day})
+                changed = True
+        if crossed([240]):   # 播冬麦：扣2份
+            cost = 2
+            if ck.get('种子', 0) >= cost:
+                ck['种子'] -= cost
+            else:
+                new_feedback.append({'ok': False, 'note': '秋播', 'why': '冬麦种子不够——来年夏收要减', 'day': day})
+                changed = True
+        if crossed([122]):   # 麦收：两村各+380粮+1份留种
+            ck['粮'] = ck.get('粮', 0) + 760
+            ck['种子'] = ck.get('种子', 0) + 2
+            new_feedback.append({'ok': True, 'note': '麦收', 'why': '两村麦子进仓+760，留种2份', 'day': day})
+            changed = True
+        if crossed([239]):   # 秋收（玉米）
+            ck['粮'] = ck.get('粮', 0) + 800
+            ck['种子'] = ck.get('种子', 0) + 2
+            new_feedback.append({'ok': True, 'note': '秋收', 'why': '两村玉米进仓+800，留种2份', 'day': day})
+            changed = True
+    ck['lastFarmDay'] = day   # 无条件记锚（首日只记不跑，之后靠crossed推农时）
+
 # 每天进项（游戏日变了才加）：村里人日常拾荒+田里拾穗——慢进快出，决策才有重量
 if ck.get('lastDay') != day and isinstance(day, int):
     ck['木'] = ck.get('木', 0) + 2
