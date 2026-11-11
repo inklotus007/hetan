@@ -2316,6 +2316,7 @@ function pullSigns(){
    （约72%晴），今天实时联动weather——下雨天看得见停工。 */
 let VH={v:0,up:0,homes:{}},villSha=null,villCells={},villBuilt={},villTotals={},villInitDay=-999,villSignMesh={};
 let villKids=[],villKidsBuilt=false,villWedDone={};   /* v78kin78 */
+let villPullNearT=0;
 function pullVillagers(){
   return ghGet('villagers.json').then(({sha,data})=>{
     villSha=sha;VH=(data&&data.homes)?data:{v:0,up:0,homes:{}};
@@ -3077,7 +3078,7 @@ function bootMindCheck(){
     return;
   }
   ghGet('villagers_memory.json').then(({data})=>{
-    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);}   /* v84：拉到就存；v111码粮囤；v112判定者的建设落地 */
+    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);setTimeout(executeRepairs,1200);}   /* v84：拉到就存；v111码粮囤；v112建设落地；v123环境处置 */
     const day=Math.floor((Date.now()-VH.up)/DAY_MS);
     if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});
@@ -3313,6 +3314,92 @@ function buildVillageRoads(){   /* v85：MC村庄结构学——街道是村庄�
   }
   if(changed)rebuild();
 }
+/* ===== v123邻近感知（TA：以我为半径，到我到村的时候AI唤醒更频一点，侦测周边环境做处置） =====
+   近村→节流生成感知包（坑/挡路树/施工/在线NPC）→PUT perception.json→push触发workflow→
+   judge_build确定性转处置计划→客户端拉回执行。坑和树的修复不需要GLM判断（确定性修复），
+   GLM层留给经营决策（TA 11/1架构：事件库本地建，GLM做选择）。 */
+let lastPerceptT=0;
+function scanPitsAround(cx,cz,R){   /* 坑：外环16格判据（v121同源）——连通坑记cells+rimY（填到最低沿） */
+  const pits=[],seen={};
+  for(let x=cx-R;x<=cx+R;x++)for(let z=cz-R;z<=cz+R;z++){
+    if(seen[x+','+z])continue;
+    const gy=groundY(x,z);if(gy<2)continue;
+    let rim=0,rims=[];
+    for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++){
+      if(!dx&&!dz)continue;if(Math.abs(dx)===2&&Math.abs(dz)===2)continue;
+      const gyN=groundY(x+dx,z+dz);if(gyN>=1&&gyN>gy+1){rim++;rims.push(gyN);}
+    }
+    if(rim<6)continue;
+    /* 坑心：洪水填充连通坑格（比rim低2+的格），限200格 */
+    const cells=[],q=[[x,z]],pseen={};
+    let rimY=999;
+    while(q.length&&cells.length<200){
+      const[px2,pz2]=q.shift();
+      const k2=px2+','+pz2;if(pseen[k2])continue;pseen[k2]=1;
+      const g2=groundY(px2,pz2);if(g2<1)continue;
+      let deep=false;
+      for(let dx=-2;dx<=2&&!deep;dx++)for(let dz=-2;dz<=2;dz++){
+        if(!dx&&!dz)continue;if(Math.abs(dx)===2&&Math.abs(dz)===2)continue;
+        const gyN=groundY(px2+dx,pz2+dz);if(gyN>=1&&gyN>g2+1){deep=true;if(gyN<rimY)rimY=gyN;break;}
+      }
+      if(!deep)continue;
+      cells.push([px2,pz2]);seen[k2]=1;
+      q.push([px2+1,pz2],[px2-1,pz2],[px2,pz2+1],[px2,pz2-1]);
+    }
+    if(cells.length>=3)pits.push({x:x,z:z,rimY:rimY<999?rimY:gy+2,cells:cells});
+    if(pits.length>=3)return pits;
+  }
+  return pits;
+}
+function scanTreeBlocks(cx,cz,R){   /* 挡路树：本列有树干且本列/4邻列有路面（v121扫树同源） */
+  const out=[];
+  for(let x=cx-R;x<=cx+R;x++)for(let z=cz-R;z<=cz+R;z++){
+    let trunk=false,road=false;
+    for(let cy=1;cy<H-1;cy++){
+      if(get(x,cy,z)===5)trunk=true;
+      if(road)continue;
+      for(const[dx2,dz2]of[[0,0],[1,0],[-1,0],[0,1],[0,-1]])if(get(x+dx2,cy,z+dz2)===11){road=true;break;}
+      if(trunk&&road)break;
+    }
+    if(trunk&&road)out.push([x,z]);
+    if(out.length>=5)return out;
+  }
+  return out;
+}
+function tickPerception(){
+  if(!ME||!VH.camps||!VH.up)return;
+  const now=Date.now();
+  if(now-lastPerceptT<480000)return;   /* 节流8分钟 */
+  let nc=-1;
+  VH.camps.forEach((c,ci)=>{
+    const cc=campCenter(ci);
+    if(cc&&Math.hypot(p.x-cc[0],p.z-cc[1])<30)nc=ci;
+  });
+  if(nc<0)return;   /* 不近村，不感知 */
+  lastPerceptT=now;
+  const R=20;
+  const pits=scanPitsAround(Math.round(p.x),Math.round(p.z),R);
+  const trees=scanTreeBlocks(Math.round(p.x),Math.round(p.z),R);
+  const construction=[];
+  for(const id in VH.homes){const vh=VH.homes[id];
+    if(vh.startDay&&!villBuilt[id])construction.push({id:id,name:vh.name,day:Math.floor((now-VH.up)/DAY_MS)});
+  }
+  const online=[];
+  for(const id in npcs){const n=npcs[id];
+    if(n.lastSeen&&now-n.lastSeen<120000&&n.name)online.push(n.name);
+  }
+  const pkg={t:now,who:ME.name,pos:[Math.round(p.x),Math.round(p.z)],nearCamp:nc,
+    pits:pits,treeBlocks:trees,construction:construction.slice(0,6),npcsOnline:online.slice(0,8),
+    cunKu:(MINDS&&MINDS.cunKu)?{粮:MINDS.cunKu['粮']||0,种子:MINDS.cunKu['种子']||0}:null};
+  /* 有异常或哪怕没异常也上报（心跳——判定者知道TA在村） */
+  ghPut('perception.json',pkg,'感知包：'+ME.name+'近村'+(pits.length?('·'+pits.length+'坑'):'')+(trees.length?('·'+trees.length+'挡路树'):'')).then(()=>{
+    /* v123：感知包上云即唤醒判定者（TA：到我到村AI唤醒更频）——dispatch一轮（答话+建设账+处置计划） */
+    if(NPC_TOKEN)ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).catch(()=>{});
+  }).catch(()=>{});
+  /* 近村快拉：60秒后拉一轮villagers_memory——处置计划和建设落地更快到手上 */
+  setTimeout(function(){if(NPC_TOKEN)pullVillagers().catch(function(){});},60000);
+}
+let perceptTick=0;
 /* ===== v120公仓：村库的脸——建筑+粮堆+账台（账在memory.cunKu，仓是它的身体） ===== */
 const CUNKU_POS=[304,330];   /* 北岸打谷场西侧：避开纵街x312/井316/满仓宅300-309,338-347 */
 function buildCunKuWan(){
@@ -3765,6 +3852,44 @@ function judgePushAck(items){
     }).catch(()=>{});
   };
   clearTimeout(judgeAckT);judgeAckT=setTimeout(go,1500);
+}
+function executeRepairs(){   /* v123处置执行：感知包→判定者的repair_plans→填坑/伐树（确定性，不占GLM） */
+  if(!MINDS||!MINDS.repair_plans||!MINDS.repair_plans.length||!VH.up)return;
+  let done;
+  try{done=JSON.parse(localStorage.getItem('hetan_repair_done')||'{}');}catch(e){done={};}
+  let any=false;
+  for(const rp of MINDS.repair_plans){
+    if(!rp||!rp.id||done[rp.id])continue;
+    done[rp.id]=1;any=true;
+    if(rp.type==='fill'&&Array.isArray(rp.cells)){
+      let n=0;
+      for(const[px2,pz2]of rp.cells){
+        if(!inW(px2,1,pz2))continue;
+        const gB=groundY(px2,pz2);if(gB<1)continue;
+        /* 洞底到坑沿之间填土——groundY已返回洞底，往上填到rimY */
+        for(let y2=gB+1;y2<(rp.rimY||gB+2)&&y2<H-1;y2++){
+          const k2=px2+','+y2+','+pz2;
+          if(taSets()[0].has(k2)||villCells[k2])break;   /* TA的东西不埋 */
+          if(world[idx(px2,y2,pz2)]===AIR)world[idx(px2,y2,pz2)]=2,n++;
+        }
+      }
+      console.log('v123：填坑——'+n+'格（'+rp.id+'）');
+    }else if(rp.type==='fell'&&Array.isArray(rp.cells)){
+      let n=0;
+      for(const[px2,pz2]of rp.cells){
+        for(let cy=1;cy<H-1;cy++)if(get(px2,cy,pz2)===5){world[idx(px2,cy,pz2)]=AIR;n++;}
+        for(let dx2=-2;dx2<=2;dx2++)for(let dz2=-2;dz2<=2;dz2++)for(let cy=1;cy<H-1;cy++){
+          if(get(px2+dx2,cy,pz2+dz2)===6)world[idx(px2+dx2,cy,pz2+dz2)]=AIR;
+        }
+      }
+      console.log('v123：伐树——'+rp.cells.length+'棵（'+rp.id+'）');
+      if(n||rp.cells.length)rebuild();
+    }
+  }
+  if(any){try{localStorage.setItem('hetan_repair_done',JSON.stringify(done));}catch(e){}
+    /* 清掉已执行的（本地视图）——服务器下轮重建 */
+    MINDS.repair_plans=MINDS.repair_plans.filter(function(rp){return rp&&!done[rp.id];});
+  }
 }
 function executeJudgePlans(){
   if(!MINDS||!MINDS.build_plans||!MINDS.build_plans.length||!VH.up)return;
@@ -5128,6 +5253,7 @@ requestAnimationFrame(loop);
   camera.position.set(p.x,p.y+EYE,p.z);
   camera.rotation.set(0,0,0);
   camera.rotateY(p.yaw);camera.rotateX(p.pitch);
+  perceptTick++;if(perceptTick%120===0)try{tickPerception();}catch(e){}   /* v123：约4秒一查近村（节流8分钟在函数里） */
   tickFloss(now);
   tickSky(worldSec()*1000);   /* v92：世界钟 */
   tickTorch(now);

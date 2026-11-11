@@ -132,6 +132,6 @@ json.dump(M, open('villagers_memory.json', 'w'), ensure_ascii=False)
 if changed or A:
     json.dump([], open('build_ack.json', 'w'), ensure_ascii=False)
 
-print('judge_build：plans=%d done=%d feedback=%d' % (len(M['build_plans']), len(M['build_done']), len(M['build_feedback'])))
-for f in M['build_feedback'][:3]:
+print('judge_build：plans=%d done=%d feedback=%d' % (len(M['build_plans']), len(M['build_done']), len(M.get('build_feedback', []))))
+for f in M.get('build_feedback', [])[:3]:
     print(' ', '成' if f['ok'] else '败', f['note'], '—', f['why'][:40])
