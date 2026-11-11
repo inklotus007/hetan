@@ -22,6 +22,43 @@ try:
 except Exception:
     A = []
 
+# v123环境处置（TA：以我为半径——感知包进来看见什么修什么）：坑全填树全砍，确定性不占GLM
+# 去重：repair_seen记处置过的坑心/树位——TA走一圈同一个坑不重复修
+try:
+    P = json.load(open('perception.json'))
+except Exception:
+    P = None
+if P and isinstance(P, dict):
+    day = P.get('t', 0)
+    seen = M.get('repair_seen', {})
+    plans = M.get('repair_plans', [])
+    plans = [p for p in plans if isinstance(p, dict)]
+    np_ = 0
+    for pit in (P.get('pits') or [])[:3]:
+        key = 'pit_%s_%s' % (pit.get('x'), pit.get('z'))
+        if seen.get(key):
+            continue
+        seen[key] = 1
+        cells = pit.get('cells') or []
+        if cells:
+            plans.append({'type': 'fill', 'id': 'fill_' + key + '_' + str(day), 'rimY': pit.get('rimY'), 'cells': cells[:200]})
+            np_ += 1
+    for tb in (P.get('treeBlocks') or [])[:5]:
+        key = 'tree_%s_%s' % (tb[0], tb[1]) if isinstance(tb, (list, tuple)) and len(tb) >= 2 else None
+        if not key or seen.get(key):
+            continue
+        seen[key] = 1
+        plans.append({'type': 'fell', 'id': 'fell_' + key + '_' + str(day), 'cells': [[tb[0], tb[1]]]})
+        np_ += 1
+    if np_:
+        M['repair_seen'] = dict(list(seen.items())[-200:])   # 上限防膨胀
+        M['repair_plans'] = plans[-8:]   # 队列上限
+        try:
+            json.dump(M, open('villagers_memory.json', 'w'), ensure_ascii=False)
+            print('v123处置计划：%d项（坑/树）' % np_)
+        except Exception:
+            pass
+
 day = M.get('moodDay', 0)
 plans = M.get('build_plans') or []
 
