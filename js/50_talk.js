@@ -390,7 +390,9 @@ function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks→�
     const plans=(MINDS&&MINDS.build_plans)||[];
     const fb=(MINDS&&MINDS.build_feedback||[])[0];
     const sat=(MINDS&&MINDS.satisfy)||{};   /* v130：满意度进村长的嘴 */
-    const satT=sat.score!=null?('村里人心气'+(sat.score>=100?'足':(sat.score>=70?'还成':'不齐'))+'（'+(sat.lines||[]).join('、')+'）。'):'';
+    const accessBonus=(typeof accessPts==='function')?accessPts():0;   /* v133：访问加成——建筑建了有人用才算数（Townsmen：满足率不是覆盖检查） */
+    const satScore=(sat.score||0)+accessBonus;
+    const satT=sat.score!=null?('村里人心气'+(satScore>=100?'足':(satScore>=70?'还成':'不齐'))+'（'+((sat.lines||[]).join('、'))+'）。'):'';
     const acc='村库：木'+(ck['木']??'?')+' 石'+(ck['石']??'?')+' 粮'+(ck['粮']??'?')+' 钱'+(ck['钱']??'?');
     const plan=plans.length?('在张罗：'+plans.map(p=>p.type).join('、')+'.'):'没动工。';
     const fbT=fb?('上次'+(fb.ok?'成了':'没成')+'——'+(fb.why||'')):'';
@@ -473,8 +475,10 @@ function sayFor(nm,tSec){
   }
   if(!cat){
     const sat=(MINDS&&MINDS.satisfy)||{};
-    if(sat.score!=null&&sat.score<70){cat='grumble';key='';}   /* v130：人心不齐压过一切小话题 */
-    else if(sat.score!=null&&sat.score>=110){cat='cheer';key='';}
+    const accessBonus2=(typeof accessPts==='function')?accessPts():0;
+    const satScore=(sat.score||0)+accessBonus2;
+    if(sat.score!=null&&satScore<70){cat='grumble';key='';}   /* v130+v133：人心不齐压过一切小话题（门槛用访问修正后） */
+    else if(sat.score!=null&&satScore>=110){cat='cheer';key='';}
   }
   if(!cat){
     const ck=MINDS&&MINDS.cunKu;

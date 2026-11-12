@@ -84,7 +84,15 @@ function schedPos(name,dayT){
     const inSeg=t0<=t1?(dayT>=t0&&dayT<t1):(dayT>=t0||dayT<t1);
     if(inSeg){
       let px=x,pz=z;
-      if(act==='walk'){px+=Math.sin(dayT*540+x)*1.3;pz+=Math.cos(dayT*390+z)*1.1;}   // walk时段小幅踱步
+      if(act==='walk'){
+        px+=Math.sin(dayT*540+x)*1.3;pz+=Math.cos(dayT*390+z)*1.1;
+        /* v133漫游偏好（Townsmen 2.5）：六成村民walk时漂向兴趣点——水井/火塘/集市/灯柱花圃旁打转，装饰有了被看的价值 */
+        if(((npc.seed||3)%10)<6){
+          const poi=walkPOI(npc.seed||3);
+          if(poi){const dxp=poi[0]-px,dzp=poi[1]-pz,dp=Math.hypot(dxp,dzp);
+            if(dp>2){px+=dxp*0.18;pz+=dzp*0.18;}else{px+=Math.sin(tSec*0.7+(npc.seed||3))*0.4;pz+=Math.cos(tSec*0.5+(npc.seed||3))*0.4;}}
+        }
+      }
       return{x:px,z:pz,act};
     }
   }
@@ -208,6 +216,32 @@ function villPeer(npc,cur){   /* v84：同段同地点的另一户——chat时�
     }
   }
   return null;
+}
+/* v133漫游兴趣点表：seed→固定目的地（水井/火塘/集市/装饰）——deco位置从build_done读（灯柱花圃树） */
+function walkPOI(seed){
+  const pts=[];
+  if(typeof WELLS!=='undefined'&&WELLS&&WELLS.length)for(const w of WELLS.slice(0,2))pts.push([w[0]+0.5,w[1]+2]);
+  try{for(const ci of [0,1]){const cc=campCenter(ci);pts.push([cc[0],cc[1]]);}}catch(e){}
+  pts.push([MKT_STALLS[0].x+1,MKT_STALLS[0].z+2],[319,342]);
+  const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
+  for(const d of bd){if(d.ok!==false&&d.type==='灯柱'&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');const px2=parseFloat(nn[0]),pz2=parseFloat(nn[1]);if(isFinite(px2)&&isFinite(pz2))pts.push([px2+1.5,pz2+1.5]);}}
+  return pts.length?pts[seed%pts.length]:null;
+}
+/* v133访问统计（Townsmen：满意度=实际访问满足率，不是静态覆盖）：sched就是访问计划——扫今天全村被排到的地点 */
+function visitStats(){
+  const cnt={fire1:0,fire2:0,well:0,mkt:0,river:0,plot:0,home:0};
+  const sch=(typeof MINDS!=='undefined'&&MINDS&&MINDS.sched)||{};
+  for(const nm in sch){for(const l of sch[nm]){if(cnt[l.at]!=null)cnt[l.at]++;}}
+  return cnt;
+}
+/* 访问加成（前端显示层）：有人用=加分——火塘有人聚+4/井有人打水+3/集日有人赶集+3；服务器satisfy不动（判定者已有自己的账） */
+function accessPts(){
+  const c=visitStats();
+  let p=0;
+  if(c.fire1+c.fire2>0)p+=4;
+  if(c.well>0)p+=3;
+  if(typeof isMarketDay==='function'&&isMarketDay()&&(c.mkt>0||(c.fire1+c.fire2===0&&c.plot===0)))p+=3;
+  return p;
 }
 const npcObjsSeedCache={};   /* v84：村民seed缓存（npcs.json拉到后填——chat朝向用同seed才算得出同偏移） */
 function npcPos(npc,tSec){
