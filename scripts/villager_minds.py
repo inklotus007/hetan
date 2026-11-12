@@ -62,7 +62,7 @@ elif 122 <= DD < 126: FARM_TIP = '夏播窗口——玉米要扣2份种子，不
 elif 126 <= DD < 238: FARM_TIP = '玉米在长，秋收（+800粮留种2）在第%d天后' % (238 - DD)
 elif 238 <= DD < 240: FARM_TIP = '秋收窗口——粮要进仓'
 else: FARM_TIP = '冬麦播种窗口——扣2份种子'
-CK_TXT = ('【村库】钱%s 粮%s 木%s 石%s 种子%s份。你是管村库的人——每笔工都扣库：凉亭木12石6／水井石15木4／灯柱石4／石凳石3／铁匠铺木30石20钱15（建成全村盖房快三成，最值）；花圃树不要钱。每天进项：木+2石+1粮+3。农时：%s。种子链：两村每季播种各扣1份（共2），收成各留1份——种子不够来年减产，宁可少建也要留种。库见底村子停摆——先建有用的，不够就攒，别透支' % (CK.get('钱', 30), CK.get('粮', 120), CK.get('木', 60), CK.get('石', 50), CK.get('种子', 0), FARM_TIP))
+CK_TXT = ('【村库】钱%s 粮%s 木%s 石%s 种子%s份。你是管村库的人——每笔工都扣库：凉亭木12石6／水井石15木4／灯柱石4／石凳石3／铁匠铺木30石20钱15（建成全村盖房快三成，最值）；花圃树不要钱。每天进项：木+2石+1粮+3。农时：%s。种子链：两村每季播种各扣1份（共2），收成各留1份——种子不够来年减产，宁可少建也要留种。库见底村子停摆——先建有用的，不够就攒，别透支。粜粮：集市收粮1粮=0.8钱（粮换钱的唯一通道），提{type:粜粮,amount:卖几石}——粮留40口以下的部分不让卖；秋收后粮多，粜点换钱建东西正合适' % (CK.get('钱', 30), CK.get('粮', 120), CK.get('木', 60), CK.get('石', 50), CK.get('种子', 0), FARM_TIP))
 # v112：建设回音与已有设施（judge_build.py维护）
 BUILT = M.get('built_summary') or []
 BUILT_TXT = ('村里已有的设施：' + '、'.join(BUILT[-8:])) if BUILT else '村里还没有公共设施——就火塘、井、集市、田'
@@ -133,14 +133,18 @@ def parse(txt):
                                'qty': max(1, min(20, float(x.get('qty') or 1))),
                                'note': str(x['note'])[:60]})
     plans = []
-    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井', '铁匠铺'}
+    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井', '铁匠铺', '粜粮'}  # v126：粜粮进白名单（TA：金钱↔粮通道）——plans直通客户端executeJudgePlans
     for x in (d.get('build_plans') or [])[:4]:
         if isinstance(x, dict) and x.get('type') in TYPES_OK:
             near = str(x.get('near') or 'center')
             if near.startswith('villager:') or near in {'fire1', 'fire2', 'river', 'market', 'center'}:
-                plans.append({'id': 'b%03d' % (len(plans) + 1),
+                pl1 = {'id': 'b%03d' % (len(plans) + 1),
                               'action': 'build', 'type': str(x['type'])[:6],
-                              'near': near[:20], 'note': str(x.get('note') or '')[:20]})
+                              'near': near[:20], 'note': str(x.get('note') or '')[:20]}
+                if x['type'] == '粜粮':
+                    try: pl1['amount'] = max(0, min(400, int(float(x.get('amount') or 0))))
+                    except Exception: pl1['amount'] = 0   # v126粜粮带数量（卖几石），非法给0客户端会拒
+                plans.append(pl1)
     sched = {}
     AT = {'home','plot','fire1','fire2','river','well'}
     for n, legs in (d.get('sched') or {}).items():

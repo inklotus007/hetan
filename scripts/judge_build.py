@@ -133,7 +133,25 @@ for p in plans:
         ok = ack.get('ok', False)
         why = (ack.get('why') or ('建成：' + (p.get('note') or '')))[:60]
         # v119扣账：建成才扣——客户端校验是主防线（同批本地扣），这里兜底防透支
-        if ok:
+        if ok and p.get('type') == '粜粮':
+            # v126粜粮（TA：金钱↔粮通道）：过账方向与build相反——粮出钱进。
+            # 集市价1粮=0.8钱，与前端60_judge.js的粜粮分支同价同账（两处一致，注释互指）。
+            # 客户端已实际扣过；这里以客户端回执的数字为准重算兜底（防本地篡改透支粮荒线）
+            n0 = ack.get('n') if isinstance(ack.get('n'), int) else None
+            if n0 is None:
+                m2 = None
+                try:
+                    import re as _re
+                    m2 = _re.search(r'粜粮(\d+)', why)
+                except Exception:
+                    m2 = None
+                n0 = int(m2.group(1)) if m2 else 0
+            n0 = max(0, min(n0, max(0, ck.get('粮', 0) - 40)))
+            gain = round(n0 * 0.8)
+            ck['粮'] = ck.get('粮', 0) - n0
+            ck['钱'] = ck.get('钱', 0) + gain
+            new_feedback.append({'ok': n0 > 0, 'note': '粜粮', 'why': ('集市粜粮%d得钱%d（库粮余%s）' % (n0, gain, ck.get('粮', 0)))[:60], 'day': day})
+        elif ok:
             cost = PRICE.get(p.get('type'), {})
             short = {k3: v3 - ck.get(k3, 0) for k3, v3 in cost.items() if ck.get(k3, 0) < v3}
             if short:

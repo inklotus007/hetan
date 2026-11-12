@@ -763,6 +763,26 @@ function executeJudgePlans(){
       if(n>0)anyPlaced=true;
       continue;
     }
+    /* v126粜粮（TA：把三角那条线加上——金钱↔粮通道）：粮→钱，集市价1粮=0.8钱。
+       判定者提{type:'粜粮',amount:N}——卖多少它定，prompt里给了粮价和粮荒线。
+       与服务器judge_build.py的sell过账同价同账（两处一致，注释互指） */
+    if(p.type==='粜粮'){
+      const want=Math.max(0,Math.floor(+p.amount||0));
+      const have=MINDS.cunKu?Math.floor(MINDS.cunKu['粮']||0):0;
+      const n=Math.min(want,Math.max(0,have-40));   /* 卖完不破粮荒线40——低于40的部分不卖 */
+      if(n<=0){
+        acks[p.id]=1;
+        acksOut.push({id:p.id,ok:false,why:want<=0?'没说要卖多少':'粮不够卖——要留40口粮钱',day:day});
+        continue;
+      }
+      const gain=Math.round(n*0.8);
+      MINDS.cunKu['粮']-=n;MINDS.cunKu['钱']=(MINDS.cunKu['钱']||0)+gain;
+      acks[p.id]=1;
+      acksOut.push({id:p.id,ok:true,n:n,why:'集市粜粮'+n+'石得钱'+gain+'（库粮余'+MINDS.cunKu['粮']+'）',day:day});
+      try{tickCunKuBags();}catch(e){}
+      console.log('v126：粜粮'+n+'→钱'+gain);
+      continue;
+    }
     /* v119扣库：客户端校验是主防线（服务器judge_build过账兜底）——同批内本地扣，第二件按扣过的库验 */
     const PRICE={'凉亭':{'木':12,'石':6},'水井':{'石':15,'木':4},'灯柱':{'石':4},'石凳':{'石':3},'铁匠铺':{'木':30,'石':20,'钱':15},'花圃':{},'树':{}};
     if(MINDS.cunKu){

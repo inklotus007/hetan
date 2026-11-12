@@ -299,4 +299,5 @@ function tickSky(now){
   const cal=VH.homes?calNow():null;const calStr=cal?cal.SEAS+'·'+cal.jie:'';if(seg!==lastSeg||calStr!==lastSeg){lastSeg=calStr+'|'+seg;
     const el=document.querySelector('#top small');if(el)el.textContent=VER+' · '+calStr+' · '+seg+' · 开村第'+(cal?cal.day:0)+'日'+(cal?(isMarketDay(cal)?' · 今日逢集':' · 距逢集'+nextMarketIn(cal)+'日'):'');   // v50.4版本号；v97村历常驻
   }
+  if(cal)applySeasonLook(cal.SEAS);   /* v126节气上世界：季变才换装（函数内判重），叶黄雪盖零重建 */
 }

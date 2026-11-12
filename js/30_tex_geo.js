@@ -163,6 +163,29 @@ function makeTex(kind){
     for(let i=0;i<46;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*4;g.fillStyle=Math.random()<0.5?'#4d7a39':'#35521f';g.fillRect(x,y,s,s);}
     for(let i=0;i<34;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*3;g.fillStyle=Math.random()<0.5?'#5d8a4a':'#6f9e5c';g.fillRect(x,y,s,s);}
     dot(50,'#8fb877',1);dot(26,'#a8cc88',1);
+  }else if(kind==='leaves_autumn'){
+    /* v126节气上世界（TA：秋天叶子会变黄）——秋叶：金黄橙红叶簇，同簇结构换色盘 */
+    g.fillStyle='#8a6a20';g.fillRect(0,0,64,64);
+    for(let i=0;i<46;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*4;g.fillStyle=Math.random()<0.5?'#c9a02a':'#a37818';g.fillRect(x,y,s,s);}
+    for(let i=0;i<34;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*3;g.fillStyle=Math.random()<0.5?'#d9b43a':(Math.random()<0.3?'#c96a2a':'#e8cc5a');g.fillRect(x,y,s,s);}
+    dot(50,'#f0dc8a',1);dot(26,'#e8a85a',1);
+  }else if(kind==='leaves_winter'){
+    /* v126节气上世界——冬叶：枯褐稀疏+雪白残簇（树冠还在，叶枯雪压） */
+    g.fillStyle='#5a4a34';g.fillRect(0,0,64,64);
+    for(let i=0;i<34;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*4;g.fillStyle=Math.random()<0.5?'#6a5a40':'#4a3c28';g.fillRect(x,y,s,s);}
+    for(let i=0;i<22;i++){const x=Math.random()*62,y=Math.random()*62,s=2+Math.random()*3;g.fillStyle=Math.random()<0.6?'#e8ecf0':'#cdd6de';g.fillRect(x,y,s,s);}
+    dot(40,'#f4f8fa',1);
+  }else if(kind==='grass_snow_top'){
+    /* v126节气上世界——雪盖草地：雪白底+淡蓝冷点+零星枯草探出 */
+    g.fillStyle='#e8edf2';g.fillRect(0,0,64,64);
+    dot(120,'#d5dde6',1);dot(80,'#f6f9fb',1);dot(40,'#c8d4de',1);
+    g.strokeStyle='#9a8a68';for(let i=0;i<10;i++){const x=Math.random()*62,y=Math.random()*62;g.beginPath();g.moveTo(x,y);g.lineTo(x+1,y-3);g.stroke();}
+  }else if(kind==='grass_snow_side'){
+    /* v126雪盖侧：上1/3雪沿下接冻土 */
+    g.fillStyle='#8a6a48';g.fillRect(0,0,64,64);
+    g.fillStyle='#e8edf2';g.fillRect(0,0,64,20);
+    g.fillStyle='#f6f9fb';for(let i=0;i<12;i++)g.fillRect(Math.random()*60,14+Math.random()*6,4,3);
+    dot(30,'#75583c');dot(18,'#9a7a54');
   }else if(kind==='brick'){
     g.fillStyle='#a8563e';g.fillRect(0,0,64,64);
     g.fillStyle='#cfc4b0';
@@ -392,6 +415,34 @@ function makeTex(kind){
 }
 const TEXC={};
 function texOf(n){if(!TEXC[n])TEXC[n]=makeTex(n);return TEXC[n];}
+/* v126节气上世界（TA：节气显示有但世界不变——秋叶黄/冬落雪）：季节材质换装。
+   只换材质map零重建（InstancedMesh共享材质，换map全林变色）；
+   季没变直接return（tickSky每帧调，本函数内部判重）。调rebuild的差事一件不做 */
+let seasonLookCur='';
+function applySeasonLook(seas){
+  if(!seas||seas===seasonLookCur)return;
+  seasonLookCur=seas;
+  try{
+    const mLeaf=meshes['6']&&meshes['6'].material;
+    if(mLeaf){
+      mLeaf.map=texOf(seas==='秋'?'leaves_autumn':seas==='冬'?'leaves_winter':'leaves');
+      mLeaf.needsUpdate=true;
+    }
+    const mGrass=meshes['1']&&meshes['1'].material;
+    if(mGrass&&mGrass.length===6){
+      const snow=seas==='冬';
+      const top=snow?texOf('grass_snow_top'):texOf('grass_top');
+      const side=snow?texOf('grass_snow_side'):texOf('grass_side');
+      /* mats顺序：side,side,top,dirt,side,side（TYPES里grass的定义）——顶面[2]、四个侧面[0][1][4][5]换雪沿，底面dirt不动 */
+      mGrass[2].map=top;mGrass[0].map=side;mGrass[1].map=side;mGrass[4].map=side;mGrass[5].map=side;
+      for(const mm of mGrass)mm.needsUpdate=true;
+    }
+    if(seas==='秋')toast('入秋了——叶子黄了');
+    else if(seas==='冬')toast('入冬了——河滩落雪');
+    else if(seas==='春')toast('开春了——草木返青');
+    console.log('v126换季装束：'+seas);
+  }catch(e){console.warn('换季装束失败（不致命）:',e&&e.message);}
+}
 // 几何：普通方块 + 水稍矮半透明
 const geo=new THREE.BoxGeometry(1,1,1);
 const meshes={};

@@ -51,7 +51,7 @@ function calNow(){const day=Math.max(0,Math.floor((Date.now()-VH.up)/DAY_MS));co
 const YI10=['动土','上梁','嫁娶','赶集','修屋','走亲','纳畜','酿酒','开市','栽种'],JI8=['远行','动土','口舌','下水','伐木','搬迁','争讼','夜行'];
 function yiJi(day){if(((day%30)+1)%5===0)return{yi:'赶集',ji:JI8[Math.floor(Math.abs(Math.sin(day*78.233+7)*24634.6345)%1*JI8.length)%JI8.length]};const h1=Math.abs(Math.sin(day*12.9898)*43758.5453)%1,h2=Math.abs(Math.sin(day*78.233+7)*24634.6345)%1;return{yi:YI10[Math.floor(h1*YI10.length)%YI10.length],ji:JI8[Math.floor(h2*JI8.length)%JI8.length]};}
 /* v97：天气挂季节——冬天真的下雪，春天真的多雨 */
-const WXW={春:[.5,.45,.05],夏:[.68,.28,.04],秋:[.66,.24,.10],冬:[.55,.05,.40]};
+const WXW={春:[.5,.45,.05],夏:[.68,.28,.04],秋:[.66,.24,.10],冬:[.40,.05,.55]};   /* v126：冬雪概率.40→.55（TA：冬天会落雪——之前冬40%掷骰+90-240秒一换，雪太少碰不上） */
 /* ===== v98集市：逢五逢十开集（村历咬合）——北岸街心六摊，摊主守摊，村民赶集 ===== */
 function isMarketDay(c){c=c||(VH.homes?calNow():null);return c?((c.day%30)%5===0):false;}
 function nextMarketIn(c){c=c||(VH.homes?calNow():null);if(!c)return 0;const md=(c.day%30)+1;let n=0;for(let i=md;i<=30;i++){n++;if(i%5===0)break;}return n;}
