@@ -78,14 +78,31 @@ for item in Q:
     # 今天的心事
     mind = M.get('minds', {}).get(npc)
     mind_txt = ('你今天心里正惦记着：%s——答话时可以从这里头带出来。\n' % mind.get('thought','')) if mind else ''
+    # v129：TA捎话时带来的世界快照（前端sendTalk附ctx）——对话层和气泡层接上：GLM知道眼下节令、天气、农时、粮情、自己刚才念叨过什么
+    ctx = item.get('ctx') or {}
+    ctx_lines = []
+    wmap = {'snow': '外头正下着雪', 'rain': '外头正下雨', 'clear': '今儿天晴'}
+    if ctx.get('weather'):
+        ctx_lines.append(wmap.get(ctx['weather'], ''))
+    if ctx.get('seas'):
+        ctx_lines.append('节气上是%s（%s）' % (ctx.get('seas'), ctx.get('jie', '')))
+    fmap = {'wheat_g': '麦子正长', 'wheat_r': '麦子熟了正收', 'stubble': '地刚收完', 'corn_g': '玉米正长', 'corn_r': '玉米熟了正收'}
+    if ctx.get('farm'):
+        ctx_lines.append(fmap.get(ctx['farm'], ''))
+    if isinstance(ctx.get('grain'), int):
+        ctx_lines.append('村库粮只剩%d——粮荒压着全村' % ctx['grain'] if ctx['grain'] < 40 else '村库粮还有%d' % ctx['grain'])
+    if ctx.get('bubble'):
+        ctx_lines.append('他刚走近时你正念叨「%s」——接着这话茬往下说也行' % str(ctx['bubble'])[:40])
+    ctx_txt = ('\n眼前的光景：%s。话里带着这份时节感。\n' % '；'.join(x for x in ctx_lines if x)) if ctx_lines else ''
     prompt = """你是河滩村的村民「%s」。%s。
 村子现状（安家第%d天）：九户在河滩和营地两边盖房，婚事都定了：满仓配凤兰第4天、秋生配秀兰第7天、来福配爱香第7天、长贵配银锁第16天，建军单身。最近村里的事：%s
 %s
 %s
 %s
+%s
 现在%s（村里能看见的一个人，大家当稀客处，不当外人）对你说：「%s」
 你回一段话——豫北庄稼人口吻，实在，30到80字，不书面，不解释自己是村民，不提AI不提游戏。可以问回去一句。
-只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], mind_txt, eco_txt, hist_txt, who, text)
+只输出回话本身，不要引号不要前缀。""" % (npc, pers, day, recent_txt[:250], ctx_txt, mind_txt, eco_txt, hist_txt, who, text)
 
     def call(model):
         # max_tokens 1024：4.7-flash带思考链，200全花在思考上（finish=length content空——10/25端到端实测）

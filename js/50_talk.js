@@ -428,7 +428,7 @@ const VTOPIC={
     闲:['地里没活，猫冬。','闲了，把农具修修。','闲了嘴也不能闲，粮得算计。']
   },
   lack:['粮快见底了，愁人。','缸里的粮得算计着吃。','这粮可撑不到开春。','得多想个进粮的法子。'],
-  built:{'铁匠铺':'铁匠铺开张了，往后农具有处修了。','凉亭':'凉亭立起来了，去瞧过没？','水井':'新井打好了，水甜。','灯柱':'路口亮堂了，夜里敢走了。','粮囤':'粮囤码起来了，看着踏实。','公仓':'公仓满着，心里不慌。','树':'又栽了树，村里越来越像样了。'},
+  built:{'铁匠铺':'铁匠铺开张了，往后农具有处修了。','凉亭':'凉亭立起来了，去瞧过没？','水井':'新井打好了，水甜。','灯柱':'路口亮堂了，夜里敢走了。','粮囤':'粮囤码起来了，看着踏实。','公仓':'公仓满着，心里不慌。','树':'又栽了树，村里越来越像样了。','磨坊':'磨坊开张了——粮磨成面再卖，值钱！','渔棚':'渔棚搭好了，往后锅里不缺鱼。','鸡棚':'鸡棚围起来了，蛋钱虽小也是钱。'},
   per:{
     '满仓':{收获:['收成好，仓才能满——我叫满仓，得对得起这名。'],lack:['我名字叫满仓，可仓里不满呐，丢人。','缸见底了，粮食的事压心口。'],冬:['仓里有粮，冬就好过。'],snow:['雪好，冻死虫，来年仓满。']},
     '秀兰':{snow:['嗯。雪，停工。'],rain:['雨大，布收屋里了。'],秋:['布该上浆了。'],冬:['天冷，织机上的手都僵。'],收获:['线纺完这批就歇。']},
@@ -605,7 +605,16 @@ function sendTalk(){
   const inp=document.getElementById('talkIn');
   const text=(inp.value||'').trim();
   if(!text||!talkNpc)return;
-  const item={id:'t'+Date.now()+Math.random().toString(36).slice(2,6),npc:talkNpc,name:(ME&&ME.name)||'客',text,t:Date.now()};
+  /* v129：话随状态走——捎话时带上世界快照+刚听到的气泡茬（GLM答话知道眼下是什么节令、自己刚才念叨过什么，对话层和气泡层接上） */
+  let ctx={};
+  try{
+    ctx.weather=weather;
+    const cal=VH.up?calNow():null;
+    if(cal){ctx.seas=cal.SEAS;ctx.jie=cal.jie;const st=VH.homes?farmStageCal(cal.day%360):null;if(st)ctx.farm=st;}
+    const ck=MINDS&&MINDS.cunKu;if(ck&&typeof ck['粮']==='number')ctx.grain=ck['粮'];
+    if(lastSay[talkNpc])ctx.bubble=lastSay[talkNpc];
+  }catch(e){}
+  const item={id:'t'+Date.now()+Math.random().toString(36).slice(2,6),npc:talkNpc,name:(ME&&ME.name)||'客',text,ctx,t:Date.now()};
   ghGet('talk_queue.json').then(({sha,data})=>{
     const q=Array.isArray(data)?data:[];
     q.push(item);

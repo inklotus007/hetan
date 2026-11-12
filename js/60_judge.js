@@ -681,6 +681,23 @@ function judgeCellsFor(type){
     for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++)c.push([dx,4,dz,10]);
     c.push([1,2,1,33]);c.push([1,2,2,26]);   /* 炉+砧 */
   }
+  else if(type==='磨坊'){   /* v130：石基3×3+木柱+顶板+石磨盘——粮变面粜价0.8→1.2（木25石15钱10） */
+    for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++)c.push([dx,1,dz,3]);
+    for(const[px,pz]of[[0,0],[2,0],[0,2],[2,2]]){c.push([px,2,pz,5]);c.push([px,3,pz,5]);}
+    for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++)c.push([dx,4,dz,10]);
+    c.push([1,2,1,3]);c.push([1,1,1,26]);   /* 磨盘：石墩上架圆石 */
+  }
+  else if(type==='渔棚'){   /* v130：木棚2×2+晒鱼架——粮+2/天（木15石5钱5），河边的第二粮源 */
+    for(const[px,pz]of[[0,0],[1,0],[0,1],[1,1]])c.push([px,1,pz,5]);
+    for(const[px,pz]of[[0,0],[1,1]]){c.push([px,2,pz,5]);c.push([px,3,pz,5]);}
+    for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)c.push([dx,4,dz,10]);
+    c.push([2,1,1,19]);c.push([2,2,1,19]);   /* 晒鱼架：篱杆 */
+  }
+  else if(type==='鸡棚'){   /* v130：小木棚+围栏——钱+1/天蛋钱（木10钱5） */
+    for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)c.push([dx,1,dz,5]);
+    for(let dx=0;dx<2;dx++)c.push([dx,2,dx,10]);
+    for(const[px,pz]of[[2,0],[2,1],[2,2],[0,2],[1,2]])c.push([px,1,pz,19]);   /* 篱笆围一圈 */
+  }
   return c;
 }
 let judgeAckT=null;
@@ -764,8 +781,8 @@ function executeJudgePlans(){
       continue;
     }
     /* v126粜粮（TA：把三角那条线加上——金钱↔粮通道）：粮→钱，集市价1粮=0.8钱。
-       判定者提{type:'粜粮',amount:N}——卖多少它定，prompt里给了粮价和粮荒线。
-       与服务器judge_build.py的sell过账同价同账（两处一致，注释互指） */
+       v130磨坊建成→1.2（粮磨成面再卖，加工增值）——跟服务器judge_build.py同价同账（两处一致，注释互指）。
+       判定者提{type:'粜粮',amount:N}——卖多少它定，prompt里给了粮价和粮荒线。 */
     if(p.type==='粜粮'){
       const want=Math.max(0,Math.floor(+p.amount||0));
       const have=MINDS.cunKu?Math.floor(MINDS.cunKu['粮']||0):0;
@@ -775,16 +792,18 @@ function executeJudgePlans(){
         acksOut.push({id:p.id,ok:false,why:want<=0?'没说要卖多少':'粮不够卖——要留40口粮钱',day:day});
         continue;
       }
-      const gain=Math.round(n*0.8);
+      const hasMill=(MINDS.build_done||[]).some(d=>d.type==='磨坊');
+      const price=hasMill?1.2:0.8;
+      const gain=Math.round(n*price);
       MINDS.cunKu['粮']-=n;MINDS.cunKu['钱']=(MINDS.cunKu['钱']||0)+gain;
       acks[p.id]=1;
-      acksOut.push({id:p.id,ok:true,n:n,why:'集市粜粮'+n+'石得钱'+gain+'（库粮余'+MINDS.cunKu['粮']+'）',day:day});
+      acksOut.push({id:p.id,ok:true,n:n,why:'集市粜粮'+n+'石得钱'+gain+(hasMill?'（磨坊成面价1.2）':'')+'（库粮余'+MINDS.cunKu['粮']+'）',day:day});
       try{tickCunKuBags();}catch(e){}
-      console.log('v126：粜粮'+n+'→钱'+gain);
+      console.log('v129：粜粮'+n+'→钱'+gain+(hasMill?'（磨坊价）':''));
       continue;
     }
     /* v119扣库：客户端校验是主防线（服务器judge_build过账兜底）——同批内本地扣，第二件按扣过的库验 */
-    const PRICE={'凉亭':{'木':12,'石':6},'水井':{'石':15,'木':4},'灯柱':{'石':4},'石凳':{'石':3},'铁匠铺':{'木':30,'石':20,'钱':15},'花圃':{},'树':{}};
+    const PRICE={'凉亭':{'木':12,'石':6},'水井':{'石':15,'木':4},'灯柱':{'石':4},'石凳':{'石':3},'铁匠铺':{'木':30,'石':20,'钱':15},'花圃':{},'树':{},'磨坊':{'木':25,'石':15,'钱':10},'渔棚':{'木':15,'石':5,'钱':5},'鸡棚':{'木':10,'钱':5}};   /* v130三座功能建筑 */
     if(MINDS.cunKu){
       const cost=PRICE[p.type]||{};
       const short=Object.keys(cost).filter(k=>(MINDS.cunKu[k]||0)<cost[k]);

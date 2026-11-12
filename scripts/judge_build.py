@@ -65,7 +65,8 @@ plans = M.get('build_plans') or []
 # ===== v119村库：判定者的经营本金 =====
 # 价目表（前端executeJudgePlans里有一份同样的——两处必须一致，注释互指）
 PRICE = {'凉亭': {'木': 12, '石': 6}, '水井': {'石': 15, '木': 4}, '灯柱': {'石': 4},
-         '石凳': {'石': 3}, '铁匠铺': {'木': 30, '石': 20, '钱': 15}, '花圃': {}, '树': {}}
+         '石凳': {'石': 3}, '铁匠铺': {'木': 30, '石': 20, '钱': 15}, '花圃': {}, '树': {},
+         '磨坊': {'木': 25, '石': 15, '钱': 10}, '渔棚': {'木': 15, '石': 5, '钱': 5}, '鸡棚': {'木': 10, '钱': 5}}  # v130三座功能建筑
 CK0 = {'钱': 30, '粮': 120, '木': 60, '石': 50, '种子': 2, 'smithyDay': None, 'lastDay': None}
 ck = M.get('cunKu')
 if not isinstance(ck, dict) or '木' not in ck:
@@ -115,6 +116,12 @@ if ck.get('lastDay') != day and isinstance(day, int):
     ck['木'] = ck.get('木', 0) + 2
     ck['石'] = ck.get('石', 0) + 1
     ck['粮'] = ck.get('粮', 0) + 3 - 4   # v120粮线（经营三角第一格）：全村吃饭-4，拾穗+3——净-1/天，慢线；收成日大补（下格）
+    # v130功能建筑进项：建成才生效（build_done里有且ack ok）
+    done_types = [d.get('type') for d in (M.get('build_done') or [])]
+    if '渔棚' in done_types:
+        ck['粮'] = ck.get('粮', 0) + 2   # 铁蛋的网：河边的第二粮源
+    if '鸡棚' in done_types:
+        ck['钱'] = ck.get('钱', 0) + 1   # 麦穗的蛋钱
     ck['lastDay'] = day
 done = M.get('build_done') or []
 feedback = M.get('build_feedback') or []
@@ -147,7 +154,8 @@ for p in plans:
                     m2 = None
                 n0 = int(m2.group(1)) if m2 else 0
             n0 = max(0, min(n0, max(0, ck.get('粮', 0) - 40)))
-            gain = round(n0 * 0.8)
+            has_mill = '磨坊' in [d.get('type') for d in done]
+            gain = round(n0 * (1.2 if has_mill else 0.8))   # v130磨坊建成：成面价1.2
             ck['粮'] = ck.get('粮', 0) - n0
             ck['钱'] = ck.get('钱', 0) + gain
             new_feedback.append({'ok': n0 > 0, 'note': '粜粮', 'why': ('集市粜粮%d得钱%d（库粮余%s）' % (n0, gain, ck.get('粮', 0)))[:60], 'day': day})
