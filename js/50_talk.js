@@ -389,10 +389,12 @@ function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks→�
     const ck=(MINDS&&MINDS.cunKu)||{};
     const plans=(MINDS&&MINDS.build_plans)||[];
     const fb=(MINDS&&MINDS.build_feedback||[])[0];
+    const sat=(MINDS&&MINDS.satisfy)||{};   /* v130：满意度进村长的嘴 */
+    const satT=sat.score!=null?('村里人心气'+(sat.score>=100?'足':(sat.score>=70?'还成':'不齐'))+'（'+(sat.lines||[]).join('、')+'）。'):'';
     const acc='村库：木'+(ck['木']??'?')+' 石'+(ck['石']??'?')+' 粮'+(ck['粮']??'?')+' 钱'+(ck['钱']??'?');
     const plan=plans.length?('在张罗：'+plans.map(p=>p.type).join('、')+'.'):'没动工。';
     const fbT=fb?('上次'+(fb.ok?'成了':'没成')+'——'+(fb.why||'')):'';
-    const rot=[acc+'。'+plan, plan+fbT, acc+'。'+(fbT||'都记着账呢。'), '账都在。'+plan+(ck['smithyDay']!=null?'铁匠铺开张了，盖房快三成。':'')];
+    const rot=[acc+'。'+plan, plan+fbT, acc+'。'+(fbT||'都记着账呢。'), satT+plan+(ck['smithyDay']!=null?'铁匠铺开张了，盖房快三成。':'')];
     return rot[Math.floor(tSec/9)%rot.length];
   }
   const mine=(MINDS&&MINDS.today&&MINDS.today.talks||[]).filter(t=>t.a===nm);
@@ -428,6 +430,8 @@ const VTOPIC={
     闲:['地里没活，猫冬。','闲了，把农具修修。','闲了嘴也不能闲，粮得算计。']
   },
   lack:['粮快见底了，愁人。','缸里的粮得算计着吃。','这粮可撑不到开春。','得多想个进粮的法子。'],
+  grumble:['这日子，过得没个盼头。','村里事没人上心呐。','房也没齐，井也没有——唉。','村里冷清，人心也散。'],   /* v130：满意度<70怨话 */
+  cheer:['这日子有点奔头了。','村里越来越像个村了。','人心齐了，活就好干。'],   /* v130：满意度≥110喜话 */
   built:{'铁匠铺':'铁匠铺开张了，往后农具有处修了。','凉亭':'凉亭立起来了，去瞧过没？','水井':'新井打好了，水甜。','灯柱':'路口亮堂了，夜里敢走了。','粮囤':'粮囤码起来了，看着踏实。','公仓':'公仓满着，心里不慌。','树':'又栽了树，村里越来越像样了。','磨坊':'磨坊开张了——粮磨成面再卖，值钱！','渔棚':'渔棚搭好了，往后锅里不缺鱼。','鸡棚':'鸡棚围起来了，蛋钱虽小也是钱。'},
   per:{
     '满仓':{收获:['收成好，仓才能满——我叫满仓，得对得起这名。'],lack:['我名字叫满仓，可仓里不满呐，丢人。','缸见底了，粮食的事压心口。'],冬:['仓里有粮，冬就好过。'],snow:['雪好，冻死虫，来年仓满。']},
@@ -455,7 +459,7 @@ const VTOPIC={
 };
 let lastSay={};   /* 户记忆：同一户连续冒泡不重复 */
 function sayFor(nm,tSec){
-  /* 主状态判定：天气>建成(2日内)>粮荒>农时>季节——全村共享同一个「今天」 */
+  /* 主状态判定：天气>建成(2日内)>村心气(v130满意度)>粮荒>农时>季节——全村共享同一个「今天」 */
   let cat=null,key=null;
   if(weather==='snow'){cat='wx';key='snow';}
   else if(weather==='rain'){cat='wx';key='rain';}
@@ -466,6 +470,11 @@ function sayFor(nm,tSec){
       const nowDay=VH.up?Math.floor((Date.now()-VH.up)/DAY_MS):0;
       if(nowDay-fd<2){cat='built';key=fb.note;}
     }
+  }
+  if(!cat){
+    const sat=(MINDS&&MINDS.satisfy)||{};
+    if(sat.score!=null&&sat.score<70){cat='grumble';key='';}   /* v130：人心不齐压过一切小话题 */
+    else if(sat.score!=null&&sat.score>=110){cat='cheer';key='';}
   }
   if(!cat){
     const ck=MINDS&&MINDS.cunKu;
@@ -485,7 +494,7 @@ function sayFor(nm,tSec){
   let pool=null;
   const per=VTOPIC.per[nm];
   const perPool=per?((cat==='built')?(per[key]||null):(per[key]||null)):null;
-  const genPool=(cat==='built')?[VTOPIC.built[key]]:((cat==='lack')?VTOPIC.lack:(VTOPIC[cat]&&VTOPIC[cat][key])||null);
+  const genPool=(cat==='built')?[VTOPIC.built[key]]:((Array.isArray(VTOPIC[cat]))?VTOPIC[cat]:(VTOPIC[cat]&&VTOPIC[cat][key])||null);   /* lack/grumble/cheer是平数组——数组直接用，嵌套对象按key取（v128 lack洞的同族预防） */
   pool=(perPool&&perPool.length)?perPool.concat(perPool,genPool||[]):(genPool&&genPool.length?genPool:null);   /* 户句×2：腔调占2/3概率，通用补轮换——满仓粮荒时多半说「我叫满仓可仓里不满」而不是通用愁 */
   if(!pool||!pool.length)return null;
   /* 半仙特例：话=村历宜忌；秋生特例：梆子打底 */

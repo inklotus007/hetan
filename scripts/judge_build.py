@@ -126,6 +126,29 @@ if ck.get('lastDay') != day and isinstance(day, int):
 done = M.get('build_done') or []
 feedback = M.get('build_feedback') or []
 
+# ===== v130满意度（学Townsmen三桶，河滩版）：需求(粮+水)+欲望(住房/装饰/社区/集市) =====
+# 每天算一次写memory.satisfy——判定者prompt看见、村长报账念、前端气泡怨话读它。
+# 产出联动暂不做（villagerProgress逐天循环用当日值会改写历史——等satisfy有历史存档再说，年轮不被抹）。
+if ck.get('lastSatDay') != day and isinstance(day, int):
+    okd = [d for d in done if d.get('ok', True)]
+    # 需求桶：粮（35分）+水（25分）
+    g0 = ck.get('粮', 0)
+    p_grain = 35 if g0 >= 80 else (25 if g0 >= 40 else max(0, int(25 * g0 / 40)))
+    p_water = 25 if any(d.get('type') == '水井' for d in okd) else -15   # 没井=全村喝河水，扣
+    # 欲望桶：住房竣工率(40)+装饰(20)+社区火塘(15)+集市(15)
+    # 住房分：按安家天数线性爬（工期约22天，进度纯确定）——不用startDay（开工≠竣工，会虚高：10/14同族「把开工当完工」）
+    p_house = int(40 * min(1, day / 22.0))
+    n_deco = sum(1 for d in okd if d.get('type') in ('花圃', '灯柱', '树', '石凳'))
+    p_deco = min(20, n_deco * 5)
+    p_comm = 15 if (M.get('sched') or M.get('moodDay')) else 0   # 火塘生活照常（sched在=日子在过）
+    p_mkt = 15   # 集市常设（v98）
+    score = p_grain + p_water + p_house + p_deco + p_comm + p_mkt
+    lines = ['粮%s' % ('充足' if g0 >= 80 else ('够吃' if g0 >= 40 else '紧张')), '水井%s' % ('有' if p_water > 0 else '还没有')]
+    M['satisfy'] = {'score': score, 'grain': p_grain, 'water': p_water, 'house': p_house,
+                    'deco': p_deco, 'comm': p_comm, 'mkt': p_mkt, 'lines': lines, 'day': day}
+    ck['lastSatDay'] = day
+    print('满意度：', score, lines)
+
 acked_ids = {a.get('id') for a in A if isinstance(a, dict) and a.get('id')}
 changed = False
 new_feedback = []
@@ -134,7 +157,7 @@ new_feedback = []
 still = []
 for p in plans:
     if p.get('id') in acked_ids:
-        rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day)}
+        rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day), 'ok': ok}   # v130：ok入档（满意度要分成败）
         done.append(rec)
         ack = next((a for a in A if a.get('id') == p.get('id')), {})
         ok = ack.get('ok', False)
