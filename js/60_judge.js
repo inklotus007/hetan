@@ -249,13 +249,17 @@ function buildCunKuWan(){
   if(!VH.homes||cunkuBuilt)return;
   cunkuBuilt=true;
   const[taA,taR]=taSets();
-  /* v121：两村各一仓（TA：只建了一个村的吗）——campCenter旁探位：从中心向西找5×3可落地 */
+  /* v121：两村各一仓（TA：只建了一个村的吗）——campCenter旁探位：从中心向西找5×3可落地
+     v134修（TA：一个村庄里没有村长也没有仓库——南岸探位只试6次向西，试不到就静默跳过+村长只注册ci===0）——
+     探位改8向螺旋12步，两村各注册一个村长（南岸村长守南岸仓） */
   for(const ci of [0,1]){
     const c0=campCenter(ci);
     if(!c0)continue;
     let wx=Math.round(c0[0])-4, wz=Math.round(c0[1])-2, ok0=false;
-    for(let t=0;t<6;t++){
-      const tx=wx-t*2, tz=wz-((t%2)?2:0);
+    const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+    for(let t=0;t<12&&!ok0;t++){
+      const dd=DIRS[t%8], rr=2+Math.floor(t/8)*3;
+      const tx=Math.round(c0[0])+dd[0]*rr-2, tz=Math.round(c0[1])+dd[1]*rr-1;
       let spot=true;
       for(let dx=0;dx<5&&spot;dx++)for(let dz=0;dz<3&&spot;dz++){
         const g=groundY(tx+dx,tz+dz);
@@ -263,7 +267,7 @@ function buildCunKuWan(){
       }
       if(spot){wx=tx;wz=tz;ok0=true;break;}
     }
-    if(!ok0)continue;
+    if(!ok0){console.log('v134：camp'+ci+'公仓探位全方向失败——下次boot再试');continue;}
     buildOneCunKu(wx,wz,taA,taR,ci);
   }
 }
@@ -310,11 +314,12 @@ function buildOneCunKu(wx,wz,taA,taR,ci){
       }
     }catch(e){}
   }
-  /* 村长守恒（守北岸仓）：npcs.json没他就本地补渲染条目（不写云） */
-  if(ci===0&&typeof npcs==='object'&&npcs&&!npcs['p_cunzhang']){
-    npcs['p_cunzhang']={id:'p_cunzhang',name:'村长',seed:30001,coat:'#3a3a44',skin:'#e8c39e',home:[wx+2,wz+3],pos:[wx+2.5,wz+3.5],yaw:0,online:true,lastSeen:Date.now()};
+  /* 村长守恒（v134两村各一）：npcs.json没他就本地补渲染条目（不写云）——南岸村长守南岸仓，报账逻辑按name匹配对两村村长都生效 */
+  const czId='p_cunzhang'+(ci===0?'':'_s');
+  if(typeof npcs==='object'&&npcs&&!npcs[czId]){
+    npcs[czId]={id:czId,name:ci===0?'村长':'村长',seed:30001+ci*7,coat:'#3a3a44',skin:'#e8c39e',home:[wx+2,wz+3],pos:[wx+2.5,wz+3.5],yaw:0,online:true,lastSeen:Date.now()};
     npcList=Object.values(npcs);
-    console.log('v121：村长守北岸仓（本地补）');
+    console.log('v134：村长守'+(ci===0?'北':'南')+'岸仓（本地补）');
   }
 }
 let cunkuBuilt=false;
