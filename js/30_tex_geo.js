@@ -8,7 +8,8 @@ function tickWeather(now){
     const r=Math.random();
     const wx=WXW[(VH.homes&&calNow().SEAS)||'春'];
     weather=r<wx[0]?'clear':r<wx[0]+wx[1]?'rain':'snow';villInitDay=-999;
-    weatherUntil=now+90000+Math.random()*150000;
+    /* v127：冬天天气成气候——雪/晴都拉长到12-30分钟（原来90-240秒一换，雪下两分钟就停，碰上了也像没下） */
+    weatherUntil=weather==='snow'||(calNow().SEAS==='冬')?now+720000+Math.random()*1080000:now+90000+Math.random()*150000;
     if(weather==='rain')toast('下雨了');
     else if(weather==='snow')toast('落雪了');
     else toast('天晴了');

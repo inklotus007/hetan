@@ -47,7 +47,26 @@ const DAY_MS=21600000;
 const JIE24=['立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至','小寒','大寒'];
 const MON12=['正','二','三','四','五','六','七','八','九','十','冬','腊'];
 const CNUM=['','一','二','三','四','五','六','七','八','九','十'];
-function calNow(){const day=Math.max(0,Math.floor((Date.now()-VH.up)/DAY_MS));const d=day%360;const SEAS=d<90?'春':d<180?'夏':d<270?'秋':'冬';const jie=JIE24[Math.floor(d/15)];const mon=Math.floor(d/30),md=d%30+1;const mdC=md<=10?'初'+CNUM[md]:(md<20?'十'+CNUM[md-10]:(md===20?'二十':(md<30?'廿'+CNUM[md-20]:'三十')));return{day,SEAS,jie,mdC,monC:MON12[mon]+'月'};}
+/* v127节气挂现实（TA：节气显示有但世界不变——根因是两套历法打架：顶栏显示游戏日季节「春」，而游戏日360天=一年，现实里永远等不到那个秋天）。
+   修：SEAS/jie改挂现实二十四节气（固定日近似），day照旧（开村日数/集日/宜忌是村子自己的历法，不动——村子有自己的日子，天地有自己的日子）。
+   现实11月=冬·立冬——TA今天打开就是雪盖枯叶，当天可见。WXW/applySeasonLook自动跟随 */
+const JIE_REAL=[[2,4,'立春'],[2,19,'雨水'],[3,6,'惊蛰'],[3,21,'春分'],[4,5,'清明'],[4,20,'谷雨'],[5,6,'立夏'],[5,21,'小满'],[6,6,'芒种'],[6,21,'夏至'],[7,7,'小暑'],[7,23,'大暑'],[8,8,'立秋'],[8,23,'处暑'],[9,8,'白露'],[9,23,'秋分'],[10,8,'寒露'],[10,23,'霜降'],[11,7,'立冬'],[11,22,'小雪'],[12,7,'大雪'],[12,22,'冬至'],[1,6,'小寒'],[1,20,'大寒']];
+const SEAS_OF_JIE={'立春':'春','雨水':'春','惊蛰':'春','春分':'春','清明':'春','谷雨':'春','立夏':'夏','小满':'夏','芒种':'夏','夏至':'夏','小暑':'夏','大暑':'夏','立秋':'秋','处暑':'秋','白露':'秋','秋分':'秋','寒露':'秋','霜降':'秋','立冬':'冬','小雪':'冬','大雪':'冬','冬至':'冬','小寒':'冬','大寒':'冬'};
+function realJieNow(){
+  const now=new Date(), key=now.getMonth()+1, dnum=now.getDate();
+  /* 找当前所处节气：取「最近一个已过的节气起始日」。节气按公历固定日近似（每年浮动1-2天，视觉用途足够） */
+  let cur=JIE_REAL[19];   /* 默认小雪（11/22-12/7段），防止边缘空档 */
+  let best=-1;
+  for(const[m,d2,name]of JIE_REAL){
+    const start=(m-1)*60+d2;   /* 粗序数（月*60+日）——只用于比大小 */
+    const nownum=(key-1)*60+dnum;
+    if(start<=nownum&&start>best){best=start;cur=[m,d2,name];}
+  }
+  /* 跨年段：1月的节气属于去年年末延续（冬至12/22→大寒1/20→立春2/4）——若now在1/1-2/4之间且没匹配到（best=-1），落在冬至段 */
+  if(best<0)cur=[12,22,'冬至'];
+  return cur[2];
+}
+function calNow(){const day=Math.max(0,Math.floor((Date.now()-VH.up)/DAY_MS));const jie=realJieNow();const SEAS=SEAS_OF_JIE[jie]||'春';const d=day%360;const mon=Math.floor(d/30),md=d%30+1;const mdC=md<=10?'初'+CNUM[md]:(md<20?'十'+CNUM[md-10]:(md===20?'二十':(md<30?'廿'+CNUM[md-20]:'三十')));return{day,SEAS,jie,mdC,monC:MON12[mon]+'月'};}
 const YI10=['动土','上梁','嫁娶','赶集','修屋','走亲','纳畜','酿酒','开市','栽种'],JI8=['远行','动土','口舌','下水','伐木','搬迁','争讼','夜行'];
 function yiJi(day){if(((day%30)+1)%5===0)return{yi:'赶集',ji:JI8[Math.floor(Math.abs(Math.sin(day*78.233+7)*24634.6345)%1*JI8.length)%JI8.length]};const h1=Math.abs(Math.sin(day*12.9898)*43758.5453)%1,h2=Math.abs(Math.sin(day*78.233+7)*24634.6345)%1;return{yi:YI10[Math.floor(h1*YI10.length)%YI10.length],ji:JI8[Math.floor(h2*JI8.length)%JI8.length]};}
 /* v97：天气挂季节——冬天真的下雪，春天真的多雨 */
