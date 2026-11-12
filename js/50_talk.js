@@ -384,23 +384,119 @@ function askLine(nm){   /* v94：问村里的事——天气+该户今天的心�
   const th=(m2&&m2.thought)?(' '+m2.thought):' 都在忙。';
   return w+'。'+th;
 }
-function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks→今天心事→人设问候池 */
+function bubbleContent(nm,tSec){   /* v94：内容降级链——当天talks→状态话(v128)→今天心事→人设问候池 */
   if(nm==='村长'){   /* v120：村长=经营层的脸——走近就报账（TA：找他就能知道那机制有没有上线） */
     const ck=(MINDS&&MINDS.cunKu)||{};
     const plans=(MINDS&&MINDS.build_plans)||[];
     const fb=(MINDS&&MINDS.build_feedback||[])[0];
     const acc='村库：木'+(ck['木']??'?')+' 石'+(ck['石']??'?')+' 粮'+(ck['粮']??'?')+' 钱'+(ck['钱']??'?');
-    const plan=plans.length?('在张罗：'+plans.map(p=>p.type).join('、')+'。'):'没动工。';
+    const plan=plans.length?('在张罗：'+plans.map(p=>p.type).join('、')+'.'):'没动工。';
     const fbT=fb?('上次'+(fb.ok?'成了':'没成')+'——'+(fb.why||'')):'';
     const rot=[acc+'。'+plan, plan+fbT, acc+'。'+(fbT||'都记着账呢。'), '账都在。'+plan+(ck['smithyDay']!=null?'铁匠铺开张了，盖房快三成。':'')];
     return rot[Math.floor(tSec/9)%rot.length];
   }
   const mine=(MINDS&&MINDS.today&&MINDS.today.talks||[]).filter(t=>t.a===nm);
   if(mine.length)return mine[Math.floor(tSec/4)%mine.length].text;
+  /* v128状态话：话题长在世界状态上（TA：翻来覆去一两句/没有逻辑性——根是话跟节气天气农时村库全脱钩，死池里捞） */
+  const st=sayFor(nm,tSec);
+  if(st)return st;
   const m2=MINDS&&MINDS.minds&&MINDS.minds[nm];
   if(m2&&m2.thought)return '（自言自语）'+m2.thought;
   const pool=GREET[nm];
   return pool?pool[Math.floor(tSec/9)%pool.length]:(isMarketDay()?MK_GREET:GREET_ANY)[Math.floor(tSec/9)%MK_GREET.length];
+}
+/* ===== v128：话素表——村民的话长在世界状态上（TA：真实性浮于表面没落到根上） =====
+   状态决定话题（全村共享同一个「今天」：同雪天都说雪，各按生计口吻说——话题一致，说法各异），
+   户覆盖池(per)让九户+扩展户的话带自己的生计和腔调； 户记忆(lastSay)防连续重复。
+   两套历各管各的视觉：季节话跟现实节气(v127叶雪)走，农时话跟游戏日farmStage(田里的苗)走——
+   村民说的话永远跟TA眼睛看到的一致。 */
+const VTOPIC={
+  wx:{
+    snow:['这天儿雪说下就下。','雪把道盖了，走道看脚底下。','雪一厚，麻雀都懒得动。','这雪是好雪，冻死虫子，来年收成好。'],
+    rain:['这雨下得人心烦。','下雨天，料全潮了。','雨里头干不成活，歇了吧。','这场雨过后，苗能蹿一截。']
+  },
+  seas:{
+    春:['地返青了，能下脚了。','开春了，该备种备料了。','春寒长着呢，别急着脱袄。'],
+    夏:['这天热得邪乎。','日头毒，晌午干不成活。','夏锄不能歇，草比苗长得快。'],
+    秋:['秋收一忙，觉都不够睡。','叶子黄了，一年快到头了。','秋高气爽，正是干活的时候。'],
+    冬:['这天，手脚都冻僵了。','冬天日子短，天黑得早。','冻土上了，动不了土喽。']
+  },
+  farm:{
+    生长:['苗齐了，就等雨水匀。','地里没大活，就等着长。','草得锄，不锄跟苗抢食。'],
+    收获:['收割就在这几日，全家都得上。','今年成色不赖。','收完了得赶紧翻地。'],
+    茬:['刚收完，地里还散着味儿。','茬子地，得赶紧翻。'],
+    闲:['地里没活，猫冬。','闲了，把农具修修。','闲了嘴也不能闲，粮得算计。']
+  },
+  lack:['粮快见底了，愁人。','缸里的粮得算计着吃。','这粮可撑不到开春。','得多想个进粮的法子。'],
+  built:{'铁匠铺':'铁匠铺开张了，往后农具有处修了。','凉亭':'凉亭立起来了，去瞧过没？','水井':'新井打好了，水甜。','灯柱':'路口亮堂了，夜里敢走了。','粮囤':'粮囤码起来了，看着踏实。','公仓':'公仓满着，心里不慌。','树':'又栽了树，村里越来越像样了。'},
+  per:{
+    '满仓':{收获:['收成好，仓才能满——我叫满仓，得对得起这名。'],lack:['我名字叫满仓，可仓里不满呐，丢人。','缸见底了，粮食的事压心口。'],冬:['仓里有粮，冬就好过。'],snow:['雪好，冻死虫，来年仓满。']},
+    '秀兰':{snow:['嗯。雪，停工。'],rain:['雨大，布收屋里了。'],秋:['布该上浆了。'],冬:['天冷，织机上的手都僵。'],收获:['线纺完这批就歇。']},
+    '建军':{snow:['雪。料别让雪压了。'],rain:['下吧，反正干不成。'],冬:['冻手。木工停了。'],春:['料备齐了没？开工就得用。']},
+    '铁蛋':{snow:['雪天鱼咬钩，明儿凿冰窟窿去。'],冬:['河快封了，趁没封多下几网。'],收获:['秋鱼正贴膘，肥着呢。'],rain:['涨水了，鱼往边上跑——雨停就去。']},
+    '银锁':{lack:['账上粮的进出我有数——数，不小呐。'],秋:['秋账要清，年账要平。'],收获:['收成入了账才算收成。']},
+    '麦穗':{snow:['鸡都不出窝了。'],rain:['鸡淋不得雨，全赶回棚了。'],收获:['糠多了，鸡吃得肥实。']},
+    '桂枝':{秋:['药晒透了，收进屋。'],snow:['药不能见雪，全收了。'],夏:['药就得趁大日头晒。']},
+    '半仙':null,   /* 半仙走宜忌动态生成（yiJi），不进静态池 */
+    '栓柱':{rain:['雨大，灰都和不成。'],冬:['冻土上砌不了墙。'],生长:['墙垒到半截，等天。']},
+    '石头':{snow:['雪盖着，石头更沉。'],冬:['冻手，凿不动。'],春:['开春石料活多。']},
+    '老蔫':{snow:['……雪。','……下吧。','（看雪，不说话）'],rain:['……雨。','……烦。'],冬:['……冷。','（缩着袖子）……嗯。'],收获:['……忙。','……累。'],lack:['……唉。']},
+    '秋生':null,   /* 秋生打梆子——走动态梆子版 */
+    '长贵':{snow:['慢走，雪地滑。'],rain:['地滑，不急，一步步来。'],冬:['炉子烧热了就好。']},
+    '来福':{春:['天不亮我就起了，地等人。'],收获:['起早贪黑，就这半个月。']},
+    '翠娥':{秋:['换季了，该裁冬衣了。'],snow:['雪天正好做针线。'],收获:['新棉花下来了，弹一床新被。']},
+    '杏花':{冬:['线纳鞋底，冬天用得上。'],收获:['麻收了才有线。']},
+    '巧云':{lack:['粮账我记着，一天一天紧。'],秋:['秋后的账最好算。']},
+    '二愣':{snow:['雪里干活，使的是死力气。'],lack:['有力气，就饿不死。'],收获:['扛麻袋我一人顶俩。']},
+    '柱子':{rain:['架子让雨泡不得。'],snow:['雪压架子，得紧一紧绳。'],冬:['架子空着过冬，开春再说。']},
+    '凤兰':{snow:['雪天路滑，端着点儿。'],冬:['这天真冷，进屋喝口热的？'],收获:['今年收成好，家家都乐。']},
+    '爱香':{snow:['哟，雪这么大！炉子上坐着一锅水呢。'],rain:['雨里来的？头发都湿了。'],夏:['大热天的，喝口水再走。']}
+  }
+};
+let lastSay={};   /* 户记忆：同一户连续冒泡不重复 */
+function sayFor(nm,tSec){
+  /* 主状态判定：天气>建成(2日内)>粮荒>农时>季节——全村共享同一个「今天」 */
+  let cat=null,key=null;
+  if(weather==='snow'){cat='wx';key='snow';}
+  else if(weather==='rain'){cat='wx';key='rain';}
+  if(!cat){
+    const fb=MINDS&&MINDS.build_feedback&&MINDS.build_feedback[0];
+    if(fb&&fb.ok&&fb.note&&VTOPIC.built[fb.note]){
+      const fd=typeof fb.day==='number'?fb.day:0;
+      const nowDay=VH.up?Math.floor((Date.now()-VH.up)/DAY_MS):0;
+      if(nowDay-fd<2){cat='built';key=fb.note;}
+    }
+  }
+  if(!cat){
+    const ck=MINDS&&MINDS.cunKu;
+    if(ck&&typeof ck['粮']==='number'&&ck['粮']<40){cat='lack';key='';}
+  }
+  if(!cat){
+    const cal=VH.up?calNow():null;
+    if(cal){
+      const st=VH.homes?farmStageCal(cal.day%360):null;
+      const fk=st==='wheat_g'||st==='corn_g'?'生长':(st==='wheat_r'||st==='corn_r'?'收获':(st==='stubble'?'茬':'闲'));
+      if(VTOPIC.farm[fk]){cat='farm';key=fk;}
+      else{cat='seas';key=cal.SEAS;}
+    }
+  }
+  if(!cat)return null;
+  /* 户覆盖优先，通用兜底——两池合并（户腔调在前，通用内容在后），浅池也有轮换空间 */
+  let pool=null;
+  const per=VTOPIC.per[nm];
+  const perPool=per?((cat==='built')?(per[key]||null):(per[key]||null)):null;
+  const genPool=(cat==='built')?[VTOPIC.built[key]]:((cat==='lack')?VTOPIC.lack:(VTOPIC[cat]&&VTOPIC[cat][key])||null);
+  pool=(perPool&&perPool.length)?perPool.concat(perPool,genPool||[]):(genPool&&genPool.length?genPool:null);   /* 户句×2：腔调占2/3概率，通用补轮换——满仓粮荒时多半说「我叫满仓可仓里不满」而不是通用愁 */
+  if(!pool||!pool.length)return null;
+  /* 半仙特例：话=村历宜忌；秋生特例：梆子打底 */
+  const h=(nm.charCodeAt(0)*31+nm.charCodeAt(nm.length-1)*7+key.length*13+Math.floor(tSec/12));
+  let out=pool[h%pool.length];
+  if(nm==='半仙'&&VH.up){const y=yiJi(Math.floor((Date.now()-VH.up)/DAY_MS));out='我看今儿宜'+y.yi+(weather==='snow'?'——雪天另说。':'。');}
+  if(nm==='秋生'&&!out.startsWith('（梆子'))out='（梆子没停）'+out;
+  /* 去重：跟上一句不同才用，同则取池内下一句 */
+  if(lastSay[nm]===out&&pool.length>1){const i=pool.indexOf(out);out=pool[(i+1)%pool.length];}
+  lastSay[nm]=out;
+  return out;
 }
 let bubbleHold=0;   /* v95：回应气泡9秒内不被自动内容覆盖（TA报「打招呼按没反应」的根：bubbleTick每帧自动showBubble顶掉npcOpt的回应） */
 window.__npcNearId=null;
