@@ -176,6 +176,12 @@ addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
+/* v125：启动序列（原40_player顶层——提升边界修复后挪到全部声明之后） */
+rebuild();
+pullWorld().then(()=>{/* 云端的花台、别人搭的一切，叠上来 */});
+pullSigns().then(()=>{rebuild();});pullVillagers().then(()=>{villInitDay=-999;applyVillagers(Date.now());bootMindCheck();});   /* v81：村民数据就位后查今天的心思养没养 */   /* v77：村民宅地回来就开工 */
+pullChronicle();   /* v79：村志 */   // v50：招牌的字从云端回来，重立一遍
+
 /* 声音开关进了抽屉（mMute）——top上不再有♪ */
 requestAnimationFrame(loop);
 const bt=document.getElementById('boot');

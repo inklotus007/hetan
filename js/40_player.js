@@ -29,10 +29,9 @@ function rebuild(){
   railMesh.count=railN;railMesh.instanceMatrix.needsUpdate=true;   // v42：横杆实例数在主循环里累加
   for(const i of signKeys){const y=i%H,tt=(i-y)/H,z=tt%D,x=(tt-z)/D;refreshSign(x,y,z);}   // v50：牌逐块立起来
 }
-rebuild();
-pullWorld().then(()=>{/* 云端的花台、别人搭的一切，叠上来 */});
-pullSigns().then(()=>{rebuild();});pullVillagers().then(()=>{villInitDay=-999;applyVillagers(Date.now());bootMindCheck();});   /* v81：村民数据就位后查今天的心思养没养 */   /* v77：村民宅地回来就开工 */
-pullChronicle();   /* v79：村志 */   // v50：招牌的字从云端回来，重立一遍
+/* v125修：启动序列挪到90_main末尾——函数声明提升是script级的，跨文件不提升。
+   单文件时代pullChronicle(50_talk)靠整段提升在这里可用；拆文件后这里调用=not defined，
+   本文件同步执行中止→isSneak(行233)永不声明→loop每帧TDZ「Cannot access 'isSneak'」（TA截图实锤） */
 
 /* ---- 杨棉 ---- */
 const FLOC=260;
