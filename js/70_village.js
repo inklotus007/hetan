@@ -215,10 +215,17 @@ function furnishHouse(vh,bp){
     if(world[idx(x,y,z)]!==AIR)return;
     world[idx(x,y,z)]=t;villCells[k]='furn';
   };
-  put(1,1,33);            /* 灶：西北角——锅里总得有东西 */
-  /* v115烟囱：灶正上方穿屋顶两格砖，烟从烟囱口排到屋外（TA：烟是排到屋外的，不是屋里） */
+  /* v133家具让门路（TA：门开口朝向不一样，有间屋子被灶挡住了进出不得）——
+     门都在z=0墙、x=doorX（bp3=1其余X/2），门口通路=[doorX,1]和[doorX,2]两格——
+     bp3小屋门在x=1，灶固定(1,1)正好压门内第一步+凳(1,2)堵第二格，门口一列堵死。家具避开。 */
+  const doorX2=bp===3?1:Math.floor(X/2);
+  const onPath=(dx,dz)=>dx===doorX2&&(dz===1||dz===2);
+  let stoveX=1,stoveZ=1;
+  if(onPath(stoveX,stoveZ)){stoveX=X-2;stoveZ=1;}   /* 灶挪对面角 */
+  put(stoveX,stoveZ,33);            /* 灶——锅里总得有东西 */
+  /* v115烟囱：灶正上方穿屋顶两格砖，烟从烟囱口排到屋外（烟囱跟灶走——灶挪了烟囱不跟就排屋里） */
   const wallH2=bp===5?4:(bp===2?4:3);
-  const chimX=vh.plot[0]+1,chimZ=vh.plot[2]+1,chimTop=vh.plot[1]+1+wallH2+3;
+  const chimX=vh.plot[0]+stoveX,chimZ=vh.plot[2]+stoveZ,chimTop=vh.plot[1]+1+wallH2+3;
   for(let dy=wallH2+2;dy<=wallH2+3;dy++){
     const cy=vh.plot[1]+1+dy,ck=chimX+','+cy+','+chimZ;
     if(!inW(chimX,cy,chimZ)||taA.has(ck)||taR.has(ck))continue;
@@ -227,12 +234,14 @@ function furnishHouse(vh,bp){
   }
   smokeSrc=smokeSrc.filter(q=>!(q[0]===chimX&&q[2]===chimZ));
   smokeSrc.push([chimX,chimTop,chimZ]);
-  put(X-2,Z-2,23);        /* 床：东南角贴墙 */
+  put(X-2,Z-2,23);        /* 床：东南角贴墙（z=Z-2不靠门墙——永远不挡门） */
   put(1,Z-2,24);          /* 柜：东北角 */
   put(Math.floor(X/2),Z-3,21);   /* 桌：中部 */
-  put(Math.floor(X/2)-1,Z-3,18); /* 凳 */
+  let bX=Math.floor(X/2)-1,bZ=Z-3;
+  if(onPath(bX,bZ))bX=bX===doorX2?bX-1:bX+1;   /* 凳让门路：挪离门口列 */
+  put(bX,bZ,18); /* 凳 */
   if(bp===4||bp===5){put(Math.floor(X/2)+1,Z-3,18);put(X-3,1,21);}   /* 大户：双凳+边桌 */
-  console.log('v113：'+(vh.name||'')+'家屋内陈设齐了——床灶柜桌凳');
+  console.log('v133：'+(vh.name||'')+'家屋内陈设齐了——床灶柜桌凳（门路x='+doorX2+'让开）');
 }
 function fixDoorway(vh,bp){
   const[taA,taR]=taSets();

@@ -615,11 +615,19 @@ const AU=(function(){
     const g=ctx.createGain();g.gain.setValueAtTime(Math.min(0.4,0.1+v*0.012),now);g.gain.exponentialRampToValueAtTime(0.01,now+0.09);
     src.connect(f);f.connect(g);g.connect(master);src.start(now);
   }
-  function step(){
+  function step(t){   /* v133脚步分层（TA：所有声音都一样，下雪踩地该有积雪声）——按脚下材质+天气：雪=闷噗、石=脆、木=空、土路=闷、草=原声 */
     if(!ensure())return;const now=ctx.currentTime;
-    const src=ctx.createBufferSource();src.buffer=noiseBuf(0.05);
-    const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=500;f.Q.value=0.8;
-    const g=ctx.createGain();g.gain.setValueAtTime(0.07,now);g.gain.exponentialRampToValueAtTime(0.005,now+0.05);
+    const snow=(t==='snow');
+    const src=ctx.createBufferSource();src.buffer=noiseBuf(snow?0.09:0.05);
+    const f=ctx.createBiquadFilter();
+    if(snow){f.type='lowpass';f.frequency.value=300;}
+    else if(t==='stone'){f.type='bandpass';f.frequency.value=950;f.Q.value=1.2;}
+    else if(t==='wood'){f.type='bandpass';f.frequency.value=640;f.Q.value=1;}
+    else if(t==='path'){f.type='lowpass';f.frequency.value=380;}
+    else{f.type='bandpass';f.frequency.value=500;f.Q.value=0.8;}
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(snow?0.1:0.07,now);
+    g.gain.exponentialRampToValueAtTime(0.005,now+(snow?0.08:0.05));
     src.connect(f);f.connect(g);g.connect(master);src.start(now);
   }
   function click(){

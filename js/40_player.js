@@ -139,11 +139,19 @@ function physics(dt){
   if(!wasGround&&p.ground)AU.land(-preVy);
   if(p.ground&&Math.hypot(p.vx,p.vz)>1.2){
     _stepT+=dt;
-    if(_stepT>0.34){_stepT=0;AU.step();}
+    if(_stepT>0.34){_stepT=0;AU.step((typeof weather!=='undefined'&&weather==='snow')?'snow':stepSurface());}
   }else _stepT=0.2;
   if(p.y<-20)spawn();
 }
 let _stepT=0.2;
+function stepSurface(){   /* v133：脚下方块材质——粗分类给脚步声 */
+  const bx=Math.floor(p.x),bz=Math.floor(p.z);
+  const t=get(bx,Math.floor(p.y-0.15),bz);
+  if(t===11||t===12||t===13)return 'path';
+  if(t===2||t===3||t===8||t===26)return 'stone';
+  if(t===5||t===9)return 'wood';
+  return 'grass';
+}
 
 /* ================= 视线（体素DDA） ================= */
 function lookDir(){
