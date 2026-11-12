@@ -431,13 +431,20 @@ function buildStreetLamps(){
 let lampsBuilt=false;
 /* ===== v111农业与营生家什（TA：账上的粮要长在地里，打鱼的家里该有渔网） ===== */
 let farmCells=null,farmStageCur=null,farmBuilt=false,binCells={},binLevels={};
-const FARM_STAGE=[[242,25,'wheat_y'],[26,104,'wheat_g'],[105,119,'wheat_r'],[120,122,'stubble'],[123,125,null],[126,222,'corn_g'],[223,237,'corn_r'],[238,239,'stubble'],[240,241,null]];
-function farmStageCal(d){
-  for(let i=0;i<FARM_STAGE.length;i++){const seg=FARM_STAGE[i];
-    if(seg[0]<=seg[1]){if(d>=seg[0]&&d<=seg[1])return seg[2];}
-    else{if(d>=seg[0]||d<=seg[1])return seg[2];}
-  }
+const FARM_STAGE=[[242,25,'wheat_y'],[26,104,'wheat_g'],[105,119,'wheat_r'],[120,122,'stubble'],[123,125,null],[126,222,'corn_g'],[223,237,'corn_r'],[238,239,'stubble'],[240,241,null]];   /* v131停用（旧游戏日表）——现实历见farmStageReal */
+function farmStageReal(){   /* v131：农时挂现实节气（Townsmen季节策略——冬季停产囤粮；v127两套历的割裂一并修）。豫北冬麦-玉米轮作：麦6月收→玉米夏播→9月底收→10月播冬麦→苗在雪下越冬。返回值集与旧表一致（消费点零改动） */
+  const now=new Date(), md=(now.getMonth()+1)*100+now.getDate();
+  if(md>=601&&md<=615)return 'wheat_r';    /* 芒种前后麦熟 */
+  if(md>=616&&md<=625)return 'stubble';    /* 麦收整地+播玉米（种子袋出现） */
+  if(md>=626&&md<=915)return 'corn_g';
+  if(md>=916&&md<=930)return 'corn_r';     /* 秋分前后秋收 */
+  if(md>=1001&&md<=1105)return 'stubble';  /* 茬+播冬麦（10/20-11/5种子袋） */
+  if(md>=1106)return 'wheat_y';            /* 冬麦苗（雪下越冬） */
+  if(md<=531)return 'wheat_g';
   return null;
+}
+function farmStageCal(d){   /* v131：参数d废弃（兼容旧调用点），走现实历 */
+  return farmStageReal();
 }
 function findFarmPatch(cx,cz){
   const[taA,taR]=taSets();
@@ -800,6 +807,24 @@ function executeJudgePlans(){
       acksOut.push({id:p.id,ok:true,n:n,why:'集市粜粮'+n+'石得钱'+gain+(hasMill?'（磨坊成面价1.2）':'')+'（库粮余'+MINDS.cunKu['粮']+'）',day:day});
       try{tickCunKuBags();}catch(e){}
       console.log('v129：粜粮'+n+'→钱'+gain+(hasMill?'（磨坊价）':''));
+      continue;
+    }
+    /* v131籴粮（买粮——粮荒闭环的最后一块：Townsmen冬季卖木买粮的河滩版）：钱→粮，1.2钱一石（比粜贵0.4，商贩赚差价）。跟服务器judge_build过账同价同账 */
+    if(p.type==='籴粮'){
+      const want=Math.max(0,Math.floor(+p.amount||0));
+      const money=MINDS.cunKu?Math.floor(MINDS.cunKu['钱']||0):0;
+      const n=Math.min(want,Math.floor(money/1.2));
+      if(n<=0){
+        acks[p.id]=1;
+        acksOut.push({id:p.id,ok:false,why:want<=0?'没说要买多少':'钱不够——一石粮1.2钱',day:day});
+        continue;
+      }
+      const cost=Math.round(n*1.2);
+      MINDS.cunKu['钱']-=cost;MINDS.cunKu['粮']=(MINDS.cunKu['粮']||0)+n;
+      acks[p.id]=1;
+      acksOut.push({id:p.id,ok:true,n:n,why:'籴粮'+n+'石花'+cost+'钱（库粮'+MINDS.cunKu['粮']+'）',day:day});
+      try{tickCunKuBags();}catch(e){}
+      console.log('v131：籴粮'+n+'←钱'+cost);
       continue;
     }
     /* v119扣库：客户端校验是主防线（服务器judge_build过账兜底）——同批内本地扣，第二件按扣过的库验 */

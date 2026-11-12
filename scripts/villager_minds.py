@@ -55,15 +55,25 @@ HUNGRY_TXT = ('【断顿】%s——这两天正是揭不开锅的难处，心事
 # v119经营：村库——判定者从「提装饰」升到「做经营」（TA：让大模型像玩经营建造游戏一样发展）
 CK = M.get('cunKu') or {}
 # v122营生段：种子+农时——判定者能算计农事（种地得有种子；夏播扣2秋收+760/800）
-DD = day % 360 if isinstance(day, int) else 0
+# v131农时tip挂现实历（与farmStageReal/judge_build的FARM_WIN同源——豫北冬麦-玉米轮作）
+import datetime as _dt
+_md = _dt.date.today().month * 100 + _dt.date.today().day
+def _days_to(md2):
+    today = _dt.date.today()
+    tgt = _dt.date(today.year, md2 // 100, md2 % 100)
+    if tgt < today: tgt = tgt.replace(year=today.year + 1)
+    return (tgt - today).days
 FARM_TIP = ''
-if 25 <= DD < 122: FARM_TIP = '田里冬麦在长，麦收（+760粮留种2）在第%d天后' % (122 - DD)
-elif 122 <= DD < 126: FARM_TIP = '夏播窗口——玉米要扣2份种子，不够播不全'
-elif 126 <= DD < 238: FARM_TIP = '玉米在长，秋收（+800粮留种2）在第%d天后' % (238 - DD)
-elif 238 <= DD < 240: FARM_TIP = '秋收窗口——粮要进仓'
-else: FARM_TIP = '冬麦播种窗口——扣2份种子'
+if 601 <= _md <= 615: FARM_TIP = '麦熟！收成窗口开着（+760粮留种2）——就在这几日'
+elif 616 <= _md <= 625: FARM_TIP = '夏播窗口——玉米要扣2份种子，不够播不全'
+elif 626 <= _md <= 915: FARM_TIP = '玉米在长，秋收（+800粮留种2）在%d天后' % _days_to(916)
+elif 916 <= _md <= 930: FARM_TIP = '秋收窗口——粮要进仓，入冬前村库粮要备过120，冬天田里不长粮'
+elif 1020 <= _md <= 1105: FARM_TIP = '冬麦播种窗口——扣2份种子，雪底下越冬'
+elif 1106 <= _md <= 1231: FARM_TIP = '冬麦在雪下越冬，地里没活了——农具修修，冬闲备开春'
+elif 101 <= _md <= 228: FARM_TIP = '冬闲。麦苗在雪底下——修农具、打井、攒料，等开春'
+elif 229 <= _md <= 531: FARM_TIP = '麦子返青了，麦收（+760粮留种2）在%d天后' % _days_to(601)
 SAT_TXT = ('【村里的心气】满意度%d/130：%s。' % ((M.get('satisfy') or {}).get('score', 0), '、'.join((M.get('satisfy') or {}).get('lines', [])) or '初来乍到')) + (('低于70，村里人有怨言——想想办法：粮紧就先别动工攒粮，没水井赶紧打一口（石15木4），房没盖齐催催进度，村里缺景致可以栽树立灯柱。') if (M.get('satisfy') or {}).get('score', 100) < 70 else '')
-CK_TXT = ('【村库】钱%s 粮%s 木%s 石%s 种子%s份。你是管村库的人——每笔工都扣库：凉亭木12石6／水井石15木4／灯柱石4／石凳石3／铁匠铺木30石20钱15（建成全村盖房快三成，最值）；磨坊木25石15钱10（建成粜粮价0.8涨到1.2——先磨再卖划算）；渔棚木15石5钱5（建成每天进粮+2）；鸡棚木10钱5（建成每天进钱+1）；花圃树不要钱。每天进项：木+2石+1粮+3。农时：%s。种子链：两村每季播种各扣1份（共2），收成各留1份——种子不够来年减产，宁可少建也要留种。库见底村子停摆——先建有用的，不够就攒，别透支。粜粮：集市收粮1粮=0.8钱（粮换钱的唯一通道），提{type:粜粮,amount:卖几石}——粮留40口以下的部分不让卖；秋收后粮多，粜点换钱建东西正合适' % (CK.get('钱', 30), CK.get('粮', 120), CK.get('木', 60), CK.get('石', 50), CK.get('种子', 0), FARM_TIP))
+CK_TXT = ('【村库】钱%s 粮%s 木%s 石%s 种子%s份。你是管村库的人——每笔工都扣库：凉亭木12石6／水井石15木4／灯柱石4／石凳石3／铁匠铺木30石20钱15（建成全村盖房快三成，最值）；磨坊木25石15钱10（建成粜粮价0.8涨到1.2——先磨再卖划算）；渔棚木15石5钱5（建成每天进粮+2）；鸡棚木10钱5（建成每天进钱+1）；花圃树不要钱。每天进项：木+2石+1粮+3。农时：%s。种子链：两村每季播种各扣1份（共2），收成各留1份——种子不够来年减产，宁可少建也要留种。库见底村子停摆——先建有用的，不够就攒，别透支。粜粮：集市收粮1粮=0.8钱，提{type:粜粮,amount:卖几石}——粮留40口以下的部分不让卖；磨坊建成后涨到1.2。籴粮：1.2钱买一石粮（比粜贵——商贩赚差价），提{type:籴粮,amount:买几石}——缺粮时的法子。秋收后粮多粜点换钱，入冬前粮紧就籴点补上' % (CK.get('钱', 30), CK.get('粮', 120), CK.get('木', 60), CK.get('石', 50), CK.get('种子', 0), FARM_TIP))
 CK_TXT = CK_TXT + SAT_TXT   # v130满意度进判定者视野
 # v112：建设回音与已有设施（judge_build.py维护）
 BUILT = M.get('built_summary') or []
@@ -135,7 +145,7 @@ def parse(txt):
                                'qty': max(1, min(20, float(x.get('qty') or 1))),
                                'note': str(x['note'])[:60]})
     plans = []
-    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井', '铁匠铺', '粜粮', '磨坊', '渔棚', '鸡棚'}  # v130三座功能建筑进白名单
+    TYPES_OK = {'凉亭', '花圃', '灯柱', '石凳', '树', '水井', '铁匠铺', '粜粮', '磨坊', '渔棚', '鸡棚', '籴粮'}  # v130三座功能建筑进白名单
     for x in (d.get('build_plans') or [])[:4]:
         if isinstance(x, dict) and x.get('type') in TYPES_OK:
             near = str(x.get('near') or 'center')
@@ -143,7 +153,7 @@ def parse(txt):
                 pl1 = {'id': 'b%03d' % (len(plans) + 1),
                               'action': 'build', 'type': str(x['type'])[:6],
                               'near': near[:20], 'note': str(x.get('note') or '')[:20]}
-                if x['type'] == '粜粮':
+                if x['type'] in ('粜粮', '籴粮'):
                     try: pl1['amount'] = max(0, min(400, int(float(x.get('amount') or 0))))
                     except Exception: pl1['amount'] = 0   # v126粜粮带数量（卖几石），非法给0客户端会拒
                 plans.append(pl1)

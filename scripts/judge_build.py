@@ -77,39 +77,68 @@ for k2 in CK0:
         ck[k2] = CK0[k2]
 # v122农事账：种子→田→粮真流转（TA：种地得有种子得有锄头）——日历驱动，lastFarmDay防重
 # 农时（FARM_STAGE同源）：播玉米123-125／麦收120-122／播冬麦240-242／秋收238-239。两村各一份种子播一块田
-dd = day % 360 if isinstance(day, int) else 0
-if ck.get('lastFarmDay') != day and isinstance(day, int):
-    last = ck.get('lastFarmDay')
-    lastd = (last % 360) if isinstance(last, int) else None
-    if lastd is not None:
-        crossed = lambda win: any((lastd < w <= dd) or (dd < lastd and (w > lastd or w <= dd)) for w in win)
-        # 农事事件（首日lastd=None只记锚不跑——否则开村当天全年农时全触发白得1560粮）
-        if crossed([123]):   # 播玉米：两村各种一块田=扣2份种子
-            cost = 2
-            if ck.get('种子', 0) >= cost:
-                ck['种子'] -= cost
-                new_feedback.append({'ok': True, 'note': '夏播', 'why': '两村都播上了——种子扣2份，田里见苗', 'day': day})
-            else:
-                new_feedback.append({'ok': False, 'note': '夏播', 'why': '种子只剩%s份，播不全两村——秋后留种要算计' % ck.get('种子', 0), 'day': day})
-                changed = True
-        if crossed([240]):   # 播冬麦：扣2份
-            cost = 2
-            if ck.get('种子', 0) >= cost:
-                ck['种子'] -= cost
-            else:
-                new_feedback.append({'ok': False, 'note': '秋播', 'why': '冬麦种子不够——来年夏收要减', 'day': day})
-                changed = True
-        if crossed([122]):   # 麦收：两村各+380粮+1份留种
-            ck['粮'] = ck.get('粮', 0) + 760
-            ck['种子'] = ck.get('种子', 0) + 2
-            new_feedback.append({'ok': True, 'note': '麦收', 'why': '两村麦子进仓+760，留种2份', 'day': day})
+# v131农时挂现实历（前端farmStageReal同源——豫北冬麦-玉米轮作）：进窗触发一次（lastFarmMd防重）。
+# 冬季（12-2月）无农事——田里只有越冬麦苗，囤粮策略压给秋天。
+NOWMD = __import__('datetime').date.today().month * 100 + __import__('datetime').date.today().day
+FARM_WIN = [(601, 615, '麦收'), (616, 625, '播玉米'), (916, 930, '秋收'), (1020, 1105, '播冬麦')]
+last_md = ck.get('lastFarmMd') or 0
+
+def _in_win(md, w0, w1):
+    return w0 <= md <= w1
+
+for w0, w1, name in FARM_WIN:
+    if not (_in_win(NOWMD, w0, w1) and not _in_win(last_md, w0, w1)):
+        continue
+    if name == '播玉米':
+        cost = 2
+        if ck.get('种子', 0) >= cost:
+            ck['种子'] -= cost
+            new_feedback.append({'ok': True, 'note': '夏播', 'why': '麦茬地整好了，玉米种下地——种子扣2份', 'day': day})
+        else:
+            new_feedback.append({'ok': False, 'note': '夏播', 'why': '种子不够，玉米播不下去——来年减产', 'day': day})
             changed = True
-        if crossed([239]):   # 秋收（玉米）
-            ck['粮'] = ck.get('粮', 0) + 800
-            ck['种子'] = ck.get('种子', 0) + 2
-            new_feedback.append({'ok': True, 'note': '秋收', 'why': '两村玉米进仓+800，留种2份', 'day': day})
+    elif name == '麦收':
+        ck['粮'] = ck.get('粮', 0) + 760
+        ck['种子'] = ck.get('种子', 0) + 2
+        new_feedback.append({'ok': True, 'note': '麦收', 'why': '麦子进场，粮+760，留种2份', 'day': day})
+    elif name == '秋收':
+        ck['粮'] = ck.get('粮', 0) + 800
+        ck['种子'] = ck.get('种子', 0) + 2
+        new_feedback.append({'ok': True, 'note': '秋收', 'why': '玉米收了，粮+800，留种2份——入冬前粮要备足，冬天田里不长粮', 'day': day})
+    elif name == '播冬麦':
+        cost = 2
+        if ck.get('种子', 0) >= cost:
+            ck['种子'] -= cost
+            new_feedback.append({'ok': True, 'note': '播冬麦', 'why': '冬麦下地，雪底下越冬——种子扣2份', 'day': day})
+        else:
+            new_feedback.append({'ok': False, 'note': '播冬麦', 'why': '种子不够——明年麦子悬了', 'day': day})
             changed = True
-    ck['lastFarmDay'] = day   # 无条件记锚（首日只记不跑，之后靠crossed推农时）
+    changed = True
+    break
+ck['lastFarmMd'] = NOWMD if any(_in_win(NOWMD, w0, w1) for w0, w1, _ in FARM_WIN) else ck.get('lastFarmMd', 0)
+
+# v131轻事件（Townsmen灾害的河滩轻版）：事件本地roll（day种子确定性——同天重跑同结果），应对交判定者
+import hashlib
+_seed = int(hashlib.md5(str(day).encode()).hexdigest()[:8], 16) % 10000
+_ev = None
+done_types_ev = [d.get('type') for d in (M.get('build_done') or [])]
+m_now = __import__('datetime').date.today().month
+if _seed % 100 < 8 and 60 <= g0:
+    _ev = ('霉变', '连阴雨，仓里霉了一批——粮-15', {'粮': -15})
+elif _seed % 100 < 12 and '鸡棚' in done_types_ev:
+    _ev = ('黄鼠狼', '夜里黄鼠狼叼走两只鸡——钱-3', {'钱': -3})
+elif _seed % 100 < 15 and m_now in (7, 8) and '渔棚' in done_types_ev:
+    _ev = ('河汛', '河汛，两天没下成网——粮-2', {'粮': -2})
+elif _seed % 100 < 10 and '鸡棚' in done_types_ev:
+    _ev = ('添窝', '老母鸡抱出一窝崽——粮+3', {'粮': 3})
+if _ev and ck.get('lastEvDay') != day:
+    ename, ewhy, eeff = _ev
+    for k4, v4 in eeff.items():
+        ck[k4] = max(0, ck.get(k4, 0) + v4)
+    ck['lastEvDay'] = day
+    new_feedback.append({'ok': eeff.get('粮', 0) >= 0 and eeff.get('钱', 0) >= 0, 'note': ename, 'why': ewhy, 'day': day})
+    changed = True
+    print('事件：', ename)   # 无条件记锚（首日只记不跑，之后靠crossed推农时）
 
 # 每天进项（游戏日变了才加）：村里人日常拾荒+田里拾穗——慢进快出，决策才有重量
 if ck.get('lastDay') != day and isinstance(day, int):
@@ -163,7 +192,15 @@ for p in plans:
         ok = ack.get('ok', False)
         why = (ack.get('why') or ('建成：' + (p.get('note') or '')))[:60]
         # v119扣账：建成才扣——客户端校验是主防线（同批本地扣），这里兜底防透支
-        if ok and p.get('type') == '粜粮':
+        if ok and p.get('type') == '籴粮':
+            # v131籴粮兜底：钱出粮进（1.2/石，与前端同价同账）
+            n0 = ack.get('n') if isinstance(ack.get('n'), int) else 0
+            cost0 = round(n0 * 1.2)
+            if n0 > 0 and ck.get('钱', 0) >= cost0:
+                ck['钱'] = ck.get('钱', 0) - cost0
+                ck['粮'] = ck.get('粮', 0) + n0
+                new_feedback.append({'ok': True, 'note': '籴粮', 'why': ('籴粮%d花%d钱（库粮%s）' % (n0, cost0, ck.get('粮', 0)))[:60], 'day': day})
+        elif ok and p.get('type') == '粜粮':
             # v126粜粮（TA：金钱↔粮通道）：过账方向与build相反——粮出钱进。
             # 集市价1粮=0.8钱，与前端60_judge.js的粜粮分支同价同账（两处一致，注释互指）。
             # 客户端已实际扣过；这里以客户端回执的数字为准重算兜底（防本地篡改透支粮荒线）
