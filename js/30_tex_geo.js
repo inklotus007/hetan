@@ -72,6 +72,20 @@ function makeTex(kind){
     g.fillStyle='#7a5b3a';g.fillRect(38,24,3,30);   /* 镰柄 */
     g.fillStyle='#b0b0b0';g.fillRect(38,18,14,4);   /* 镰刃 */
     g.fillStyle='#5a4a30';g.fillRect(4,50,56,4);
+  }else if(kind==='board_pile'){   /* v132木板堆：几层木板错缝码放 */
+    for(let r=0;r<4;r++){const y0=50-r*11;
+      g.fillStyle=r%2?'#a8865a':'#9a784e';g.fillRect(4,y0,56,9);
+      g.strokeStyle='#6a5236';g.strokeRect(4.5,y0+.5,55,8);
+      g.strokeStyle='#7a6242';g.beginPath();g.moveTo(20+r*6,y0);g.lineTo(20+r*6,y0+9);g.moveTo(40-r*4,y0);g.lineTo(40-r*4,y0+9);g.stroke();}
+    g.fillStyle='#5a4a30';g.fillRect(2,2,60,6);
+  }else if(kind==='cloth_roll'){   /* v132布卷：叠布+布纹 */
+    g.fillStyle='#b85a5a';g.fillRect(6,30,52,28);
+    g.fillStyle='#a84e4e';g.fillRect(6,30,52,6);
+    g.fillStyle='#c86a6a';g.fillRect(10,40,44,12);
+    g.strokeStyle='#8a4444';g.lineWidth=1;
+    for(let x=8;x<58;x+=4){g.beginPath();g.moveTo(x,40);g.lineTo(x,52);g.stroke();}
+    g.fillStyle='#d8c8a8';g.fillRect(6,10,52,16);
+    g.strokeStyle='#a89878';for(let y=12;y<26;y+=4){g.beginPath();g.moveTo(6,y);g.lineTo(58,y);g.stroke();}
   }
   const dot=(n,style,s)=>{g.fillStyle=style;for(let i=0;i<n;i++)g.fillRect(Math.random()*63|0,Math.random()*63|0,s||2,s||2);};
   if(kind==='grass_top'){

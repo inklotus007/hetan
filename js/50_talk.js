@@ -550,6 +550,7 @@ function moodTilt(tSec,npc){   /* v88.1：心情进脖颈——乐的抬头频�
 let mindDispatched=false;
 function bootMindCheck(){
   if(mindDispatched)return;mindDispatched=true;
+  loadBag();   /* v132：行囊上云 */
   if(!VH||!VH.up)return;
   if(!NPC_TOKEN||rawMode){   /* v84：游客也拉行程数据（同源副本只读）——不dispatch */
     ghSame('villagers_memory.json').then(({data})=>{if(data&&data.minds)MINDS=data;}).catch(()=>{});
@@ -643,3 +644,103 @@ function sendTalk(){
     toast('话捎到了——'+talkNpc+'想好了才答，一分钟上下');
   }).catch(()=>toast('话没捎到——再试一次'));
 }
+/* ===== v132玩家经济：背包+村库存取+集市买卖（TA：让玩家参与进去——做任务买卖交易，物品实体化，背包系统） =====
+   背包backpack.json前端直写上云（key:'ta'单人档）；村库侧账走trade_queue.json→workflow过账（乐观更新+权威收敛）——
+   TA卖木板村库出钱、买粮钱进村库——玩家经济和判定者经济是同一本账的两只手，判定者feedback里会看到稀客的进出。 */
+let BACKPACK={grain:0,board:0,cloth:0,seed:0,money:10},bagReady=false;
+const BAGKEY=['grain','board','cloth','seed'],BAGNAME={grain:'粮',board:'木板',cloth:'布',seed:'种子'};
+function loadBag(){
+  if(bagReady||!NPC_TOKEN)return;
+  ghGet('backpack.json').then(({data})=>{
+    if(data&&data.ta)BACKPACK=Object.assign({grain:0,board:0,cloth:0,seed:0,money:10},data.ta);
+    bagReady=true;
+    const o=document.getElementById('bagPanel');if(o&&o.style.display==='flex')renderBag();
+  }).catch(()=>{bagReady=true;});
+}
+function saveBag(){
+  if(!NPC_TOKEN)return;
+  ghGet('backpack.json').then(({sha,data})=>{
+    const d=data&&typeof data==='object'&&!Array.isArray(data)?data:{};
+    d.ta=BACKPACK;
+    return ghPut('backpack.json',d,sha,'行囊');
+  }).catch(()=>{});
+}
+function nearCunku(){
+  for(const ci in cunkuSlots){const s0=cunkuSlots[ci][0];
+    if(s0){const dx=p.x-s0[0],dz=p.z-s0[1];if(dx*dx+dz*dz<100)return true;}}
+  return false;
+}
+function nearStall(){
+  for(const st of MKT_STALLS){const dx=p.x-st.x,dz=p.z-st.z;if(dx*dx+dz*dz<49)return st;}
+  return null;
+}
+function pushTrade(kind,goods,n,note){   /* 村库侧账：交易请求进队列，workflow过账（权威） */
+  if(!NPC_TOKEN)return;
+  const item={id:'x'+Date.now()+Math.random().toString(36).slice(2,6),kind:kind,goods:goods,n:n,note:note,t:Date.now()};
+  ghGet('trade_queue.json').then(({sha,data})=>{
+    const q=Array.isArray(data)?data:[];
+    q.push(item);
+    return ghPut('trade_queue.json',q,sha,'买卖：'+note);
+  }).catch(()=>{});
+}
+function bagXfer(good,dir){   /* dir 1=村库→背包（取） -1=背包→村库（存）——近村库才可，乐观更新+queue报账 */
+  if(!nearCunku()){toast('走近公仓才能存取');return;}
+  const ck=MINDS&&MINDS.cunKu;if(!ck)return;
+  if(dir>0){
+    if((ck[good]||0)<1){toast('村库没有'+BAGNAME[good]+'了');return;}
+    ck[good]-=1;BACKPACK[BAGKEY.includes(good)?({grain:'grain',board:'board',cloth:'cloth',seed:'seed'})[good]:good]++;
+  }else{
+    const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[good];
+    if((BACKPACK[bk]||0)<1){toast('行囊里没有'+BAGNAME[good]);return;}
+    BACKPACK[bk]--;ck[good]=(ck[good]||0)+1;
+  }
+  pushTrade('xfer',good,dir, (dir>0?'稀客从村库取1':'稀客往村库存1')+BAGNAME[good]);
+  saveBag();renderBag();
+  try{tickCunKuBags();}catch(e){}
+  toast((dir>0?'取了1':'存了1')+BAGNAME[good]);
+}
+function trade(kind,good,n,unit){   /* kind buy=TA买 sell=TA卖——价：买粮2/买种子1/卖木板1.5/卖布3 */
+  const st=nearStall();
+  if(!st){toast('走近集市摊才能买卖');return;}
+  const ck=MINDS&&MINDS.cunKu;if(!ck)return;
+  if(kind==='buy'){
+    const cost=Math.round(n*unit);
+    if(BACKPACK.money<cost){toast('钱不够——身上'+BACKPACK.money+'钱');return;}
+    if((ck[good]||0)<n){toast('摊上没那么多'+BAGNAME[good]);return;}
+    BACKPACK.money-=cost;BACKPACK[{grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[good]]+=n;
+    ck[good]-=n;ck['钱']=(ck['钱']||0)+cost;
+    pushTrade('buy',good,n,'稀客买'+n+BAGNAME[good]+'花'+cost+'钱（钱进村库）');
+    toast('买了'+n+'份'+BAGNAME[good]+'——花了'+cost+'钱');
+  }else{
+    const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[good];
+    if((BACKPACK[bk]||0)<n){toast('行囊里没有那么多'+BAGNAME[good]);return;}
+    const gain=Math.round(n*unit);
+    if((ck['钱']||0)<gain){toast('村里一时拿不出这么多钱');return;}
+    BACKPACK[bk]-=n;BACKPACK.money+=gain;
+    ck[good]=(ck[good]||0)+n;ck['钱']-=gain;
+    pushTrade('sell',good,n,'稀客卖'+n+BAGNAME[good]+'得'+gain+'钱（村库出钱收货）');
+    toast('卖了'+n+'份'+BAGNAME[good]+'——得了'+gain+'钱');
+  }
+  saveBag();renderBag();
+  try{tickCunKuBags();}catch(e){}
+}
+function renderBag(){
+  const o=document.getElementById('bagPanel');if(!o)return;
+  const nc=nearCunku(),ns=nearStall();
+  const btn=(en,label,fn)=>'<button onclick="'+fn+'" '+(en?'':'disabled style="opacity:.4"')+' style="background:rgba(255,252,244,.95);color:#3a2c1e;border:2px solid #8a6a48;border-radius:8px;padding:5px 9px;font-size:13px;font-family:inherit;margin:2px">'+label+'</button>';
+  o.innerHTML='<div style="background:rgba(40,30,18,.94);border:2px solid #8a6a48;border-radius:12px;padding:12px 14px;max-width:92vw;max-height:60vh;overflow:auto">'
+   +'<div style="color:#e8d9b0;font-size:15px;margin-bottom:6px">行囊——钱'+BACKPACK.money+' ｜ 粮'+BACKPACK.grain+' 木板'+BACKPACK.board+' 布'+BACKPACK.cloth+' 种子'+BACKPACK.seed+'</div>'
+   +'<div style="color:#c8b488;font-size:12px;margin-bottom:4px">'+(nc?'村库就在跟前——存取都行':'走近公仓才能存取村库')+'</div>'
+   +['grain','board','cloth','seed'].map(g=>btn(nc,'取'+BAGNAME[g],'bagXfer(\''+g+'\',1)')+btn(nc,'存'+BAGNAME[g],'bagXfer(\''+g+'\',-1)')).join('')
+   +'<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">'+(ns?'集市摊前——（'+(ns.owner||'')+'的摊）：买粮2钱/石 买种子1钱 卖木板1.5钱/块 卖布3钱/卷':'走近集市摊才能买卖')+'</div>'
+   +btn(ns,'买粮','trade(\'buy\',\'grain\',1,2)')+btn(ns,'买种子','trade(\'buy\',\'seed\',1,1)')
+   +btn(ns,'卖木板','trade(\'sell\',\'board\',1,1.5)')+btn(ns,'卖布','trade(\'sell\',\'cloth\',1,3)')
+   +'<div style="margin-top:6px">'+btn(true,'合上行囊','closeBag()')+'</div></div>';
+}
+function openBag(){
+  let o=document.getElementById('bagPanel');
+  if(!o){o=document.createElement('div');o.id='bagPanel';o.style.cssText='display:none;position:fixed;top:52px;right:10px;z-index:80;';document.body.appendChild(o);}
+  o.style.display='flex';renderBag();
+}
+function closeBag(){const o=document.getElementById('bagPanel');if(o)o.style.display='none';}
+setInterval(function(){const o=document.getElementById('bagPanel');if(o&&o.style.display==='flex')renderBag();},3000);   /* 走动时面板状态跟着近/远刷新 */

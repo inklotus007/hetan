@@ -705,6 +705,18 @@ function judgeCellsFor(type){
     for(let dx=0;dx<2;dx++)c.push([dx,2,dx,10]);
     for(const[px,pz]of[[2,0],[2,1],[2,2],[0,2],[1,2]])c.push([px,1,pz,19]);   /* 篱笆围一圈 */
   }
+  else if(type==='锯木坊'){   /* v132生产链一层：木架+锯台+圆锯——每天木-3→木板+2（木20石10钱5） */
+    for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)c.push([dx,1,dz,5]);
+    for(const[px,pz]of[[0,0],[1,1]]){c.push([px,2,pz,5]);c.push([px,3,pz,5]);}
+    for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)c.push([dx,4,dz,10]);
+    c.push([2,1,0,54]);c.push([2,2,0,55]);   /* 锯台：工具架+木板台面 */
+  }
+  else if(type==='织坊'){   /* v132生产链一层：织机棚——每天布+1（木15钱10，秀兰翠娥的营生建筑化） */
+    for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)c.push([dx,1,dz,5]);
+    for(const[px,pz]of[[0,0],[1,0],[0,1],[1,1]]){c.push([px,2,pz,5]);}
+    for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)c.push([dx,3,dz,10]);
+    c.push([1,1,1,56]);c.push([1,2,1,21]);   /* 织机：布卷+木框 */
+  }
   return c;
 }
 let judgeAckT=null;
@@ -828,7 +840,7 @@ function executeJudgePlans(){
       continue;
     }
     /* v119扣库：客户端校验是主防线（服务器judge_build过账兜底）——同批内本地扣，第二件按扣过的库验 */
-    const PRICE={'凉亭':{'木':12,'石':6},'水井':{'石':15,'木':4},'灯柱':{'石':4},'石凳':{'石':3},'铁匠铺':{'木':30,'石':20,'钱':15},'花圃':{},'树':{},'磨坊':{'木':25,'石':15,'钱':10},'渔棚':{'木':15,'石':5,'钱':5},'鸡棚':{'木':10,'钱':5}};   /* v130三座功能建筑 */
+    const PRICE={'凉亭':{'木':12,'石':6},'水井':{'石':15,'木':4},'灯柱':{'石':4},'石凳':{'石':3},'铁匠铺':{'木':30,'石':20,'钱':15},'花圃':{},'树':{},'磨坊':{'木':25,'石':15,'钱':10},'渔棚':{'木':15,'石':5,'钱':5},'鸡棚':{'木':10,'钱':5},'锯木坊':{'木':20,'石':10,'钱':5},'织坊':{'木':15,'钱':10}};   /* v130三座+v132生产链两座 */
     if(MINDS.cunKu){
       const cost=PRICE[p.type]||{};
       const short=Object.keys(cost).filter(k=>(MINDS.cunKu[k]||0)<cost[k]);

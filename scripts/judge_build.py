@@ -155,6 +155,50 @@ if ck.get('lastDay') != day and isinstance(day, int):
 done = M.get('build_done') or []
 feedback = M.get('build_feedback') or []
 
+# ===== v132稀客买卖过账（TA：让玩家参与进去——行囊/买卖）：前端trade_queue.json，这里过账+清空 =====
+# TA卖东西=村库出钱收货；TA买东西=钱进村库粮出库。feedback里记账——判定者知道稀客跟村里做了买卖。
+try:
+    TQ = json.load(open('trade_queue.json'))
+except Exception:
+    TQ = []
+if TQ:
+    px = {'grain': '粮', 'board': '木板', 'cloth': '布', 'seed': '种子'}
+    for it in TQ:
+        kind = (it.get('kind') or '').strip()
+        goods = px.get((it.get('goods') or '').strip())
+        n0 = int(it.get('n') or 0)
+        if not goods or n0 <= 0 or kind not in ('xfer', 'buy', 'sell'):
+            continue
+        if kind == 'xfer':
+            d0 = int(it.get('dir') or 0) if isinstance(it.get('dir'), int) else 0
+            # dir 1=村库→背包（村库-1），-1=背包→村库（村库+1）——note里有方向
+            if '从村库取' in (it.get('note') or ''):
+                ck[goods] = max(0, ck.get(goods, 0) - n0)
+            else:
+                ck[goods] = ck.get(goods, 0) + n0
+            feedback = M.setdefault('build_feedback', [])
+            new_feedback.append({'ok': True, 'note': '稀客' + ('取' if '从村库取' in (it.get('note') or '') else '存'), 'why': (it.get('note') or '')[:50], 'day': day})
+        elif kind == 'buy':   # 稀客买：钱进村库，货出村库
+            if goods in ('粮', '种子'):
+                if ck.get(goods, 0) >= n0:
+                    ck[goods] = ck.get(goods, 0) - n0
+                    ck['钱'] = ck.get('钱', 0) + round(n0 * (2 if goods == '粮' else 1))
+                    new_feedback.append({'ok': True, 'note': '稀客买' + goods, 'why': ('稀客买%d%s，村库+%d钱' % (n0, goods, round(n0 * (2 if goods == '粮' else 1))))[:50], 'day': day})
+            else:   # 稀客从村里买木板/布——村里现在还没产出，兜底不收
+                pass
+        elif kind == 'sell':   # 稀客卖：村库出钱收货
+            price0 = {'木板': 1.5, '布': 3, '粮': 1, '种子': 0.5}.get(goods, 1)
+            cost0 = round(n0 * price0)
+            if ck.get('钱', 0) >= cost0:
+                ck['钱'] = ck.get('钱', 0) - cost0
+                ck[goods] = ck.get(goods, 0) + n0
+                new_feedback.append({'ok': True, 'note': '稀客卖' + goods, 'why': ('稀客卖%d%s，村库出%d钱收货' % (n0, goods, cost0))[:50], 'day': day})
+            else:
+                new_feedback.append({'ok': False, 'note': '稀客卖' + goods, 'why': '村库钱不够，没收下', 'day': day})
+        changed = True
+    json.dump([], open('trade_queue.json', 'w'))
+    print('稀客交易过账：', len(TQ), '笔')
+
 # ===== v130满意度（学Townsmen三桶，河滩版）：需求(粮+水)+欲望(住房/装饰/社区/集市) =====
 # 每天算一次写memory.satisfy——判定者prompt看见、村长报账念、前端气泡怨话读它。
 # 产出联动暂不做（villagerProgress逐天循环用当日值会改写历史——等satisfy有历史存档再说，年轮不被抹）。
