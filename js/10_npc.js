@@ -224,7 +224,7 @@ function walkPOI(seed){
   try{for(const ci of [0,1]){const cc=campCenter(ci);pts.push([cc[0],cc[1]]);}}catch(e){}
   pts.push([MKT_STALLS[0].x+1,MKT_STALLS[0].z+2],[319,342]);
   const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
-  for(const d of bd){if(d.ok!==false&&d.type==='灯柱'&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');const px2=parseFloat(nn[0]),pz2=parseFloat(nn[1]);if(isFinite(px2)&&isFinite(pz2))pts.push([px2+1.5,pz2+1.5]);}}
+  for(const d of bd){if(d.ok!==false&&['灯柱','牌坊','戏台','假山','秋千','影壁','竹丛'].includes(d.type)&&d.near){   /* v136装饰全进漫游兴趣点——建了村民会去看 */const nn=d.near.replace(/[()]/g,'').split(',');const px2=parseFloat(nn[0]),pz2=parseFloat(nn[1]);if(isFinite(px2)&&isFinite(pz2))pts.push([px2+1.5,pz2+1.5]);}}
   return pts.length?pts[seed%pts.length]:null;
 }
 /* v133访问统计（Townsmen：满意度=实际访问满足率，不是静态覆盖）：sched就是访问计划——扫今天全村被排到的地点 */
@@ -241,6 +241,11 @@ function accessPts(){
   if(c.fire1+c.fire2>0)p+=4;
   if(c.well>0)p+=3;
   if(typeof isMarketDay==='function'&&isMarketDay()&&(c.mkt>0||(c.fire1+c.fire2===0&&c.plot===0)))p+=3;
+  /* v136装饰体面分：村里装饰建到三件以上，人心气+2——村子像样了 */
+  const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
+  let deco=0;
+  for(const d of bd){if(['灯柱','牌坊','戏台','假山','秋千','影壁','竹丛'].includes(d.type))deco++;}
+  if(deco>=3)p+=2;
   return p;
 }
 const npcObjsSeedCache={};   /* v84：村民seed缓存（npcs.json拉到后填——chat朝向用同seed才算得出同偏移） */
