@@ -655,6 +655,7 @@ let BACKPACK={grain:0,board:0,cloth:0,seed:0,money:10},bagReady=false;
 const BAGKEY=['grain','board','cloth','seed'],BAGNAME={grain:'粮',board:'木板',cloth:'布',seed:'种子'};
 function loadBag(){
   if(bagReady||!NPC_TOKEN)return;
+  loadTasks();   /* v137任务随行囊一起拉 */
   ghGet('backpack.json').then(({data})=>{
     if(data&&data.ta)BACKPACK=Object.assign({grain:0,board:0,cloth:0,seed:0,money:10},data.ta);
     bagReady=true;
@@ -669,11 +670,7 @@ function saveBag(){
     return ghPut('backpack.json',d,sha,'行囊');
   }).catch(()=>{});
 }
-function nearCunku(){
-  for(const ci in cunkuSlots){const s0=cunkuSlots[ci][0];
-    if(s0){const dx=p.x-s0[0],dz=p.z-s0[1];if(dx*dx+dz*dz<100)return true;}}
-  return false;
-}
+function nearCunku(){return cunkuNear()!==null;}   /* v137：改为cunkuNear包装（ haul任务要分仓） */
 function nearStall(){
   for(const st of MKT_STALLS){const dx=p.x-st.x,dz=p.z-st.z;if(dx*dx+dz*dz<49)return st;}
   return null;
@@ -728,6 +725,71 @@ function trade(kind,good,n,unit){   /* kind buy=TA买 sell=TA卖——价：买�
   saveBag();renderBag();
   try{tickCunKuBags();}catch(e){}
 }
+/* ===== v137任务系统（TA：任务系统做进去——Townsmen任务线落地） =====
+   tasks.json前端直写上云（key:'ta'单人档，同backpack模式）。任务本地按村库缺口日切生成（确定性，不占判定者GLM）——
+   筹集类：背包交料进村库得工钱；运送类：跨村仓跑腿（交付仓≠接任务仓——防同仓倒手白嫖）。
+   判定者侧不扣账：任务交付走pushTrade('task')队列→workflow过账（同trade账路）。 */
+let TASKS={list:[],lastGen:-1},tasksReady=false;
+const TITEM={board:'木板',grain:'粮',cloth:'布',seed:'种子'};
+function loadTasks(){
+  if(tasksReady||!NPC_TOKEN)return;
+  ghGet('tasks.json').then(({data})=>{
+    if(data&&data.ta)TASKS=Object.assign({list:[],lastGen:-1},data.ta);
+    tasksReady=true;maybeGenTasks();renderBag();
+  }).catch(()=>{tasksReady=true;});
+}
+function saveTasks(){
+  if(!NPC_TOKEN)return;
+  ghGet('tasks.json').then(({sha,data})=>{
+    const d=data&&typeof data==='object'&&!Array.isArray(data)?data:{};
+    d.ta=TASKS;
+    return ghPut('tasks.json',d,sha,'任务');
+  }).catch(()=>{});
+}
+function maybeGenTasks(){
+  const day=Math.floor((Date.now()-VH.up)/DAY_MS);
+  if(day<=TASKS.lastGen)return;
+  const ck=MINDS&&MINDS.cunKu;if(!ck)return;
+  const cand=[];
+  if((ck['木板']||0)<14)cand.push({item:'board',qty:6,reward:6,desc:'村库木板见底——锯木坊的活赶不上用'});
+  if((ck['粮']||0)<160)cand.push({item:'grain',qty:20,reward:5,desc:'粮仓要厚，入冬的账'});
+  if((ck['布']||0)<6)cand.push({item:'cloth',qty:4,reward:8,desc:'织坊的布留着做冬衣，还不够'});
+  if((ck['种子']||0)<4)cand.push({item:'seed',qty:3,reward:6,desc:'留种要紧——种子不够来年减产'});
+  cand.push({item:'grain',qty:8,reward:8,desc:'跨村调剂：接任务的仓取粮，送到另一个村的仓交',haul:true});
+  /* 昨天没做完的open任务保留，新任务补到每天最多3个open */
+  const oldOpen=TASKS.list.filter(t=>t.state!=='done'&&t.day<day);
+  TASKS.list=oldOpen.concat(cand.slice(0,Math.max(0,3-oldOpen.length)).map((t,i)=>({id:day+'-'+i,item:t.item,qty:t.qty,reward:t.reward,desc:t.desc,haul:!!t.haul,state:'open',day:day,pickupCi:null})));
+  TASKS.lastGen=day;saveTasks();
+}
+function cunkuNear(){   /* v137：返回所在村仓ci（null=不在）——haul交付要分仓 */
+  for(const ci in cunkuSlots){const s0=cunkuSlots[ci]&&cunkuSlots[ci][0];
+    if(s0){const dx=p.x-s0[0],dz=p.z-s0[1];if(dx*dx+dz*dz<100)return ci;}}
+  return null;
+}
+function acceptTask(id){
+  const t=TASKS.list.find(t=>t.id===id&&t.state==='open');if(!t)return;
+  t.state='accepted';
+  const ci=cunkuNear();if(ci!==null)t.pickupCi=ci;   /* 接任务时的仓——haul交付要换仓 */
+  saveTasks();renderBag();
+  toast('接了活：'+t.desc+(t.haul&&t.pickupCi!==null?(t.pickupCi==='0'?'——这仓是北岸，去南岸仓交':'——这仓是南岸，去北岸仓交'):''));
+}
+function deliverTask(id){
+  const t=TASKS.list.find(t=>t.id===id&&t.state==='accepted');if(!t)return;
+  const ci=cunkuNear();
+  if(ci===null){toast('走近公仓才能交活');return;}
+  if(t.haul&&t.pickupCi!==null&&ci===t.pickupCi){toast('这仓就是接活的仓——送到另一个村仓去交');return;}
+  const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[t.item];
+  if((BACKPACK[bk]||0)<t.qty){toast('行囊里'+TITEM[t.item]+'不够——还差'+(t.qty-BACKPACK[bk])+'份');return;}
+  const ck=MINDS&&MINDS.cunKu;if(!ck)return;
+  if((ck['钱']||0)<t.reward){toast('村里一时拿不出工钱——缓两天再来交');return;}
+  BACKPACK[bk]-=t.qty;BACKPACK.money+=t.reward;
+  ck[TITEM[t.item]]=(ck[TITEM[t.item]]||0)+t.qty;ck['钱']=(ck['钱']||0)-t.reward;
+  t.state='done';
+  pushTrade('task',t.item,t.qty,'稀客交任务：'+t.desc+'（交'+t.qty+TITEM[t.item]+'得'+t.reward+'钱）');
+  saveTasks();saveBag();renderBag();
+  try{tickCunKuBags();}catch(e){}
+  toast('活干完了——'+t.reward+'钱工钱进了行囊');
+}
 function renderBag(){
   const o=document.getElementById('bagPanel');if(!o)return;
   const nc=nearCunku(),ns=nearStall();
@@ -739,6 +801,13 @@ function renderBag(){
    +'<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">'+(ns?'集市摊前——（'+(ns.owner||'')+'的摊）：买粮2钱/石 买种子1钱 卖木板1.5钱/块 卖布3钱/卷':'走近集市摊才能买卖')+'</div>'
    +btn(ns,'买粮','trade(\'buy\',\'grain\',1,2)')+btn(ns,'买种子','trade(\'buy\',\'seed\',1,1)')
    +btn(ns,'卖木板','trade(\'sell\',\'board\',1,1.5)')+btn(ns,'卖布','trade(\'sell\',\'cloth\',1,3)')
+   +'<div style="color:#e8d9b0;font-size:14px;margin:8px 0 4px;border-top:1px solid #6a5438;padding-top:6px">村里的活（公仓=任务板，地图上黄点）</div>'
+   +(TASKS.list.length?TASKS.list.map(t=>{
+      const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[t.item];
+      const en=nc&&(BACKPACK[bk]||0)>=t.qty;
+      const stTag=t.state==='done'?'<span style="color:#8fc98f">✓完</span>':(t.state==='open'?btn(true,'接下','acceptTask(\''+t.id+'\')'):btn(en,'交付'+t.qty+TITEM[t.item],'deliverTask(\''+t.id+'\')'));
+      return '<div style="color:#d8caa4;font-size:12px;margin:3px 0">'+t.desc+'（'+t.qty+TITEM[t.item]+'→'+t.reward+'钱）'+stTag+'</div>';
+    }).join(''):'<div style="color:#8a7a5a;font-size:12px">今天的活还没派——公仓缺什么明天会张榜</div>')
    +'<div style="margin-top:6px">'+btn(true,'合上行囊','closeBag()')+'</div></div>';
 }
 function openBag(){

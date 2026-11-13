@@ -490,6 +490,27 @@ function drawMapMarks(){
   g.save();g.translate(px,pz);g.rotate(ang);
   g.fillStyle='#ffffff';g.beginPath();g.moveTo(6,0);g.lineTo(-4,-4);g.lineTo(-4,4);g.closePath();g.fill();
   g.restore();
+  /* v137 POI标注（TA：找不到，地图上标出来）——公仓·任务/村长/集市/判定者建的每座建筑 */
+  try{
+    g.font='bold 11px sans-serif';
+    const dot=(x,z,c,name)=>{g.fillStyle=c;g.beginPath();g.arc(x*sc,z*sc,4,0,7);g.fill();
+      g.fillStyle='#14161e';g.fillText(name,x*sc+5.5,z*sc-3.5);g.fillStyle='#fff8e8';g.fillText(name,x*sc+5,z*sc-4);};
+    for(const ci in (typeof cunkuSlots!=='undefined'?cunkuSlots:{})){
+      const s0=cunkuSlots[ci]&&cunkuSlots[ci][0];
+      if(s0)dot(s0[0],s0[1],'#e8b04a',ci==='0'?'北仓·任务':'南仓·任务');
+    }
+    if(typeof npcs==='object'&&npcs)for(const id in npcs){
+      if(id.indexOf('p_cunzhang')===0&&npcs[id]&&npcs[id].pos)dot(npcs[id].pos[0],npcs[id].pos[1],'#c9a0f0','村长');
+    }
+    if(typeof MKT_FLAG!=='undefined')dot(MKT_FLAG[0],MKT_FLAG[1],'#ffd97a','集市');
+    const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
+    for(const d of bd){
+      if(d.ok!==false&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');
+        const bx=parseFloat(nn[0]),bz=parseFloat(nn[1]);
+        if(isFinite(bx)&&isFinite(bz))dot(bx,bz,'#7fc97f',d.type);
+      }
+    }
+  }catch(e){}
   /* 视野圈 */
   g.strokeStyle='rgba(255,255,255,.25)';g.beginPath();g.arc(px,pz,30,0,7);g.stroke();
 }
