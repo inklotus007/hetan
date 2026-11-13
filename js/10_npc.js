@@ -455,11 +455,12 @@ function renderNPCs(list,tSec){
    v46心跳节流：commit流不再被7秒一笔刷屏（一天五百多笔，翻提交的人要趟过心跳找一朵花）。
    两分钟一跳，或走出6格才跳——赶路的人别人也追得上。 */
 let npcSha=null,npcList=[],npcBusy=false,npcLastPut=0,npcLastPutPos=[1e9,1e9];
+var npcs={};   /* v140根修：全局村民账——v134村长守恒/感知包在线村民/地图村长点三处死代码（typeof npcs永远undefined）全活 */
 function syncNPCs(){
   if(!NPC_TOKEN||!ME||npcBusy||!meClaimed)return;npcBusy=true;
   ghGet(NPCS_URL).then(({sha,data})=>{
     npcSha=sha;
-    const npcs=(data&&data.npcs)||{};
+    npcs=(data&&data.npcs)||{};   /* v140：填全局（原局部const让60_judge/80_tools永远typeof undefined） */
     const now=Date.now();
     const moved=Math.hypot(p.x-npcLastPutPos[0],p.z-npcLastPutPos[1])>=6;
     if(now-npcLastPut>=120000||moved){
@@ -492,7 +493,7 @@ function npcLoop(){
   if(!NPC_TOKEN){
     /* v47：没令牌的访客也看得见投影——npcs.json是公开的（同源副本），投影是给所有来的人看的 */
     ghSame(NPCS_URL).then(({data})=>{
-      const npcs=(data&&data.npcs)||{};
+      npcs=(data&&data.npcs)||{};   /* v140：游客通道也填全局 */
       renderNPCs(Object.values(npcs),worldSec());/*v92*/ bubbleTick(performance.now()/1000);pairChatTick(worldSec());smokeTick(worldSec(),0.05);;audioTick(worldSec());
     }).catch(()=>{renderNPCs([],worldSec());/*v92*/ bubbleTick(performance.now()/1000);});
     setTimeout(npcLoop,9000);return;

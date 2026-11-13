@@ -490,26 +490,73 @@ function drawMapMarks(){
   g.save();g.translate(px,pz);g.rotate(ang);
   g.fillStyle='#ffffff';g.beginPath();g.moveTo(6,0);g.lineTo(-4,-4);g.lineTo(-4,4);g.closePath();g.fill();
   g.restore();
-  /* v137 POI标注（TA：找不到，地图上标出来）——公仓·任务/村长/集市/判定者建的每座建筑 */
+  /* v140 POI标注大改（TA：还是看不到仓库村长集市——①点太小4px看不见→10px+描边+黑底白字大标签②村长数据源npcs死引用→npcList③公仓探位失败兜底村心④图例⑤侧栏POI列表带方向距离） */
   try{
-    g.font='bold 11px sans-serif';
-    const dot=(x,z,c,name)=>{g.fillStyle=c;g.beginPath();g.arc(x*sc,z*sc,4,0,7);g.fill();
-      g.fillStyle='#14161e';g.fillText(name,x*sc+5.5,z*sc-3.5);g.fillStyle='#fff8e8';g.fillText(name,x*sc+5,z*sc-4);};
+    const pois=[];
+    const dot=(x,z,c,name)=>{
+      const dx=x*sc,dz=z*sc;
+      g.fillStyle=c;g.beginPath();g.arc(dx,dz,10,0,7);g.fill();
+      g.lineWidth=2.5;g.strokeStyle='#14161e';g.stroke();
+      g.font='bold 15px sans-serif';
+      const tw=g.measureText(name).width;
+      g.fillStyle='rgba(10,12,18,.72)';
+      g.fillRect(dx+12,tz2(dz)-11,tw+10,20);
+      g.fillStyle='#fff8e8';g.fillText(name,dx+17,tz2(dz)+4);
+    };
+    const tz2=dz=>Math.max(14,Math.min(cv.height-6,dz-4));
+    /* 公仓：探位成功用仓口，失败兜底村心（campCenter均值）——地图标注不依赖探位 */
+    const ccOf=ci=>{
+      try{const c=campCenter(ci==='0'?0:1);return c;}catch(e){return null;}
+    };
     for(const ci in (typeof cunkuSlots!=='undefined'?cunkuSlots:{})){
       const s0=cunkuSlots[ci]&&cunkuSlots[ci][0];
-      if(s0)dot(s0[0],s0[1],'#e8b04a',ci==='0'?'北仓·任务':'南仓·任务');
+      const nm=ci==='0'?'北仓·任务':'南仓·任务';
+      if(s0){dot(s0[0],s0[1],'#e8b04a',nm);pois.push({x:s0[0],z:s0[1],name:nm,c:'#e8b04a'});}
     }
-    if(typeof npcs==='object'&&npcs)for(const id in npcs){
-      if(id.indexOf('p_cunzhang')===0&&npcs[id]&&npcs[id].pos)dot(npcs[id].pos[0],npcs[id].pos[1],'#c9a0f0','村长');
+    if(!cunkuSlots['0']||!cunkuSlots['1']){
+      for(const ci of ['0','1']){
+        if(cunkuSlots[ci])continue;
+        const c=ccOf(ci);if(!c)continue;
+        const nm=(ci==='0'?'北':'南')+'村心·仓在旁';
+        dot(c[0],c[1],'#e8b04a',nm);pois.push({x:c[0],z:c[1],name:nm,c:'#e8b04a'});
+      }
     }
-    if(typeof MKT_FLAG!=='undefined')dot(MKT_FLAG[0],MKT_FLAG[1],'#ffd97a','集市');
+    /* 村长：npcList全局（v137用的npcs从未存在——死代码一天） */
+    try{
+      (typeof npcList==='object'?npcList:[]).forEach(n=>{
+        if(n&&n.id&&n.id.indexOf('p_cunzhang')===0&&n.pos)dot(n.pos[0],n.pos[1],'#c9a0f0','村长');
+      });
+    }catch(e){}
+    if(typeof MKT_FLAG!=='undefined'){dot(MKT_FLAG[0],MKT_FLAG[1],'#ffd97a','集市');pois.push({x:MKT_FLAG[0],z:MKT_FLAG[1],name:'集市',c:'#ffd97a'});}
     const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
     for(const d of bd){
       if(d.ok!==false&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');
         const bx=parseFloat(nn[0]),bz=parseFloat(nn[1]);
-        if(isFinite(bx)&&isFinite(bz))dot(bx,bz,'#7fc97f',d.type);
+        if(isFinite(bx)&&isFinite(bz)){dot(bx,bz,'#7fc97f',d.type);pois.push({x:bx,z:bz,name:d.type,c:'#7fc97f'});}
       }
     }
+    /* 图例（左上角） */
+    g.font='bold 13px sans-serif';
+    const lg=[['#e8b04a','公仓·任务'],['#7fc97f','建筑'],['#c9a0f0','村长'],['#ffd97a','集市'],['#ffffff','你']];
+    lg.forEach((l,i)=>{
+      const ly=16+i*20;
+      g.fillStyle=l[0];g.beginPath();g.arc(22,ly,6,0,7);g.fill();
+      g.lineWidth=1.5;g.strokeStyle='#14161e';g.stroke();
+      g.fillStyle='#f4efe2';g.fillText(l[1],36,ly+5);
+    });
+    /* 侧栏POI列表（方向+距离——列表永远比图上的点清楚） */
+    try{
+      const el=document.getElementById('mapPOI');
+      if(el){
+        const dirs=['北','东北','东','东南','南','西南','西','西北'];
+        el.innerHTML=pois.slice(0,14).map(q=>{
+          const dx=q.x-p.x,dz=q.z-p.z,dist=Math.round(Math.hypot(dx,dz));
+          let ang=Math.atan2(dx,-dz)*180/Math.PI;if(ang<0)ang+=360;
+          const dir=dirs[Math.round(ang/45)%8];
+          return '<div style="margin:2px 0"><b style="color:'+q.c+'">●</b> '+q.name+' <span style="color:#c8b488">'+dir+' '+dist+'格</span></div>';
+        }).join('')||'<div style="color:#8a7a5a">村里还没有建筑——等判定者动工</div>';
+      }
+    }catch(e){}
   }catch(e){}
   /* 视野圈 */
   g.strokeStyle='rgba(255,255,255,.25)';g.beginPath();g.arc(px,pz,30,0,7);g.stroke();
