@@ -651,8 +651,50 @@ function sendTalk(){
 /* ===== v132玩家经济：背包+村库存取+集市买卖（TA：让玩家参与进去——做任务买卖交易，物品实体化，背包系统） =====
    背包backpack.json前端直写上云（key:'ta'单人档）；村库侧账走trade_queue.json→workflow过账（乐观更新+权威收敛）——
    TA卖木板村库出钱、买粮钱进村库——玩家经济和判定者经济是同一本账的两只手，判定者feedback里会看到稀客的进出。 */
-let BACKPACK={grain:0,board:0,cloth:0,seed:0,money:10},bagReady=false;
-const BAGKEY=['grain','board','cloth','seed'],BAGNAME={grain:'粮',board:'木板',cloth:'布',seed:'种子'};
+let BACKPACK={grain:0,board:0,cloth:0,seed:0,silk:0,wine:0,money:10},bagReady=false;
+const BAGKEY=['grain','board','cloth','seed','silk','wine'],BAGNAME={grain:'粮',board:'木板',cloth:'布',seed:'种子',silk:'丝绸',wine:'酒'};   /* v138物品链：丝绸=精织、酒=酒坊 */
+function bkOf(good){return {grain:'grain',board:'board',cloth:'cloth',seed:'seed',silk:'silk',wine:'wine'}[good]||good;}   /* v138 */
+/* v138帮工生产（TA：如何获得物品——玩家亲手干活的正路）：坊里帮工有冷却，产物进行囊，原料扣村库（走work队列过账） */
+function nearWorkshop(type){
+  const bd=(MINDS&&MINDS.build_done)||[];
+  for(const d of bd){
+    if(d.ok!==false&&d.type===type&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');
+      const bx=parseFloat(nn[0]),bz=parseFloat(nn[1]);
+      if(isFinite(bx)&&isFinite(bz)){const dx=p.x-bx,dz=p.z-bz;if(dx*dx+dz*dz<64)return true;}
+    }
+  }
+  return false;
+}
+function workCd(type){const k='workCd_'+type;const last=parseInt(localStorage.getItem(k)||'0');return Math.max(0,(last+60000)-Date.now());}
+function setWorkCd(type,ms){localStorage.setItem('workCd_'+type,String(Date.now()+ms));}
+function workWorkshop(type){
+  const ck=MINDS&&MINDS.cunKu;if(!ck)return;
+  const cd=workCd(type);
+  if(cd>0){toast('手上的活还没干完——还要'+Math.ceil(cd/1000)+'秒');return;}
+  if(type==='锯木坊'){
+    if(!nearWorkshop('锯木坊')){toast('走近锯木坊才能帮工');return;}
+    if((ck['木']||0)<2){toast('村库的木不够——先让村里攒木');return;}
+    ck['木']-=2;BACKPACK.board++;setWorkCd('锯木坊',20000);
+    pushTrade('work','wood',2,'稀客帮工锯木：木-2，行囊+1木板');
+    toast('锯了一块木板——村库出木2，行囊+1');
+  }else if(type==='织坊'){
+    if(!nearWorkshop('织坊')){toast('走近织坊才能帮工');return;}
+    BACKPACK.cloth++;setWorkCd('织坊',60000);
+    toast('织了一卷布——手上的活，行囊+1');
+  }else if(type==='精织'){
+    if(!nearWorkshop('织坊')){toast('走近织坊才能精织');return;}
+    if((BACKPACK.cloth||0)<2){toast('精织一匹丝绸要两卷布');return;}
+    BACKPACK.cloth-=2;BACKPACK.silk++;setWorkCd('精织',120000);
+    toast('一匹丝绸织成了——布2卷换的，能卖8钱');
+  }else if(type==='酒坊'){
+    if(!nearWorkshop('酒坊')){toast('村里还没建酒坊——跟村长提');return;}
+    if((ck['粮']||0)<2){toast('村库的粮不够酿酒——粮紧先吃饭');return;}
+    ck['粮']-=2;BACKPACK.wine++;setWorkCd('酒坊',120000);
+    pushTrade('work','grain',2,'稀客帮工酿酒：粮-2，行囊+1酒');
+    toast('一坛酒酿好了——村库出粮2，行囊+1');
+  }
+  saveBag();renderBag();
+}
 function loadBag(){
   if(bagReady||!NPC_TOKEN)return;
   loadTasks();   /* v137任务随行囊一起拉 */
@@ -675,9 +717,9 @@ function nearStall(){
   for(const st of MKT_STALLS){const dx=p.x-st.x,dz=p.z-st.z;if(dx*dx+dz*dz<49)return st;}
   return null;
 }
-function pushTrade(kind,goods,n,note){   /* 村库侧账：交易请求进队列，workflow过账（权威） */
+function pushTrade(kind,goods,n,note,extra){   /* 村库侧账：交易请求进队列，workflow过账（权威）——v138 extra带reward等 */
   if(!NPC_TOKEN)return;
-  const item={id:'x'+Date.now()+Math.random().toString(36).slice(2,6),kind:kind,goods:goods,n:n,note:note,t:Date.now()};
+  const item=Object.assign({id:'x'+Date.now()+Math.random().toString(36).slice(2,6),kind:kind,goods:goods,n:n,note:note,t:Date.now()},extra||{});
   ghGet('trade_queue.json').then(({sha,data})=>{
     const q=Array.isArray(data)?data:[];
     q.push(item);
@@ -686,15 +728,20 @@ function pushTrade(kind,goods,n,note){   /* 村库侧账：交易请求进队列
 }
 function bagXfer(good,dir){   /* dir 1=村库→背包（取） -1=背包→村库（存）——近村库才可，乐观更新+queue报账 */
   if(!nearCunku()){toast('走近公仓才能存取');return;}
+  /* v138每日搬取限额：一天12件——村库是全村的口粮，不是稀客的提款机 */
+  const dkey='xfer_'+new Date().toDateString();
+  const used=parseInt(localStorage.getItem(dkey)||'0');
+  if(dir>0&&used>=12){toast('今天的力气用完了——一天搬12件，明天再来');return;}
   const ck=MINDS&&MINDS.cunKu;if(!ck)return;
   if(dir>0){
     if((ck[good]||0)<1){toast('村库没有'+BAGNAME[good]+'了');return;}
-    ck[good]-=1;BACKPACK[BAGKEY.includes(good)?({grain:'grain',board:'board',cloth:'cloth',seed:'seed'})[good]:good]++;
+    ck[good]-=1;BACKPACK[bkOf(good)]++;
   }else{
-    const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[good];
+    const bk=bkOf(good);
     if((BACKPACK[bk]||0)<1){toast('行囊里没有'+BAGNAME[good]);return;}
     BACKPACK[bk]--;ck[good]=(ck[good]||0)+1;
   }
+  if(dir>0)localStorage.setItem(dkey,String(used+1));
   pushTrade('xfer',good,dir, (dir>0?'稀客从村库取1':'稀客往村库存1')+BAGNAME[good]);
   saveBag();renderBag();
   try{tickCunKuBags();}catch(e){}
@@ -708,12 +755,12 @@ function trade(kind,good,n,unit){   /* kind buy=TA买 sell=TA卖——价：买�
     const cost=Math.round(n*unit);
     if(BACKPACK.money<cost){toast('钱不够——身上'+BACKPACK.money+'钱');return;}
     if((ck[good]||0)<n){toast('摊上没那么多'+BAGNAME[good]);return;}
-    BACKPACK.money-=cost;BACKPACK[{grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[good]]+=n;
+    BACKPACK.money-=cost;BACKPACK[bkOf(good)]+=n;
     ck[good]-=n;ck['钱']=(ck['钱']||0)+cost;
     pushTrade('buy',good,n,'稀客买'+n+BAGNAME[good]+'花'+cost+'钱（钱进村库）');
     toast('买了'+n+'份'+BAGNAME[good]+'——花了'+cost+'钱');
   }else{
-    const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[good];
+    const bk=bkOf(good);
     if((BACKPACK[bk]||0)<n){toast('行囊里没有那么多'+BAGNAME[good]);return;}
     const gain=Math.round(n*unit);
     if((ck['钱']||0)<gain){toast('村里一时拿不出这么多钱');return;}
@@ -785,7 +832,7 @@ function deliverTask(id){
   BACKPACK[bk]-=t.qty;BACKPACK.money+=t.reward;
   ck[TITEM[t.item]]=(ck[TITEM[t.item]]||0)+t.qty;ck['钱']=(ck['钱']||0)-t.reward;
   t.state='done';
-  pushTrade('task',t.item,t.qty,'稀客交任务：'+t.desc+'（交'+t.qty+TITEM[t.item]+'得'+t.reward+'钱）');
+  pushTrade('task',t.item,t.qty,'稀客交任务：'+t.desc+'（交'+t.qty+TITEM[t.item]+'得'+t.reward+'钱）',{reward:t.reward});
   saveTasks();saveBag();renderBag();
   try{tickCunKuBags();}catch(e){}
   toast('活干完了——'+t.reward+'钱工钱进了行囊');
@@ -798,10 +845,17 @@ function renderBag(){
    +'<div style="color:#e8d9b0;font-size:15px;margin-bottom:6px">行囊——钱'+BACKPACK.money+' ｜ 粮'+BACKPACK.grain+' 木板'+BACKPACK.board+' 布'+BACKPACK.cloth+' 种子'+BACKPACK.seed+'</div>'
    +'<div style="color:#c8b488;font-size:12px;margin-bottom:4px">'+(nc?'村库就在跟前——存取都行':'走近公仓才能存取村库')+'</div>'
    +['grain','board','cloth','seed'].map(g=>btn(nc,'取'+BAGNAME[g],'bagXfer(\''+g+'\',1)')+btn(nc,'存'+BAGNAME[g],'bagXfer(\''+g+'\',-1)')).join('')
-   +'<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">'+(ns?'集市摊前——（'+(ns.owner||'')+'的摊）：买粮2钱/石 买种子1钱 卖木板1.5钱/块 卖布3钱/卷':'走近集市摊才能买卖')+'</div>'
+   +'<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">'+(ns?'集市摊前——（'+(ns.owner||'')+'的摊）：粮2卖1买／种子1／木板1.5／布3／丝绸8买12／酒5买8':'走近集市摊才能买卖')+'</div>'
    +btn(ns,'买粮','trade(\'buy\',\'grain\',1,2)')+btn(ns,'买种子','trade(\'buy\',\'seed\',1,1)')
+   +btn(ns,'买丝绸','trade(\'buy\',\'silk\',1,12)')+btn(ns,'买酒','trade(\'buy\',\'wine\',1,8)')
    +btn(ns,'卖木板','trade(\'sell\',\'board\',1,1.5)')+btn(ns,'卖布','trade(\'sell\',\'cloth\',1,3)')
-   +'<div style="color:#e8d9b0;font-size:14px;margin:8px 0 4px;border-top:1px solid #6a5438;padding-top:6px">村里的活（公仓=任务板，地图上黄点）</div>'
+   +btn(ns,'卖丝绸','trade(\'sell\',\'silk\',1,8)')+btn(ns,'卖酒','trade(\'sell\',\'wine\',1,5)')
+   +'<div style="color:#e8d9b0;font-size:14px;margin:8px 0 4px;border-top:1px solid #6a5438;padding-top:6px">坊里的活（亲手干活得东西，地图绿点找坊）</div>'
+   +'<div style="color:#d8caa4;font-size:12px;margin:3px 0">'+btn(nearWorkshop('锯木坊'),'帮工锯木（木2→木板1）','workWorkshop(\'锯木坊\')')
+   +btn(nearWorkshop('织坊'),'帮工织布（空手→布1）','workWorkshop(\'织坊\')')
+   +btn(nearWorkshop('织坊'),'精织丝绸（布2→丝绸1）','workWorkshop(\'精织\')')
+   +btn(nearWorkshop('酒坊'),'帮工酿酒（粮2→酒1）','workWorkshop(\'酒坊\')')+'</div>'
+   +'<div style="color:#e8d9b0;font-size:14px;margin:8px 0 4px">村里的活（公仓=任务板，地图上黄点）</div>'
    +(TASKS.list.length?TASKS.list.map(t=>{
       const bk={grain:'grain',board:'board',cloth:'cloth',seed:'seed'}[t.item];
       const en=nc&&(BACKPACK[bk]||0)>=t.qty;

@@ -151,6 +151,17 @@ if ck.get('lastDay') != day and isinstance(day, int):
         ck['粮'] = ck.get('粮', 0) + 2   # 铁蛋的网：河边的第二粮源
     if '鸡棚' in done_types:
         ck['钱'] = ck.get('钱', 0) + 1   # 麦穗的蛋钱
+    # v138三坊日产（v132只在prompt里说了没过账——今天落账）：建成才转
+    if '锯木坊' in done_types:
+        if ck.get('木', 0) >= 3:
+            ck['木'] = ck.get('木', 0) - 3
+            ck['木板'] = ck.get('木板', 0) + 2
+    if '织坊' in done_types:
+        ck['布'] = ck.get('布', 0) + 1
+    if '酒坊' in done_types:
+        if ck.get('粮', 0) >= 6:   # 留粮线：粮紧就停酿（吃饭优先）
+            ck['粮'] = ck.get('粮', 0) - 2
+            ck['酒'] = ck.get('酒', 0) + 1
     ck['lastDay'] = day
 done = M.get('build_done') or []
 feedback = M.get('build_feedback') or []
@@ -162,12 +173,12 @@ try:
 except Exception:
     TQ = []
 if TQ:
-    px = {'grain': '粮', 'board': '木板', 'cloth': '布', 'seed': '种子'}
+    px = {'grain': '粮', 'board': '木板', 'cloth': '布', 'seed': '种子', 'silk': '丝绸', 'wine': '酒', 'wood': '木'}
     for it in TQ:
         kind = (it.get('kind') or '').strip()
         goods = px.get((it.get('goods') or '').strip())
         n0 = int(it.get('n') or 0)
-        if not goods or n0 <= 0 or kind not in ('xfer', 'buy', 'sell'):
+        if not goods or n0 <= 0 or kind not in ('xfer', 'buy', 'sell', 'task', 'work'):
             continue
         if kind == 'xfer':
             d0 = int(it.get('dir') or 0) if isinstance(it.get('dir'), int) else 0
@@ -178,16 +189,30 @@ if TQ:
                 ck[goods] = ck.get(goods, 0) + n0
             feedback = M.setdefault('build_feedback', [])
             new_feedback.append({'ok': True, 'note': '稀客' + ('取' if '从村库取' in (it.get('note') or '') else '存'), 'why': (it.get('note') or '')[:50], 'day': day})
-        elif kind == 'buy':   # 稀客买：钱进村库，货出村库
-            if goods in ('粮', '种子'):
+        elif kind == 'buy':   # 稀客买：钱进村库，货出村库——v138丝绸酒上摊
+            bprice = {'粮': 2, '种子': 1, '丝绸': 12, '酒': 8}
+            if goods in bprice:
                 if ck.get(goods, 0) >= n0:
+                    c0 = round(n0 * bprice[goods])
                     ck[goods] = ck.get(goods, 0) - n0
-                    ck['钱'] = ck.get('钱', 0) + round(n0 * (2 if goods == '粮' else 1))
-                    new_feedback.append({'ok': True, 'note': '稀客买' + goods, 'why': ('稀客买%d%s，村库+%d钱' % (n0, goods, round(n0 * (2 if goods == '粮' else 1))))[:50], 'day': day})
-            else:   # 稀客从村里买木板/布——村里现在还没产出，兜底不收
+                    ck['钱'] = ck.get('钱', 0) + c0
+                    new_feedback.append({'ok': True, 'note': '稀客买' + goods, 'why': ('稀客买%d%s，村库+%d钱' % (n0, goods, c0))[:50], 'day': day})
+            else:   # 木板/布村里自用不外卖
                 pass
-        elif kind == 'sell':   # 稀客卖：村库出钱收货
-            price0 = {'木板': 1.5, '布': 3, '粮': 1, '种子': 0.5}.get(goods, 1)
+        elif kind == 'task':   # v137任务交付过账（前端deliverTask推的——之前白名单没这个kind，静默丢——v138补）
+            r0 = int(it.get('reward') or 0)
+            ck[goods] = ck.get(goods, 0) + n0
+            if r0 > 0:
+                ck['钱'] = max(0, ck.get('钱', 0) - r0)
+            new_feedback.append({'ok': True, 'note': '稀客交任务', 'why': ((it.get('note') or '')[:44] + '（村库+%d%s，工钱-%d）' % (n0, goods, r0))[:50], 'day': day})
+        elif kind == 'work':   # v138帮工过账：村库出原料（产物直接进稀客行囊，走backpack不上村库）
+            if ck.get(goods, 0) >= n0:
+                ck[goods] = ck.get(goods, 0) - n0
+                new_feedback.append({'ok': True, 'note': '稀客帮工', 'why': ((it.get('note') or '')[:46] + '（村库-%d%s）' % (n0, goods))[:50], 'day': day})
+            else:
+                new_feedback.append({'ok': False, 'note': '帮工没成', 'why': '村库%s不够' % goods, 'day': day})
+        elif kind == 'sell':   # 稀客卖：村库出钱收货——v138丝绸8/酒5
+            price0 = {'木板': 1.5, '布': 3, '粮': 1, '种子': 0.5, '丝绸': 8, '酒': 5}.get(goods, 1)
             cost0 = round(n0 * price0)
             if ck.get('钱', 0) >= cost0:
                 ck['钱'] = ck.get('钱', 0) - cost0
