@@ -18,20 +18,20 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: 村里的生计与交易（食物消耗+营生+心愿撮合+同志的礼入账，本地确定性零API）
-        run: python3 scripts/village_economy.py || true
+      - name: 村里的生计与交易（食物消耗+营生+心愿撮合+同志的礼入账，本地确定性零API）   # v142全去||true——崩了就红：v131 g0崩四天被吞成success的教训
+        run: python3 scripts/village_economy.py
       - name: 判定者建设账（ack回执→build_done+feedback，物理全在客户端）
-        run: python3 scripts/judge_build.py || true
+        run: python3 scripts/judge_build.py
       - name: 村里人答话（带上各户记忆和今天的心事）
         run: python3 scripts/talk_reply.py
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
       - name: 养村民今天的心思（每天第一次触发时生成：心事+村里的话）
-        run: python3 scripts/villager_minds.py || true
+        run: python3 scripts/villager_minds.py
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
       - name: 顺路补村志（schedule不靠谱，答话是第二次机会）
-        run: python3 scripts/chronicle_gen.py || true
+        run: python3 scripts/chronicle_gen.py
         env:
           ZHIPU_KEY: ${{ secrets.ZHIPU_KEY }}
       - name: 推送（rebase重试，防push race——10/25三次生成全被吞的教训）
