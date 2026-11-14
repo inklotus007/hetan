@@ -257,7 +257,11 @@ function buildCunKuWan(){
     if(!c0)continue;
     let wx=Math.round(c0[0])-4, wz=Math.round(c0[1])-2, ok0=false;
     const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
-    for(let t=0;t<12&&!ok0;t++){
+    /* v141探位三修（TA：南村顺着地图找过去什么都没有——南仓从没建成过）：①判据放宽——baseY本来就
+       每列独立取groundY（阶梯仓合法），探位只要求每列groundY>=1即可，不要求全平（原判据过严，南村
+       缓坡地形12步全废）②步数12→28（半径最大13格）③终极兜底：仍失败就直接用村心——仓可能不完整
+       （villCells占的格子put会跳过），但账位/名字牌/村长全立起来——标注与世界一致，不再有假点 */
+    for(let t=0;t<28&&!ok0;t++){
       const dd=DIRS[t%8], rr=2+Math.floor(t/8)*3;
       const tx=Math.round(c0[0])+dd[0]*rr-2, tz=Math.round(c0[1])+dd[1]*rr-1;
       let spot=true;
@@ -267,11 +271,15 @@ function buildCunKuWan(){
       }
       if(spot){wx=tx;wz=tz;ok0=true;break;}
     }
-    if(!ok0){console.log('v134：camp'+ci+'公仓探位全方向失败——下次boot再试');continue;}
-    buildOneCunKu(wx,wz,taA,taR,ci);
+    const force=!ok0;
+    if(force){
+      wx=Math.round(c0[0])-2;wz=Math.round(c0[1])-1;
+      console.log('v141：camp'+ci+'探位28步失败——强制村心建仓（树/栅栏/路面可清，TA方块仍保护）');
+    }
+    buildOneCunKu(wx,wz,taA,taR,ci,force);
   }
 }
-function buildOneCunKu(wx,wz,taA,taR,ci){
+function buildOneCunKu(wx,wz,taA,taR,ci,forceBuild){
   let placed=0;
   const baseY={};   /* v120修：基座统一预取（v111/v113同坑三踩——顶板落下后surfaceY变，groundY漂移，dy1粮堆算到石台自己的格子上被villCells拒） */
   for(let dx=0;dx<5;dx++)for(let dz=0;dz<3;dz++){const g=groundY(wx+dx,wz+dz);baseY[dx+','+dz]=(g<1)?11:g;}
@@ -282,7 +290,7 @@ function buildOneCunKu(wx,wz,taA,taR,ci){
     const k=x+','+y+','+z;
     if(taA.has(k)||taR.has(k)||villCells[k])return;
     const cur=world[idx(x,y,z)];
-    if(cur!==AIR&&cur!==17&&cur!==1&&cur!==2)return;   /* v120修：草/草丛/土可清（boot系统建筑，TA/villCells已挡）——粮堆灯台不被地表草挡 */
+    if(cur!==AIR&&cur!==17&&cur!==1&&cur!==2&&!(forceBuild&&cur===5)&&!(forceBuild&&cur===6)&&!(forceBuild&&cur===20)&&!(forceBuild&&cur===11))return;   /* v141：草/草丛/土放行照旧；强制村心模式下树干5树叶6栅栏20路11也清——仓完整比一丛树重 */
     world[idx(x,y,z)]=t;villCells[k]='cunku';placed++;
   };
   /* 石基5×3 + 木墙四角柱2高 + 顶板10 + 仓内粮堆（石台上麦黄）+ 门口账台（石+灯） */
