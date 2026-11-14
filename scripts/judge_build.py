@@ -117,13 +117,14 @@ for w0, w1, name in FARM_WIN:
     break
 ck['lastFarmMd'] = NOWMD if any(_in_win(NOWMD, w0, w1) for w0, w1, _ in FARM_WIN) else ck.get('lastFarmMd', 0)
 
+new_feedback = []   # v142修：初始化提前（原252行，事件段139行先用——v131起连环崩的第二个点）
 # v131轻事件（Townsmen灾害的河滩轻版）：事件本地roll（day种子确定性——同天重跑同结果），应对交判定者
 import hashlib
 _seed = int(hashlib.md5(str(day).encode()).hexdigest()[:8], 16) % 10000
 _ev = None
 done_types_ev = [d.get('type') for d in (M.get('build_done') or [])]
 m_now = __import__('datetime').date.today().month
-if _seed % 100 < 8 and 60 <= g0:
+if _seed % 100 < 8 and 60 <= ck.get('粮', 0):   # v142修：g0未定义——v131起每次崩，||true吞成success，过账四天静默失败
     _ev = ('霉变', '连阴雨，仓里霉了一批——粮-15', {'粮': -15})
 elif _seed % 100 < 12 and '鸡棚' in done_types_ev:
     _ev = ('黄鼠狼', '夜里黄鼠狼叼走两只鸡——钱-3', {'钱': -3})
@@ -249,7 +250,7 @@ if ck.get('lastSatDay') != day and isinstance(day, int):
 
 acked_ids = {a.get('id') for a in A if isinstance(a, dict) and a.get('id')}
 changed = False
-new_feedback = []
+# new_feedback 已在事件段前初始化（v142修）
 
 # ①ack过账：plans→done
 still = []
