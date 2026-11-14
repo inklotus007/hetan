@@ -192,8 +192,7 @@ for attempt in range(5):   # v88.5：3轮→5轮，退避拉长——10/31凌晨
         print('%s第%d次生成失败：%s' % (model, attempt+1, str(e)[:80]))
         time.sleep(15)
 if not ok:
-    print('两轮都失败——今天用旧心思（明天再养）')
-    sys.exit(1)
+    print('两轮都失败——今天用旧心思（明天再养）——降级成功不算失败，exit 0（v143：GLM限流429+JSON截断时降级路径本就该让流程继续，旧心思可用，红了反而挡答话后的推送段）')
 
 if need_mood:
     M['moodDay'] = day

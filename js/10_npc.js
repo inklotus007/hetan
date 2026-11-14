@@ -87,10 +87,11 @@ function schedPos(name,dayT){
       if(act==='walk'){
         px+=Math.sin(dayT*540+x)*1.3;pz+=Math.cos(dayT*390+z)*1.1;
         /* v133漫游偏好（Townsmen 2.5）：六成村民walk时漂向兴趣点——水井/火塘/集市/灯柱花圃旁打转，装饰有了被看的价值 */
-        if(((npc.seed||3)%10)<6){
-          const poi=walkPOI(npc.seed||3);
+        const _seed=npcObjsSeedCache[name]||((name.length*131+5)%99991);   /* v143修：schedPos签名是(name,dayT)没有npc——v133错拿两套签名，四天来每个walk分段必炸一次（真机横幅@10_npc.js行90）——seed从v84缓存表按name取，兜底同前端造seed算法（name哈希确定性） */
+        if((_seed%10)<6){
+          const poi=walkPOI(_seed);
           if(poi){const dxp=poi[0]-px,dzp=poi[1]-pz,dp=Math.hypot(dxp,dzp);
-            if(dp>2){px+=dxp*0.18;pz+=dzp*0.18;}else{px+=Math.sin(tSec*0.7+(npc.seed||3))*0.4;pz+=Math.cos(tSec*0.5+(npc.seed||3))*0.4;}}
+            if(dp>2){px+=dxp*0.18;pz+=dzp*0.18;}else{px+=Math.sin(tSec*0.7+_seed)*0.4;pz+=Math.cos(tSec*0.5+_seed)*0.4;}}
         }
       }
       return{x:px,z:pz,act};
