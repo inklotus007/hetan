@@ -193,6 +193,7 @@ for attempt in range(5):   # v88.5：3轮→5轮，退避拉长——10/31凌晨
         time.sleep(15)
 if not ok:
     print('两轮都失败——今天用旧心思（明天再养）——降级成功不算失败，exit 0（v143：GLM限流429+JSON截断时降级路径本就该让流程继续，旧心思可用，红了反而挡答话后的推送段）')
+    sys.exit(0)   # v144：v143把exit 0写进了注释没写进代码——失败后继续掉进need_mood块，talks未定义NameError又exit 1，推送段照样连坐skip（昨晚20:35/20:54两轮，TA问长贵「建造计划」答了没落盘）。降级=今天不动M：moodDay/schedDay不更新，明天need_mood仍真自然重试；答话的成果由推送段落盘
 
 if need_mood:
     M['moodDay'] = day
