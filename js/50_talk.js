@@ -110,7 +110,7 @@ function openTalk(name){
 }
 /* v81意识层：心事渲染+boot自动dispatch */
 function renderMind(M){
-  if(M){MINDS=M;updateGrainBins();setTimeout(executeJudgePlans,500);for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情 */
+  if(M){MINDS=M;updateGrainBins();setTimeout(executeJudgePlans,500);setTimeout(judgeRebuildBoot,1400);for(const n in (M.minds||{}))moodMap[n]=(M.minds[n]||{}).mood||'';}   /* v88.1：mood进表情；v145 boot重建判定者建筑 */
   if(!talkNpc)return;
   const mind=document.getElementById('talkMind'),vil=document.getElementById('talkVillage');
   const m=(M&&M.minds&&M.minds[talkNpc])||null;
@@ -561,7 +561,7 @@ function bootMindCheck(){
     return;
   }
   ghGet('villagers_memory.json').then(({data})=>{
-    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);setTimeout(executeRepairs,1200);}   /* v84：拉到就存；v111码粮囤；v112建设落地；v123环境处置 */
+    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);setTimeout(judgeRebuildBoot,1400);setTimeout(executeRepairs,1200);}   /* v84：拉到就存；v111码粮囤；v112建设落地；v123环境处置；v145 boot重建 */
     const day=Math.floor((Date.now()-VH.up)/DAY_MS);
     if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});

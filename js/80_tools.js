@@ -530,10 +530,10 @@ function drawMapMarks(){
     if(typeof MKT_FLAG!=='undefined'){dot(MKT_FLAG[0],MKT_FLAG[1],'#ffd97a','集市');pois.push({x:MKT_FLAG[0],z:MKT_FLAG[1],name:'集市',c:'#ffd97a'});}
     const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
     for(const d of bd){
-      if(d.ok!==false&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');
-        const bx=parseFloat(nn[0]),bz=parseFloat(nn[1]);
-        if(isFinite(bx)&&isFinite(bz)){dot(bx,bz,'#7fc97f',d.type);pois.push({x:bx,z:bz,name:d.type,c:'#7fc97f'});}
-      }
+      let bx=null,bz=null;
+      if(d.at&&d.at.length>=2){bx=parseFloat(d.at[0]);bz=parseFloat(d.at[1]);}   /* v145：ack实际坐标优先——judge_build过账已带at */
+      else if(d.ok!==false&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');bx=parseFloat(nn[0]);bz=parseFloat(nn[1]);}
+      if(isFinite(bx)&&isFinite(bz)&&bx!=null){dot(bx,bz,'#7fc97f',d.type);pois.push({x:bx,z:bz,name:d.type,c:'#7fc97f'});}
     }
     /* 图例（左上角） */
     g.font='bold 13px sans-serif';

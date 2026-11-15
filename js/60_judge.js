@@ -817,6 +817,34 @@ function executeRepairs(){   /* v123处置执行：感知包→判定者的repai
     MINDS.repair_plans=MINDS.repair_plans.filter(function(rp){return rp&&!done[rp.id];});
   }
 }
+/* v145持久化（TA 11/15「两村→王国」联调前哨）：判定者建筑此前只活在放块那一次会话里——localStorage去重让
+   boot不再放，刷新即消失（判定者的世界留不住任何东西，比建不出更根本）。修法：ack带实际坐标，boot时读
+   build_ack.json按蓝图重建——villCells/TA方块冲突自然跳过，地形Y按groundY重算（同放块逻辑）。 */
+function judgeRebuildBoot(){
+  if(!MINDS||!NPC_TOKEN)return;
+  ghGet('build_ack.json').then(({data})=>{
+    if(!Array.isArray(data))return;
+    const[taA,taR]=taSets();
+    let any=false;
+    for(const a of data){
+      if(!a||a.ok===false||!a.at||!a.type)continue;
+      const cells=judgeCellsFor(a.type);
+      if(!cells.length)continue;
+      const g=groundY(a.at[0],a.at[1]);
+      if(g<2)continue;
+      let n=0;
+      for(const[dx,dy,dz,t]of cells){
+        const x=a.at[0]+dx,y=g+dy,z=a.at[1]+dz;
+        const k=x+','+y+','+z;
+        if(taA.has(k)||taR.has(k)||villCells[k])continue;   /* TA的格/已有建筑不碰 */
+        const cur=world[idx(x,y,z)];
+        if(cur===AIR||cur===17||cur===15||cur===16){world[idx(x,y,z)]=t;villCells[k]='judge';n++;}
+      }
+      if(n){any=true;console.log('v145：判定者的'+a.type+'重建于boot——('+a.at[0]+','+a.at[1]+')');}
+    }
+    if(any)rebuild();
+  }).catch(()=>{});
+}
 function executeJudgePlans(){
   if(!MINDS||!MINDS.build_plans||!MINDS.build_plans.length||!VH.up)return;
   let acks;
@@ -928,7 +956,7 @@ function executeJudgePlans(){
       villCells[x+','+y+','+z]='judge';
     }
     anyPlaced=true;acks[p.id]=1;
-    acksOut.push({id:p.id,ok:true,why:'建成',day:day});
+    acksOut.push({id:p.id,ok:true,why:'建成',day:day,at:[spot[0],spot[1]],type:p.type});   /* v145：实际坐标+类型入ack——boot重建与地图真实点位的锚 */
     console.log('v112：判定者的'+p.type+'立起来了——'+p.note);
   }
   try{if(MINDS.cunKu&&MINDS.cunKu.smithyDay!=null)localStorage.setItem('hetan_smithyDay',String(MINDS.cunKu.smithyDay));}catch(e){}   /* v119：因果链参数落本地——villagerProgress读 */

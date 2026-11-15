@@ -249,6 +249,7 @@ if ck.get('lastSatDay') != day and isinstance(day, int):
     print('满意度：', score, lines)
 
 acked_ids = {a.get('id') for a in A if isinstance(a, dict) and a.get('id')}
+ack_by_id = {a.get('id'): a for a in A if isinstance(a, dict)}   # v145：ack带实际坐标——boot重建+地图真实点位
 changed = False
 # new_feedback 已在事件段前初始化（v142修）
 
@@ -256,7 +257,7 @@ changed = False
 still = []
 for p in plans:
     if p.get('id') in acked_ids:
-        rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day), 'ok': ok}   # v130：ok入档（满意度要分成败）
+        rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day), 'ok': ok, 'at': (ack_by_id.get(p.get('id')) or {}).get('at')}   # v130：ok入档；v145：at入档
         done.append(rec)
         ack = next((a for a in A if a.get('id') == p.get('id')), {})
         ok = ack.get('ok', False)
