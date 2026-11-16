@@ -38,8 +38,7 @@ jobs:
         run: |
           git config user.name "村里人"
           git config user.email "villager@users.noreply.github.com"
-          git add replies.json talk_queue.json chronicle.json 2>/dev/null || true
-          git add villagers_memory.json build_ack.json 2>/dev/null || true
+          git add -A   # v146：原add清单漏了economy_summary.txt和trade_queue.json（village_economy/judge_build各写一个）——工作区永远有unstaged changes，git pull --rebase拒绝执行，三次全败→兜底弃本run结果（假并发冲突）。11/15晚第三次实锤：长贵答话成功(done 1 failed 0)但推送三次rebase全败，TA的问话等了三天没回音。add -A收全部，未来新脚本写新文件也不再漏
           if git diff --cached --quiet; then
             echo "没有要推的，正常结束"
             exit 0
