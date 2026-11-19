@@ -354,20 +354,21 @@ function buildJudgeHall(){
   const[taA,taR]=taSets();
   const c=judgeHallPos();if(!c)return;
   let ax=c[0],az=c[1];
-  const[wx,wz,ok0]=hallProbe(ax,az,taA,taR);   /* 中点可能在水上——探位向北岸找 */
-  if(!wx){console.log('v147：议事堂探位失败——判定者驻地没立起来');return;}
+  const[wx,wz,ok0]=hallProbe(ax,az,taA,taR);   /* v148b判据放宽：只查groundY>=1不查上方（公仓v141同款——真村心villCells密，上方4层全干净的连片不存在，22:47实底：意图牌立了堂没立） */
+  if(!ok0){wx=ax-2;wz=az-2;console.log('v148b：议事堂探位40步全废——兜底直接村心建（villCells占格跳过，可能不完整但灯/牌/人全立——公仓v141兜底同款）');}   /* 终极兜底：公仓v141同款——存在优先于完整 */
   JUDGE_HALL_POS[0]=wx+2;JUDGE_HALL_POS[1]=wz+2;
   /* 石基5×4+六柱3高+顶板+高灯柱5——开放pavilion（TA的中式营造语言：凉亭放大版，堂内看得见，判定者守在里面） */
   const POST=[[0,0],[4,0],[0,3],[4,3],[2,0],[2,3]];   /* 四角+前后中柱 */
   const isPost=(dx,dz)=>POST.some(p=>p[0]===dx&&p[1]===dz);
+  const free=(x,y,z)=>{const k=x+','+y+','+z;return !villCells[k]&&!taA.has(k)&&!taR.has(k);};   /* v148b兜底闸：TA的块一格不碰，别家建筑不覆写——占格跳过，堂可能缺角但绝不拆别人的 */
   for(let dx=0;dx<5;dx++)for(let dz=0;dz<4;dz++){
     const x=wx+dx,z=wz+dz,g=groundY(x,z);
-    world[idx(x,g,z)]=3;villCells[x+','+g+','+z]='judgehall';   /* 石基 */
-    if(isPost(dx,dz))for(let dy=1;dy<=3;dy++){world[idx(x,g+dy,z)]=2;villCells[x+','+(g+dy)+','+z]='judgehall';}   /* 柱 */
-    world[idx(x,g+4,z)]=10;villCells[x+','+(g+4)+','+z]='judgehall';   /* 顶板 */
+    if(free(x,g,z)){world[idx(x,g,z)]=3;villCells[x+','+g+','+z]='judgehall';}   /* 石基 */
+    if(isPost(dx,dz))for(let dy=1;dy<=3;dy++){if(free(x,g+dy,z)){world[idx(x,g+dy,z)]=2;villCells[x+','+(g+dy)+','+z]='judgehall';}}   /* 柱 */
+    if(free(x,g+4,z)){world[idx(x,g+4,z)]=10;villCells[x+','+(g+4)+','+z]='judgehall';}   /* 顶板 */
   }
   const gt=groundY(wx+2,wz);   /* 高灯柱：后中柱上再起5格——远看的灯 */
-  for(let dy=5;dy<=9;dy++){world[idx(wx+2,gt+dy,wz)]=3;villCells[(wx+2)+','+(gt+dy)+','+wz]='judgehall';}
+  for(let dy=5;dy<=9;dy++){if(free(wx+2,gt+dy,wz)){world[idx(wx+2,gt+dy,wz)]=3;villCells[(wx+2)+','+(gt+dy)+','+wz]='judgehall';}}
   /* 不在此处rebuild——buildVillageCore尾部统一rebuild（同公仓管线），此处rebuild会在地形未完成时重算 */
   /* 心跳灯mesh：灯柱顶——发光球+点光。亮=26h内有账，暗=管事的没来 */
   const lx=wx+2.5,lz=wz+0.5,ly=gt+10.6;
@@ -417,11 +418,7 @@ function hallProbe(ax,az,taA,taR){   /* v147：议事堂探位——中点可能
     for(let dx=0;dx<5&&ok;dx++)for(let dz=0;dz<4&&ok;dz++){
       const x=wx+dx,z=wz+dz;
       if(!inW(x,1,z)){ok=false;break;}
-      const g=groundY(x,z);if(g<1){ok=false;break;}
-      for(let dy=1;dy<=4;dy++){
-        const b=get(x,g+dy,z);
-        if(b!==AIR&&b!==17&&b!==15&&b!==16){ok=false;break;}   /* 树冠也不容忍——顶板会盖在树叶上（v117树冠坑族） */
-      }
+      const g=groundY(x,z);if(g<1){ok=false;break;}   /* v148b：只查地面层——上方留给柱/顶直接盖（公仓v141判据：阶梯地基合法，上方树冠装饰覆盖即可） */
       if(ok){const k=x+','+g+','+z;if(villCells[k]||taA.has(k)||taR.has(k))ok=false;}
     }
     if(ok)return[wx,wz,true];
