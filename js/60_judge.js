@@ -344,10 +344,10 @@ function hallCanvas(lines,w,h,fs,col){   /* 小canvas横排文字 */
   return cv;
 }
 function judgeHallPos(){
-  const c0=campCenter(0),c1=(VH.camps&&VH.camps.length>1)?campCenter(1):null;
-  if(c0&&c1)return[Math.round((c0[0]+c1[0])/2),Math.round((c0[1]+c1[1])/2)];
-  if(c0)return[Math.round(c0[0]),Math.round(c0[1])];
-  return null;
+  /* v148修：两村中点在远域fBm缓坡（385,284）——离北村村心75格，TA直视根本看不见（22:22实底）。
+     改锚北村村心：TA的主活动区，公仓/打谷场旁边——判定者的家立在他管的人旁边 */
+  const c0=campCenter(0);
+  return c0?[Math.round(c0[0]),Math.round(c0[1])]:null;
 }
 function buildJudgeHall(){
   if(!VH.homes||judgeHallBuilt)return;judgeHallBuilt=true;
@@ -410,7 +410,7 @@ function buildJudgeHall(){
 }
 function hallProbe(ax,az,taA,taR){   /* v147：议事堂探位——中点可能在河上，8向螺旋28步找5×4可落地（判据v141放宽：每列groundY>=1） */
   const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
-  for(let t=0;t<28;t++){
+  for(let t=0;t<40;t++){
     const dd=DIRS[t%8],rr=2+Math.floor(t/8)*3;
     const wx=Math.round(ax)+dd[0]*rr-2,wz=Math.round(az)+dd[1]*rr-2;
     let ok=true;
