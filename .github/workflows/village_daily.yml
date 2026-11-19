@@ -1,0 +1,46 @@
+name: village-daily
+on:
+  schedule:
+    - cron: '30 0 * * *'   # 08:30北京——村里的早晨（确定性账：进项/农时/判定者过账，零API）。v147：判定者日常账脱离talk_reply（原来只在TA说话时跑——TA三天没说话，t901的ack和村库进项全停）
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: village-mind      # 与talk-reply串行——同一个villagers_memory.json，不能并发抢
+  cancel-in-progress: false
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 村里的生计（消耗+进项+农时+事件——本地确定性）
+        run: python3 scripts/village_economy.py
+      - name: 判定者建设账（ack消费+失败回流重试+农时因果）
+        run: python3 scripts/judge_build.py
+      - name: 推送
+        run: |
+          git config user.name "村里人"
+          git config user.email "villager@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "没有要推的，正常结束"
+            exit 0
+          fi
+          git commit -m "村里的生计与账：economy+judge_build（每日）"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "推送成功（第${i}次）"
+              exit 0
+            fi
+            echo "push第${i}次失败，第${i}次恢复"
+            git rebase --abort 2>/dev/null || true
+            git merge --abort 2>/dev/null || true
+            sleep 6
+          done
+          git fetch origin main
+          git reset --hard origin/main
+          echo "并发冲突：本run结果弃了（数据无损，下个触发重跑）"
+          exit 0

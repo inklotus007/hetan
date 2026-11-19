@@ -667,11 +667,14 @@ function judgeAnchor(near){
   if(near&&near.indexOf('villager:')===0){const nm=near.slice(9);const vh=Object.values(VH.homes||{}).find(h=>h.name===nm);if(vh)return[vh.plot[0],vh.plot[2]];}
   const c=campCenter(0);return[c[0],c[1]];
 }
-function judgeSpotNear(ax,az,w,d){
+function judgeSpotNear(ax,az,w,d,avoid){   /* v147：avoid=上次失败坐标[x,z]列表——判定者「换个地方再试」的物理落点（服务器回流计划带avoid，客户端选址避开栽过的坑） */
   const[taA,taR]=taSets();
+  const av=(avoid||[]).filter(a=>Array.isArray(a)&&a.length>=2);
+  const avHit=(x,z)=>av.some(a=>Math.abs(x-a[0])<=2&&Math.abs(z-a[1])<=2);
   for(let r=3;r<=14;r++)for(let a=0;a<12;a++){
     const ang=a*Math.PI/6+r*0.31;
     const bx=Math.round(ax+Math.cos(ang)*r),bz=Math.round(az+Math.sin(ang)*r);
+    if(avHit(bx,bz))continue;
     let ok=true;
     for(let dx=0;dx<w&&ok;dx++)for(let dz=0;dz<d;dz++){
       const x=bx+dx,z=bz+dz;
@@ -930,8 +933,10 @@ function executeJudgePlans(){
     if(!cells.length){acks[p.id]=1;continue;}
     const big=(p.type==='凉亭'||p.type==='水井');
     const a=judgeAnchor(p.near||'center');
-    const spot=judgeSpotNear(a[0],a[1],big?3:3,big?3:1);
+    const spot=judgeSpotNear(a[0],a[1],big?3:3,big?3:1,p.avoid||[]);
+    const refund=()=>{if(MINDS.cunKu){const cost=PRICE[p.type]||{};for(const k in cost)MINDS.cunKu[k]=(MINDS.cunKu[k]||0)+cost[k];}};   /* v147：失败退款——扣在选址前，session内账面要还原（服务器只在成功时扣，客户端不退会虚亏到下次刷新） */
     if(!spot){
+      refund();
       acks[p.id]=1;
       acksOut.push({id:p.id,ok:false,why:'周边14格内没有平整空地——都让路宅田占了',day:day});
       continue;
@@ -947,8 +952,9 @@ function executeJudgePlans(){
       placed.push([x,y,z,t]);
     }
     if(blocked){
+      refund();
       acks[p.id]=1;
-      acksOut.push({id:p.id,ok:false,why:'蓝图格被占——选址要再挪',day:day});
+      acksOut.push({id:p.id,ok:false,why:'蓝图格被占——选址要再挪',day:day,at:[spot[0],spot[1]]});   /* v147：失败也带坐标——服务器回流计划带avoid，下次选址避开 */
       continue;
     }
     for(const[x,y,z,t]of placed){

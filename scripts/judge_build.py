@@ -86,6 +86,8 @@ last_md = ck.get('lastFarmMd') or 0
 def _in_win(md, w0, w1):
     return w0 <= md <= w1
 
+new_feedback = []   # v147修：初始化提到farm段前——farm段(播/收窗口)也用new_feedback，v142只提到事件段前没扫到farm用点，10/20-11/5播冬麦窗口每次崩(NameError)，冬麦没种上(lastFarmMd=0铁证)
+changed = False     # v147修：同族——farm段99行changed=True先于任何赋值
 for w0, w1, name in FARM_WIN:
     if not (_in_win(NOWMD, w0, w1) and not _in_win(last_md, w0, w1)):
         continue
@@ -93,22 +95,34 @@ for w0, w1, name in FARM_WIN:
         cost = 2
         if ck.get('种子', 0) >= cost:
             ck['种子'] -= cost
+            ck['cornPlanted'] = True   # v147农时因果
             new_feedback.append({'ok': True, 'note': '夏播', 'why': '麦茬地整好了，玉米种下地——种子扣2份', 'day': day})
         else:
             new_feedback.append({'ok': False, 'note': '夏播', 'why': '种子不够，玉米播不下去——来年减产', 'day': day})
             changed = True
     elif name == '麦收':
-        ck['粮'] = ck.get('粮', 0) + 760
-        ck['种子'] = ck.get('种子', 0) + 2
-        new_feedback.append({'ok': True, 'note': '麦收', 'why': '麦子进场，粮+760，留种2份', 'day': day})
+        if ck.get('winterWheat'):   # v147农时因果：没种就没有收——今年播冬麦窗口farm段崩了没种上，明年麦收见这条
+            ck['粮'] = ck.get('粮', 0) + 760
+            ck['种子'] = ck.get('种子', 0) + 2
+            new_feedback.append({'ok': True, 'note': '麦收', 'why': '麦子进场，粮+760，留种2份', 'day': day})
+        else:
+            new_feedback.append({'ok': False, 'note': '麦收', 'why': '去年冬麦没种上——地里没麦可收，粮一分没进', 'day': day})
+            changed = True
+        ck['winterWheat'] = False
     elif name == '秋收':
-        ck['粮'] = ck.get('粮', 0) + 800
-        ck['种子'] = ck.get('种子', 0) + 2
-        new_feedback.append({'ok': True, 'note': '秋收', 'why': '玉米收了，粮+800，留种2份——入冬前粮要备足，冬天田里不长粮', 'day': day})
+        if ck.get('cornPlanted'):   # v147农时因果（同族）
+            ck['粮'] = ck.get('粮', 0) + 800
+            ck['种子'] = ck.get('种子', 0) + 2
+            new_feedback.append({'ok': True, 'note': '秋收', 'why': '玉米收了，粮+800，留种2份——入冬前粮要备足，冬天田里不长粮', 'day': day})
+        else:
+            new_feedback.append({'ok': False, 'note': '秋收', 'why': '今年玉米没播——秋收无粮可进', 'day': day})
+            changed = True
+        ck['cornPlanted'] = False
     elif name == '播冬麦':
         cost = 2
         if ck.get('种子', 0) >= cost:
             ck['种子'] -= cost
+            ck['winterWheat'] = True   # v147农时因果
             new_feedback.append({'ok': True, 'note': '播冬麦', 'why': '冬麦下地，雪底下越冬——种子扣2份', 'day': day})
         else:
             new_feedback.append({'ok': False, 'note': '播冬麦', 'why': '种子不够——明年麦子悬了', 'day': day})
@@ -117,7 +131,7 @@ for w0, w1, name in FARM_WIN:
     break
 ck['lastFarmMd'] = NOWMD if any(_in_win(NOWMD, w0, w1) for w0, w1, _ in FARM_WIN) else ck.get('lastFarmMd', 0)
 
-new_feedback = []   # v142修：初始化提前（原252行，事件段139行先用——v131起连环崩的第二个点）
+# v147：new_feedback/changed 初始化已提到farm段前（这段原来的重复初始化会把farm的feedback清掉——v142只挪到事件段前没扫到farm用点）
 # v131轻事件（Townsmen灾害的河滩轻版）：事件本地roll（day种子确定性——同天重跑同结果），应对交判定者
 import hashlib
 _seed = int(hashlib.md5(str(day).encode()).hexdigest()[:8], 16) % 10000
@@ -253,15 +267,37 @@ ack_by_id = {a.get('id'): a for a in A if isinstance(a, dict)}   # v145：ack带
 changed = False
 # new_feedback 已在事件段前初始化（v142修）
 
-# ①ack过账：plans→done
+# ①ack过账：plans→done；建设类失败回流重试（v147核心——t901「选址要再挪」卡三天的根：失败ack只归档不回流，提议→受阻→回报有，再提议断）
+BUILD_TYPES = set(PRICE.keys()) - {'粜粮', '籴粮'}
+MAX_RETRY = 3
 still = []
 for p in plans:
     if p.get('id') in acked_ids:
-        rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day), 'ok': ok, 'at': (ack_by_id.get(p.get('id')) or {}).get('at')}   # v130：ok入档；v145：at入档
-        done.append(rec)
-        ack = next((a for a in A if a.get('id') == p.get('id')), {})
-        ok = ack.get('ok', False)
+        ack = ack_by_id.get(p.get('id')) or {}
+        ok = ack.get('ok', False)   # v147修：ok先取后用——原260行rec引用ok在其赋值之前，首个ack即NameError，11/16起每次崩，ack三天没被消费
         why = (ack.get('why') or ('建成：' + (p.get('note') or '')))[:60]
+        if (not ok) and p.get('type') in BUILD_TYPES:
+            retry = int(p.get('retry') or 0) + 1
+            if retry <= MAX_RETRY:
+                avoid = [a for a in (p.get('avoid') or []) if isinstance(a, list)]
+                if ack.get('at'):
+                    avoid.append(ack.get('at'))
+                np = dict(p)
+                np['id'] = p['id'] + '_r%d' % retry   # 新id——客户端hetan_judge_done按id记已执行，老id会被跳过
+                np['retry'] = retry
+                np['avoid'] = avoid   # 失败坐标随计划走：客户端选址避开上次栽的坑
+                still.append(np)
+                new_feedback.append({'ok': False, 'note': '重试', 'why': ('%s第%d次没成（%s）——换个地方再试' % (p.get('type'), retry, why[:20]))[:60], 'day': day})
+                changed = True
+                continue
+            else:
+                rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day), 'ok': False, 'given_up': True, 'at': ack.get('at')}
+                done.append(rec)
+                new_feedback.append({'ok': False, 'note': '搁置', 'why': ('%s三次选址未成，暂时搁置——先办别的' % p.get('type'))[:60], 'day': day})
+                changed = True
+                continue
+        rec = {'type': p.get('type'), 'near': p.get('near'), 'note': p.get('note', ''), 'day': p.get('day', day), 'ok': ok, 'at': ack.get('at')}   # v130：ok入档；v145：at入档
+        done.append(rec)
         # v119扣账：建成才扣——客户端校验是主防线（同批本地扣），这里兜底防透支
         if ok and p.get('type') == '籴粮':
             # v131籴粮兜底：钱出粮进（1.2/石，与前端同价同账）
