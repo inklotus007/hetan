@@ -561,7 +561,7 @@ function bootMindCheck(){
     return;
   }
   ghGet('villagers_memory.json').then(({data})=>{
-    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);setTimeout(judgeRebuildBoot,1400);setTimeout(executeRepairs,1200);}   /* v84：拉到就存；v111码粮囤；v112建设落地；v123环境处置；v145 boot重建 */
+    if(data&&data.minds){MINDS=data;setTimeout(updateGrainBins,400);setTimeout(executeJudgePlans,900);setTimeout(judgeRebuildBoot,1400);setTimeout(executeRepairs,1200);setTimeout(tickJudgeHall,1600);setTimeout(syncIntentSigns,2000);}   /* v84：拉到就存；v111码粮囤；v112建设落地；v123环境处置；v145 boot重建 */
     const day=Math.floor((Date.now()-VH.up)/DAY_MS);
     if(data&&data.moodDay===day&&data&&data.schedDay===day)return;   // 今天都养过了
     return ghFetch('https://api.github.com/repos/inklotus007/hetan/actions/workflows/talk_reply.yml/dispatches',{method:'POST',headers:{'Authorization':'bearer '+NPC_TOKEN,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})},10000).then(()=>{apiStat='村里人开始想今天的心思——一分钟';});

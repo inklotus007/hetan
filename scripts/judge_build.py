@@ -358,6 +358,7 @@ M['build_plans'] = still[-6:]
 M['build_done'] = done[-14:]
 M['built_summary'] = ['%s（%s）' % (d.get('note') or d.get('type'), d.get('near')) for d in done[-14:]]
 
+M['heartbeat'] = {'lastRun': __import__('datetime').datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'by': 'judge_build'}   # v147心跳灯：议事堂顶的灯按这个亮——26小时内灯亮，暗了=管事的没来（TA：直视能看到他在不在）
 json.dump(M, open('villagers_memory.json', 'w'), ensure_ascii=False)
 if changed or A:
     json.dump([], open('build_ack.json', 'w'), ensure_ascii=False)

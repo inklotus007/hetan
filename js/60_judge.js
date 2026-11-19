@@ -330,6 +330,155 @@ function buildOneCunKu(wx,wz,taA,taR,ci,forceBuild){
     console.log('v134：村长守'+(ci===0?'北':'南')+'岸仓（本地补）');
   }
 }
+
+/* ===== v147判定者议事堂：TA「不知道他到底在不在」——给判定者一个驻地，直视可见：
+   建筑+高灯柱（心跳灯：账本heartbeat26小时内=亮）+竖牌「判定者」+今日村务告示+意图牌（拟建的蓝图立小牌，建成/搁置撤牌，挪址=牌挪位置） ===== */
+let judgeHallBuilt=false, hallHeart=null, hallLight=null, hallNoticeTx=null, hallNoticeDraw='';
+const intentSigns={};
+function hallCanvas(lines,w,h,fs,col){   /* 小canvas横排文字 */
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const g=cv.getContext('2d');g.fillStyle='rgba(24,20,16,0.92)';g.fillRect(0,0,w,h);
+  g.strokeStyle='rgba(200,170,120,0.5)';g.lineWidth=4;g.strokeRect(4,4,w-8,h-8);
+  g.fillStyle=col||'#e8d5a8';g.textAlign='center';g.font='bold '+fs+'px serif';
+  lines.forEach((l,i)=>g.fillText(l,w/2,h/2+(i-(lines.length-1)/2)*(fs+8)+fs*0.35));
+  return cv;
+}
+function judgeHallPos(){
+  const c0=campCenter(0),c1=(VH.camps&&VH.camps.length>1)?campCenter(1):null;
+  if(c0&&c1)return[Math.round((c0[0]+c1[0])/2),Math.round((c0[1]+c1[1])/2)];
+  if(c0)return[Math.round(c0[0]),Math.round(c0[1])];
+  return null;
+}
+function buildJudgeHall(){
+  if(!VH.homes||judgeHallBuilt)return;judgeHallBuilt=true;
+  const[taA,taR]=taSets();
+  const c=judgeHallPos();if(!c)return;
+  let ax=c[0],az=c[1];
+  const[wx,wz,ok0]=hallProbe(ax,az,taA,taR);   /* 中点可能在水上——探位向北岸找 */
+  if(!wx){console.log('v147：议事堂探位失败——判定者驻地没立起来');return;}
+  JUDGE_HALL_POS[0]=wx+2;JUDGE_HALL_POS[1]=wz+2;
+  /* 石基5×4+六柱3高+顶板+高灯柱5——开放pavilion（TA的中式营造语言：凉亭放大版，堂内看得见，判定者守在里面） */
+  const POST=[[0,0],[4,0],[0,3],[4,3],[2,0],[2,3]];   /* 四角+前后中柱 */
+  const isPost=(dx,dz)=>POST.some(p=>p[0]===dx&&p[1]===dz);
+  for(let dx=0;dx<5;dx++)for(let dz=0;dz<4;dz++){
+    const x=wx+dx,z=wz+dz,g=groundY(x,z);
+    world[idx(x,g,z)]=3;villCells[x+','+g+','+z]='judgehall';   /* 石基 */
+    if(isPost(dx,dz))for(let dy=1;dy<=3;dy++){world[idx(x,g+dy,z)]=2;villCells[x+','+(g+dy)+','+z]='judgehall';}   /* 柱 */
+    world[idx(x,g+4,z)]=10;villCells[x+','+(g+4)+','+z]='judgehall';   /* 顶板 */
+  }
+  const gt=groundY(wx+2,wz);   /* 高灯柱：后中柱上再起5格——远看的灯 */
+  for(let dy=5;dy<=9;dy++){world[idx(wx+2,gt+dy,wz)]=3;villCells[(wx+2)+','+(gt+dy)+','+wz]='judgehall';}
+  /* 不在此处rebuild——buildVillageCore尾部统一rebuild（同公仓管线），此处rebuild会在地形未完成时重算 */
+  /* 心跳灯mesh：灯柱顶——发光球+点光。亮=26h内有账，暗=管事的没来 */
+  const lx=wx+2.5,lz=wz+0.5,ly=gt+10.6;
+  const lm=new THREE.Mesh(new THREE.SphereGeometry(0.42,10,10),new THREE.MeshBasicMaterial({color:0xffd97a}));
+  lm.position.set(lx,ly,lz);scene.add(lm);hallHeart=lm;
+  hallLight=new THREE.PointLight(0xffd97a,1.3,10);hallLight.position.set(lx,ly+0.3,lz);scene.add(hallLight);
+  /* 竖牌「判定者」：门口（背面前侧=村心方向）立高窄牌 */
+  try{
+    const cv=document.createElement('canvas');cv.width=96;cv.height=240;
+    const g2=cv.getContext('2d');g2.fillStyle='rgba(26,22,18,0.94)';g2.fillRect(0,0,96,240);
+    g2.strokeStyle='rgba(210,180,120,0.55)';g2.lineWidth=3;g2.strokeRect(3,3,90,234);
+    g2.fillStyle='#f0d9a0';g2.textAlign='center';g2.font='bold 40px serif';
+    '判定者'.split('').forEach((ch,i)=>g2.fillText(ch,48,58+i*62));
+    const tx=new THREE.CanvasTexture(cv);
+    const board=new THREE.Mesh(new THREE.PlaneGeometry(0.8,2.0),[new THREE.MeshBasicMaterial({map:tx}),new THREE.MeshBasicMaterial({color:0x2a241c}),new THREE.MeshBasicMaterial({color:0x2a241c}),new THREE.MeshBasicMaterial({color:0x2a241c}),new THREE.MeshBasicMaterial({color:0x2a241c}),new THREE.MeshBasicMaterial({color:0x2a241c})]);
+    const px=wx-0.7,pz=wz+1.5,pg=groundY(Math.round(px),Math.round(pz));
+    board.position.set(px,pg+1.4,pz);board.rotation.y=Math.PI/2;scene.add(board);
+  }catch(e){}
+  /* 今日村务告示：门口横牌canvas——feedback前3条，MINDS到刷新 */
+  try{
+    const cv=document.createElement('canvas');cv.width=256;cv.height=192;
+    hallNoticeTx=new THREE.CanvasTexture(cv);hallNoticeCv=cv;
+    const nb=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.9,0.14),new THREE.MeshBasicMaterial({map:hallNoticeTx}));
+    const nx=wx+2.5,nz=wz+4.6,ng=groundY(wx+2,wz+4);
+    nb.position.set(nx,ng+1.6,nz);scene.add(nb);
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(0.16,1.4,0.16),new THREE.MeshLambertMaterial({color:0x5a4632}));
+    leg.position.set(nx,ng+0.5,nz);scene.add(leg);
+    drawNotice();
+  }catch(e){}
+  /* 判定者守门口：本地补渲染（照村长守恒）——still钉在门前，面向村心 */
+  const pdId='p_pandian';
+  if(typeof npcs==='object'&&npcs&&!npcs[pdId]){
+    const dx0=JUDGE_HALL_POS[0],dz0=JUDGE_HALL_POS[1]+1.6;
+    npcs[pdId]={id:pdId,name:'判定者',seed:90210,coat:'#243038',skin:'#e8c39e',home:[dx0,dz0],pos:[dx0,dz0],yaw:0,online:false,lastSeen:0,still:true};
+    npcList=Object.values(npcs);
+    console.log('v147：判定者守议事堂门口（本地补）');
+  }
+  if(lampSpotFree(JUDGE_HALL_POS[0]+2,JUDGE_HALL_POS[1]+3))putLamp(JUDGE_HALL_POS[0]+2,JUDGE_HALL_POS[1]+3);   /* 门口路灯——夜里TA能看见门 */
+  console.log('v147：判定者议事堂立起来了——'+wx+','+wz+'（心跳灯+告示+意图牌）');
+}
+function hallProbe(ax,az,taA,taR){   /* v147：议事堂探位——中点可能在河上，8向螺旋28步找5×4可落地（判据v141放宽：每列groundY>=1） */
+  const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+  for(let t=0;t<28;t++){
+    const dd=DIRS[t%8],rr=2+Math.floor(t/8)*3;
+    const wx=Math.round(ax)+dd[0]*rr-2,wz=Math.round(az)+dd[1]*rr-2;
+    let ok=true;
+    for(let dx=0;dx<5&&ok;dx++)for(let dz=0;dz<4&&ok;dz++){
+      const x=wx+dx,z=wz+dz;
+      if(!inW(x,1,z)){ok=false;break;}
+      const g=groundY(x,z);if(g<1){ok=false;break;}
+      for(let dy=1;dy<=4;dy++){
+        const b=get(x,g+dy,z);
+        if(b!==AIR&&b!==17&&b!==15&&b!==16){ok=false;break;}   /* 树冠也不容忍——顶板会盖在树叶上（v117树冠坑族） */
+      }
+      if(ok){const k=x+','+g+','+z;if(villCells[k]||taA.has(k)||taR.has(k))ok=false;}
+    }
+    if(ok)return[wx,wz,true];
+  }
+  return[0,0,false];
+}
+function drawNotice(){   /* 今日村务：feedback前3条——判定者今天干了什么 */
+  if(!hallNoticeTx)return;
+  const fb=(MINDS&&MINDS.build_feedback||[]).slice(0,3);
+  const lines=['— 今日村务 —'].concat(fb.map(f=>(f.ok?'·':'×')+(f.note||'')+('：'+(f.why||'')).slice(0,11)));
+  const cv=hallNoticeCv,g=cv.getContext('2d');
+  g.fillStyle='rgba(24,20,16,0.94)';g.fillRect(0,0,256,192);
+  g.strokeStyle='rgba(210,180,120,0.55)';g.lineWidth=4;g.strokeRect(4,4,248,184);
+  g.textAlign='center';
+  g.fillStyle='#ffd97a';g.font='bold 26px serif';g.fillText(lines[0],128,36);
+  g.font='19px serif';
+  lines.slice(1,4).forEach((l,i)=>{g.fillStyle=i<1?'#e8d5a8':'#c8b490';g.fillText(l,128,72+i*38);});
+  g.fillStyle='#8a7a60';g.font='15px serif';g.fillText('—— 判定者谨启',128,178);
+  hallNoticeTx.needsUpdate=true;
+}
+function tickJudgeHall(){   /* MINDS到+每分钟：心跳灯亮暗+告示刷新+意图牌同步 */
+  if(!judgeHallBuilt)return;
+  const hb=MINDS&&MINDS.heartbeat&&MINDS.heartbeat.lastRun?Date.parse(MINDS.heartbeat.lastRun):0;
+  const alive=!!hb&&(Date.now()-hb)<26*3600*1000;
+  if(hallHeart){
+    hallHeart.material.color.setHex(alive?0xffd97a:0x4a4438);
+    if(hallLight)hallLight.intensity=alive?1.3:0.12;
+    hallHeart.scale.setScalar(alive?1+Math.sin(Date.now()/700)*0.05:1);   /* 亮时灯芯微微呼吸——活的 */
+  }
+  drawNotice();
+  syncIntentSigns();
+}
+function makeIntentSign(p){   /* 意图牌：判定者拟的蓝图立小牌——TA直视看到他正在办这件事 */
+  try{
+    const a=judgeAnchor(p.near||'center');
+    const spot=judgeSpotNear(a[0],a[1],1,1,p.avoid||[]);
+    if(!spot)return null;
+    const g=groundY(spot[0],spot[1]);
+    const grp=new THREE.Group();
+    const post=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.3,0.12),new THREE.MeshLambertMaterial({color:0x5a4632}));
+    post.position.y=0.65;grp.add(post);
+    const cv=hallCanvas(['判定者拟',p.type+(p.retry>0?'·挪址'+p.retry:'')],128,96,20,'#ffd97a');
+    const bd=new THREE.Mesh(new THREE.PlaneGeometry(1.15,0.86),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),side:THREE.DoubleSide}));
+    bd.position.y=1.55;grp.add(bd);
+    grp.position.set(spot[0]+0.5,g+0.1,spot[1]+0.5);
+    scene.add(grp);
+    return grp;
+  }catch(e){return null;}
+}
+function syncIntentSigns(){   /* 计划在=牌立着；建成/搁置/换id（挪址回流）=旧牌撤+新牌立——牌挪位置就是「换个地方再试」的实体 */
+  if(!MINDS||!VH.up)return;
+  const plans=(MINDS.build_plans||[]).filter(p=>p&&p.id);
+  const ids={};
+  for(const p of plans){ids[p.id]=1;if(!intentSigns[p.id])intentSigns[p.id]=makeIntentSign(p);}
+  for(const k in intentSigns)if(!ids[k]){scene.remove(intentSigns[k]);delete intentSigns[k];}
+}
+
 let cunkuBuilt=false;
 const cunkuSlots={};   /* v122：每村公仓的粮袋位（世界坐标），按袋数从前往后码 */
 function tickCunKuBags(){   /* v122：村库粮→粮袋实体同步（MINDS到了+日切时跑） */

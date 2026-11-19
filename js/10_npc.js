@@ -251,6 +251,11 @@ function accessPts(){
 }
 const npcObjsSeedCache={};   /* v84：村民seed缓存（npcs.json拉到后填——chat朝向用同seed才算得出同偏移） */
 function npcPos(npc,tSec){
+  if(npc.still&&npc.home){   /* v147判定者守议事堂门口——不漫游，面向村心（守位是他「在」的形状） */
+    const c=campCenter(0);
+    const yaw=c?Math.atan2(c[0]-npc.home[0],c[1]-npc.home[1]):0;
+    return[npc.home[0],npc.home[1],yaw,undefined];
+  }
   const dayT=(tSec%DAY_LEN)/DAY_LEN;
   const s=schedPos(npc.name,dayT);
   if(s){   /* 投影：按日程活 */

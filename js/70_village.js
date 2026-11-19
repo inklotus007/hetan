@@ -424,6 +424,7 @@ function applyVillagers(now){
   buildVillageRoads();   /* v85：村区街道+打谷场+水井（确定性，每端同算，只铺草上不碰玩家建筑）+rebuild兜底 */
   relocateAnimals();   /* v85.1：动物从老地图迁村 */
   buildCunKuWan();   /* v120/v121：两村公仓+名字牌+村长守北岸仓 */
+  buildJudgeHall();   /* v147：判定者议事堂——驻地+心跳灯+今日村务+意图牌（TA：不知道他到底在不在） */
   sweepRoadTrees();   /* v121：树挡路日切清 */
   buildStreetLamps();   /* v117：掌灯——路口灯柱+户灯，施工户挂火炬（TA：一到夜晚黑漆漆的） */
   buildFarm();   /* v111：麦田——芒种开镰寒露播种，村历驱动（TA：账上的粮要长在地里） */

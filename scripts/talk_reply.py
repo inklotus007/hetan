@@ -146,6 +146,7 @@ for item in Q:
 if replied:
     R['replies'].extend(replied)
     R['replies'] = R['replies'][-300:]
+    M['heartbeat'] = {'lastRun': __import__('datetime').datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'by': 'talk_reply'}   # v147心跳灯：答话也算管事的来过——灯跟着亮
     json.dump(M, open('villagers_memory.json', 'w'), ensure_ascii=False)   # 对话记忆落盘
 json.dump(R, open('replies.json', 'w'), ensure_ascii=False)
 json.dump([q for q in Q if q.get('id') in failed], open('talk_queue.json', 'w'), ensure_ascii=False)   # 成功的清掉，失败的留队

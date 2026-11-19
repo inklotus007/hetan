@@ -528,6 +528,7 @@ function drawMapMarks(){
       });
     }catch(e){}
     if(typeof MKT_FLAG!=='undefined'){dot(MKT_FLAG[0],MKT_FLAG[1],'#ffd97a','集市');pois.push({x:MKT_FLAG[0],z:MKT_FLAG[1],name:'集市',c:'#ffd97a'});}
+    if(typeof JUDGE_HALL_POS!=='undefined'&&JUDGE_HALL_POS[0]){dot(JUDGE_HALL_POS[0],JUDGE_HALL_POS[1],'#ff9a4a','议事堂');pois.push({x:JUDGE_HALL_POS[0],z:JUDGE_HALL_POS[1],name:'议事堂',c:'#ff9a4a'});}   /* v147：判定者的家上图——地图上有名字，直视有灯 */
     const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
     for(const d of bd){
       let bx=null,bz=null;

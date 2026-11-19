@@ -130,10 +130,12 @@ function tickHighlight(){
   else hlBox.visible=false;
 }
 
+let hallTickLast=0;   /* v147议事堂心跳灯节流 */
 function loop(now){
   window.__booted=true;   /* v57.2 boot自救：跑到这里=启动成功，watch停 */
 requestAnimationFrame(loop);
   const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(judgeHallBuilt&&now-hallTickLast>30000){hallTickLast=now;try{tickJudgeHall();}catch(e){}}   /* v147：灯亮暗+告示+意图牌30秒一查；呼吸动画在tickJudgeHall里靠scale正弦——够活 */
   physics(dt);
   camera.position.set(p.x,p.y+EYE,p.z);
   camera.rotation.set(0,0,0);
