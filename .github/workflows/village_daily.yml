@@ -1,7 +1,10 @@
 name: village-daily
 on:
   schedule:
-    - cron: '30 0 * * *'   # 08:30北京——村里的早晨（确定性账：进项/农时/判定者过账，零API）。v147：判定者日常账脱离talk_reply（原来只在TA说话时跑——TA三天没说话，t901的ack和村库进项全停）
+    # v149：原'30 0 * * *'连续两天没触发（GitHub schedule高峰延迟+丢弃）——避开整半点 + 幂等补跑窗口
+    - cron: '37 0 * * *'   # 08:37北京——村里的早晨（确定性账：进项/农时/判定者过账，零API）
+    - cron: '3 4 * * *'    # 12:03北京——补跑窗口①（econDay幂等，早跑过则空转）
+    - cron: '11 8 * * *'   # 16:11北京——补跑窗口②（前两窗全miss的兜底）
   workflow_dispatch:
 permissions:
   contents: write
