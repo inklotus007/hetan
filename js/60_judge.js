@@ -354,13 +354,31 @@ function buildJudgeHall(){
   const[taA,taR]=taSets();
   const c=judgeHallPos();if(!c)return;
   let ax=c[0],az=c[1];
-  const[wx,wz,ok0]=hallProbe(ax,az,taA,taR);   /* v148b判据放宽：只查groundY>=1不查上方（公仓v141同款——真村心villCells密，上方4层全干净的连片不存在，22:47实底：意图牌立了堂没立） */
-  if(!ok0){wx=ax-2;wz=az-2;console.log('v148b：议事堂探位40步全废——兜底直接村心建（villCells占格跳过，可能不完整但灯/牌/人全立——公仓v141兜底同款）');}   /* 终极兜底：公仓v141同款——存在优先于完整 */
+  const[wx0,wz0,ok0]=hallProbe(ax,az,taA,taR);   /* v147判据：只查groundY>=1不查上方，villCells全空才落 */
+  let wx=wx0,wz=wz0,forced=false;
+  if(!ok0){
+    /* v149兜底改（TA 11/21「还是没看到建筑」——v148b兜底位置被街道/宅基占满，占格跳过把堂跳成零散几块石头不成立）：
+       8向微挪找「TA块最少」的落位，落位后只避TA块（taA/taR一格不碰），系统villCells（街道/宅基/公仓）强制覆写——压一条路角可接受，存在且完整优先 */
+    let best=null,bestTa=99;
+    for(let t=0;t<8;t++){
+      const dd=[[3,0],[-3,0],[0,3],[0,-3],[3,3],[-3,3],[3,-3],[3,-3]][t];
+      const bx=Math.round(ax)+dd[0]-2,bz=Math.round(az)+dd[1]-2;
+      let ta=0;
+      for(let dx=0;dx<5;dx++)for(let dz=0;dz<4;dz++){
+        const x=bx+dx,z=bz+dz;if(!inW(x,1,z)){ta+=99;break;}
+        const g=groundY(x,z);if(g<1){ta+=99;break;}
+        const k=x+','+g+','+z;if(taA.has(k)||taR.has(k))ta++;
+      }
+      if(ta<bestTa){bestTa=ta;best=[bx,bz];}
+    }
+    if(best){wx=best[0];wz=best[1];forced=true;}
+    console.log('v149：议事堂兜底——探位40步全废，强制落位('+wx+','+wz+') TA块='+bestTa+'（系统格覆写）');
+  }
   JUDGE_HALL_POS[0]=wx+2;JUDGE_HALL_POS[1]=wz+2;
   /* 石基5×4+六柱3高+顶板+高灯柱5——开放pavilion（TA的中式营造语言：凉亭放大版，堂内看得见，判定者守在里面） */
   const POST=[[0,0],[4,0],[0,3],[4,3],[2,0],[2,3]];   /* 四角+前后中柱 */
   const isPost=(dx,dz)=>POST.some(p=>p[0]===dx&&p[1]===dz);
-  const free=(x,y,z)=>{const k=x+','+y+','+z;return !villCells[k]&&!taA.has(k)&&!taR.has(k);};   /* v148b兜底闸：TA的块一格不碰，别家建筑不覆写——占格跳过，堂可能缺角但绝不拆别人的 */
+  const free=(x,y,z)=>{const k=x+','+y+','+z;return !taA.has(k)&&!taR.has(k);};   /* v149：探位成功=空地，free只挡TA块；兜底=系统格（街道/宅基）强制覆写，TA块仍一格不碰 */
   for(let dx=0;dx<5;dx++)for(let dz=0;dz<4;dz++){
     const x=wx+dx,z=wz+dz,g=groundY(x,z);
     if(free(x,g,z)){world[idx(x,g,z)]=3;villCells[x+','+g+','+z]='judgehall';}   /* 石基 */

@@ -493,17 +493,22 @@ function drawMapMarks(){
   /* v140 POI标注大改（TA：还是看不到仓库村长集市——①点太小4px看不见→10px+描边+黑底白字大标签②村长数据源npcs死引用→npcList③公仓探位失败兜底村心④图例⑤侧栏POI列表带方向距离） */
   try{
     const pois=[];
+    const placed=[];   /* v149标签防重叠：矩形占用表，叠了往下挪（TA 11/21「图标太大把该遮的遮住了」——v140为看得见放大到10px+20px标签，村心密集区全叠住） */
     const dot=(x,z,c,name)=>{
       const dx=x*sc,dz=z*sc;
-      g.fillStyle=c;g.beginPath();g.arc(dx,dz,10,0,7);g.fill();
-      g.lineWidth=2.5;g.strokeStyle='#14161e';g.stroke();
-      g.font='bold 15px sans-serif';
+      g.fillStyle=c;g.beginPath();g.arc(dx,dz,6,0,7);g.fill();
+      g.lineWidth=2;g.strokeStyle='#14161e';g.stroke();
+      g.font='bold 13px sans-serif';
       const tw=g.measureText(name).width;
+      let ly=tz2(dz)-10;
+      let tries=0;
+      while(tries<5&&placed.some(r=>ly<r.y+r.h&&ly+18>r.y&&dx+10<r.x+r.w&&dx+10+tw+8>r.x)){ly+=19;tries++;}
+      placed.push({x:dx+10,y:ly,w:tw+8,h:18});
       g.fillStyle='rgba(10,12,18,.72)';
-      g.fillRect(dx+12,tz2(dz)-11,tw+10,20);
-      g.fillStyle='#fff8e8';g.fillText(name,dx+17,tz2(dz)+4);
+      g.fillRect(dx+10,ly,tw+8,18);
+      g.fillStyle='#fff8e8';g.fillText(name,dx+14,ly+13);
     };
-    const tz2=dz=>Math.max(14,Math.min(cv.height-6,dz-4));
+    const tz2=dz=>Math.max(14,Math.min(cv.height-8,dz-4));
     /* 公仓：探位成功用仓口，失败兜底村心（campCenter均值）——地图标注不依赖探位 */
     const ccOf=ci=>{
       try{const c=campCenter(ci==='0'?0:1);return c;}catch(e){return null;}

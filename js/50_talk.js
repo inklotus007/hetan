@@ -710,7 +710,7 @@ function saveBag(){
     const d=data&&typeof data==='object'&&!Array.isArray(data)?data:{};
     d.ta=BACKPACK;
     return ghPut('backpack.json',d,sha,'行囊');
-  }).catch(()=>{});
+  }).catch(()=>{toast('行囊没存上云端——刷新会丢，走动两步它自己重存');});
 }
 function nearCunku(){return cunkuNear()!==null;}   /* v137：改为cunkuNear包装（ haul任务要分仓） */
 function nearStall(){
@@ -837,6 +837,16 @@ function deliverTask(id){
   try{tickCunKuBags();}catch(e){}
   toast('活干完了——'+t.reward+'钱工钱进了行囊');
 }
+function ckHas(g){const ck=MINDS&&MINDS.cunKu;return ck?(ck[g]||0)>0:false;}   /* v149：摊上有没有这货 */
+function ckN(g){const ck=MINDS&&MINDS.cunKu;return ck?(ck[g]||0):0;}
+function marketLine(ns){   /* v149摊位明牌（TA「一买东西就提示什么不足」——丝绸/酒村库根本没这键，挂着价永远不足；改成实时库存+无货指引） */
+  if(!ns)return '<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">走近集市摊才能买卖</div>';
+  const noS=ckHas('silk')?'':'（无货——去织坊「精织丝绸」布2织1，织好拿到摊上卖）';
+  const noW=ckHas('wine')?'':'（无货——酒坊村里还没建，跟村长提）';
+  return '<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">集市摊前——（'+(ns.owner||'')+'的摊）'
+   +'｜摊上：粮×'+ckN('grain')+'（2钱/份）、种子×'+ckN('seed')+'（1钱/份）'
+   +'｜丝绸'+noS+'｜酒'+noW+'</div>';
+}
 function renderBag(){
   const o=document.getElementById('bagPanel');if(!o)return;
   const nc=nearCunku(),ns=nearStall();
@@ -845,11 +855,11 @@ function renderBag(){
    +'<div style="color:#e8d9b0;font-size:15px;margin-bottom:6px">行囊——钱'+BACKPACK.money+' ｜ 粮'+BACKPACK.grain+' 木板'+BACKPACK.board+' 布'+BACKPACK.cloth+' 种子'+BACKPACK.seed+'</div>'
    +'<div style="color:#c8b488;font-size:12px;margin-bottom:4px">'+(nc?'村库就在跟前——存取都行':'走近公仓才能存取村库')+'</div>'
    +['grain','board','cloth','seed'].map(g=>btn(nc,'取'+BAGNAME[g],'bagXfer(\''+g+'\',1)')+btn(nc,'存'+BAGNAME[g],'bagXfer(\''+g+'\',-1)')).join('')
-   +'<div style="color:#c8b488;font-size:12px;margin:6px 0 4px">'+(ns?'集市摊前——（'+(ns.owner||'')+'的摊）：粮2卖1买／种子1／木板1.5／布3／丝绸8买12／酒5买8':'走近集市摊才能买卖')+'</div>'
-   +btn(ns,'买粮','trade(\'buy\',\'grain\',1,2)')+btn(ns,'买种子','trade(\'buy\',\'seed\',1,1)')
-   +btn(ns,'买丝绸','trade(\'buy\',\'silk\',1,12)')+btn(ns,'买酒','trade(\'buy\',\'wine\',1,8)')
-   +btn(ns,'卖木板','trade(\'sell\',\'board\',1,1.5)')+btn(ns,'卖布','trade(\'sell\',\'cloth\',1,3)')
-   +btn(ns,'卖丝绸','trade(\'sell\',\'silk\',1,8)')+btn(ns,'卖酒','trade(\'sell\',\'wine\',1,5)')
+   +marketLine(ns)
+   +btn(ns&&ckHas('grain'),'买粮2钱','trade(\'buy\',\'grain\',1,2)')+btn(ns&&ckHas('seed'),'买种子1钱','trade(\'buy\',\'seed\',1,1)')
+   +btn(ns&&ckHas('silk'),'买丝绸12钱'+(ckHas('silk')?'':'（摊上无货）'),'trade(\'buy\',\'silk\',1,12)')+btn(ns&&ckHas('wine'),'买酒8钱'+(ckHas('wine')?'':'（摊上无货）'),'trade(\'buy\',\'wine\',1,8)')
+   +btn(ns,'卖木板1.5钱','trade(\'sell\',\'board\',1,1.5)')+btn(ns,'卖布3钱','trade(\'sell\',\'cloth\',1,3)')
+   +btn(ns&&BACKPACK.silk>0,'卖丝绸8钱','trade(\'sell\',\'silk\',1,8)')+btn(ns&&BACKPACK.wine>0,'卖酒5钱','trade(\'sell\',\'wine\',1,5)')
    +'<div style="color:#e8d9b0;font-size:14px;margin:8px 0 4px;border-top:1px solid #6a5438;padding-top:6px">坊里的活（亲手干活得东西，地图绿点找坊）</div>'
    +'<div style="color:#d8caa4;font-size:12px;margin:3px 0">'+btn(nearWorkshop('锯木坊'),'帮工锯木（木2→木板1）','workWorkshop(\'锯木坊\')')
    +btn(nearWorkshop('织坊'),'帮工织布（空手→布1）','workWorkshop(\'织坊\')')
