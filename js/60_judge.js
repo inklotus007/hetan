@@ -349,6 +349,50 @@ function judgeHallPos(){
   const c0=campCenter(0);
   return c0?[Math.round(c0[0]),Math.round(c0[1])]:null;
 }
+/* v150：build_done权威重建——账本说建成的，boot必须在世界里立起来。
+   背景（TA「一直在说建造建造，死活没有成效；要不换个方式」）：异步链（提议→JSON→下次boot执行→ack→过账）五天修不完；
+   换方式：build_done本身已是服务器的权威账（去重过的），boot直接照它建实体——账本=世界，不再隔回执链。
+   localStorage的acks只防本session重复执行，跨session重执行（世界重生成）靠villCells查重幂等。 */
+function rebuildBuildDone(){
+  if(!MINDS||!MINDS.build_done||!MINDS.build_done.length||!VH.up)return;
+  const[taA,taR]=taSets();
+  let n=0;
+  for(const d of MINDS.build_done){
+    if(!d||d.ok===false||!d.at||d.at.length<2)continue;
+    if(d.type==='粜粮'||d.type==='籴粮')continue;   /* 账目类不建实体 */
+    const cells=judgeCellsFor(d.type);
+    if(!cells.length)continue;
+    let bx=Math.round(parseFloat(d.at[0])),bz=Math.round(parseFloat(d.at[1]));
+    if(!isFinite(bx)||!isFinite(bz))continue;
+    /* at合法性：3×3地基每格groundY>=1且不水上——不行8向挪（at是执行时选址，可能地形边缘） */
+    const okSpot=(x0,z0)=>{
+      if(!inW(x0,1,z0)||!inW(x0+2,1,z0+2))return false;
+      for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++){if(groundY(x0+dx,z0+dz)<1)return false;}
+      return true;
+    };
+    if(!okSpot(bx,bz)){
+      const DIRS=[[3,0],[-3,0],[0,3],[0,-3],[3,3],[-3,3],[3,-3],[-3,-3]];
+      let alt=null;
+      for(const[ddx,ddz]of DIRS){if(okSpot(bx+ddx,bz+ddz)){alt=[bx+ddx,bz+ddz];break;}}
+      if(!alt){console.log('v150：'+d.type+'at('+(d.at||[])+')周边无合法地基——账实不符已记录，判定者下次重提');continue;}
+      bx=alt[0];bz=alt[1];
+    }
+    const g=groundY(bx,bz);
+    let placedN=0;
+    for(const[dx,dy,dz,t]of cells){
+      const x=bx+dx,y=g+dy,z=bz+dz,k=x+','+y+','+z;
+      if(taA.has(k)||taR.has(k))continue;   /* TA块一格不碰 */
+      if(villCells[k]&&villCells[k]!=='judge')continue;   /* 别家建筑不覆写；judge自己的格子跳过=幂等 */
+      if(villCells[k]!=='judge'&&world[idx(x,y,z)]!==AIR&&world[idx(x,y,z)]!==17&&world[idx(x,y,z)]!==15&&world[idx(x,y,z)]!==16)continue;
+      world[idx(x,y,z)]=t;
+      villCells[k]='judge';
+      placedN++;
+    }
+    if(placedN>0)n++;
+    if(placedN>0&&typeof d.at!=='undefined'&&(d.at[0]!==bx||d.at[1]!==bz))console.log('v150：'+d.type+'挪址重建 at('+d.at+')→('+bx+','+bz+')');
+  }
+  if(n)console.log('v150：build_done权威重建——'+n+'件建筑在世界里立起来（账本=世界）');
+}
 function buildJudgeHall(){
   if(!VH.homes||judgeHallBuilt)return;judgeHallBuilt=true;
   const[taA,taR]=taSets();
@@ -1014,8 +1058,8 @@ function judgeRebuildBoot(){
 }
 function executeJudgePlans(){
   if(!MINDS||!MINDS.build_plans||!MINDS.build_plans.length||!VH.up)return;
-  let acks;
-  try{acks=JSON.parse(localStorage.getItem('hetan_judge_done')||'{}');}catch(e){acks={};}
+  /* v150：acks改session内存——旧版存localStorage记「执行过」，但世界每次boot重新生成（地形fbm），记忆说建过、世界是空的（TA 11/21「地图有坐标走到没有」的根：井建过一次，刷新后永远不再建）。跨session重执行是正确行为：世界是新的就该重新建，幂等靠villCells查重。 */
+  let acks=(typeof window!=='undefined'&&window._judgeAcks)||{};
   const acksOut=[];
   let anyPlaced=false;
   const[taA,taR]=taSets();
@@ -1132,7 +1176,7 @@ function executeJudgePlans(){
   try{if(MINDS.cunKu&&MINDS.cunKu.smithyDay!=null)localStorage.setItem('hetan_smithyDay',String(MINDS.cunKu.smithyDay));}catch(e){}   /* v119：因果链参数落本地——villagerProgress读 */
   try{tickCunKuBags();}catch(e){}   /* v122：MINDS到手粮袋同步 */
   if(Object.keys(acks).length){
-    try{localStorage.setItem('hetan_judge_done',JSON.stringify(acks));}catch(e){}
+    try{window._judgeAcks=acks;}catch(e){}   /* v150：session内存——不再跨page持久（世界重生了就该重执行） */
   }
   if(anyPlaced)rebuild();
   if(acksOut.length)judgePushAck(acksOut);

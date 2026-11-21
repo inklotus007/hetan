@@ -425,6 +425,7 @@ function applyVillagers(now){
   relocateAnimals();   /* v85.1：动物从老地图迁村 */
   buildCunKuWan();   /* v120/v121：两村公仓+名字牌+村长守北岸仓 */
   buildJudgeHall();   /* v147：判定者议事堂——驻地+心跳灯+今日村务+意图牌（TA：不知道他到底在不在） */
+  rebuildBuildDone();   /* v150：build_done权威重建——账本说建成的boot必须立实体（TA 11/21「地图有坐标走到没有」：异步链localStorage记忆vs世界重生打架；换方式——账本=世界） */
   sweepRoadTrees();   /* v121：树挡路日切清 */
   buildStreetLamps();   /* v117：掌灯——路口灯柱+户灯，施工户挂火炬（TA：一到夜晚黑漆漆的） */
   buildFarm();   /* v111：麦田——芒种开镰寒露播种，村历驱动（TA：账上的粮要长在地里） */
