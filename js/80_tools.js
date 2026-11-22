@@ -535,9 +535,11 @@ function drawMapMarks(){
     if(typeof MKT_FLAG!=='undefined'){dot(MKT_FLAG[0],MKT_FLAG[1],'#ffd97a','集市');pois.push({x:MKT_FLAG[0],z:MKT_FLAG[1],name:'集市',c:'#ffd97a'});}
     if(typeof JUDGE_HALL_POS!=='undefined'&&JUDGE_HALL_POS[0]){dot(JUDGE_HALL_POS[0],JUDGE_HALL_POS[1],'#ff9a4a','议事堂');pois.push({x:JUDGE_HALL_POS[0],z:JUDGE_HALL_POS[1],name:'议事堂',c:'#ff9a4a'});}   /* v147：判定者的家上图——地图上有名字，直视有灯 */
     const bd=(typeof MINDS!=='undefined'&&MINDS&&MINDS.build_done)||[];
+    const builtAt=(typeof window!=='undefined'&&window.__builtAt)||{};   /* v150.1：客户端实际落位（挪址后）优先于账本at */
     for(const d of bd){
       let bx=null,bz=null;
-      if(d.at&&d.at.length>=2){bx=parseFloat(d.at[0]);bz=parseFloat(d.at[1]);}   /* v145：ack实际坐标优先——judge_build过账已带at */
+      if(builtAt[d.type]){bx=builtAt[d.type][0];bz=builtAt[d.type][1];}
+      else if(d.at&&d.at.length>=2){bx=parseFloat(d.at[0]);bz=parseFloat(d.at[1]);}   /* v145：ack实际坐标优先——judge_build过账已带at */
       else if(d.ok!==false&&d.near){const nn=d.near.replace(/[()]/g,'').split(',');bx=parseFloat(nn[0]);bz=parseFloat(nn[1]);}
       if(isFinite(bx)&&isFinite(bz)&&bx!=null){dot(bx,bz,'#7fc97f',d.type);pois.push({x:bx,z:bz,name:d.type,c:'#7fc97f'});}
     }

@@ -377,19 +377,38 @@ function rebuildBuildDone(){
       if(!alt){console.log('v150：'+d.type+'at('+(d.at||[])+')周边无合法地基——账实不符已记录，判定者下次重提');continue;}
       bx=alt[0];bz=alt[1];
     }
+    /* v150.1：满格优先——落位区有占用（公仓/宅基等）就8向挪找全空的（真数据实底：井at与公仓重叠9格只成7）；找不到才原位缺角建 */
+    {
+      const occ=(x0,z0)=>{let c=0;for(let dx=0;dx<3;dx++)for(let dz=0;dz<3;dz++){const g=groundY(x0+dx,z0+dz),k=(x0+dx)+','+(g+1)+','+(z0+dz);if(villCells[k]&&villCells[k]!=='judge')c++;}return c;};
+      if(occ(bx,bz)>0){
+        const DIRS2=[[3,0],[-3,0],[0,3],[0,-3],[3,3],[-3,3],[3,-3],[-3,-3]];
+        for(const[ddx,ddz]of DIRS2){
+          const nx=bx+ddx,nz=bz+ddz;
+          if(okSpot(nx,nz)&&occ(nx,nz)===0){console.log('v150.1：'+d.type+'满格挪址 ('+bx+','+bz+')→('+nx+','+nz+')（原位被'+occ(bx,bz)+'格占用）');bx=nx;bz=nz;break;}
+        }
+      }
+    }
     const g=groundY(bx,bz);
     let placedN=0;
     for(const[dx,dy,dz,t]of cells){
       const x=bx+dx,y=g+dy,z=bz+dz,k=x+','+y+','+z;
       if(taA.has(k)||taR.has(k))continue;   /* TA块一格不碰 */
-      if(villCells[k]&&villCells[k]!=='judge')continue;   /* 别家建筑不覆写；judge自己的格子跳过=幂等 */
-      if(villCells[k]!=='judge'&&world[idx(x,y,z)]!==AIR&&world[idx(x,y,z)]!==17&&world[idx(x,y,z)]!==15&&world[idx(x,y,z)]!==16)continue;
+      const vc=villCells[k];
+      if(vc&&vc!=='judge')continue;   /* 别家建筑（公仓/宅基/堂/路）不覆写；judge自己的格子跳过=幂等 */
+      const cur=world[idx(x,y,z)];
+      /* v150.1：自然地表格（草/土/石/沙/水/草丛/花/树冠/树干/雪）可覆写——真村心地表全是草，只落AIR=井9格只成4格（真数据沙箱实底） */
+      if(vc!=='judge'&&cur!==AIR&&cur!==1&&cur!==2&&cur!==3&&cur!==4&&cur!==8&&cur!==5&&cur!==6&&cur!==17&&cur!==15&&cur!==16&&cur!==30)continue;
       world[idx(x,y,z)]=t;
       villCells[k]='judge';
       placedN++;
     }
-    if(placedN>0)n++;
-    if(placedN>0&&typeof d.at!=='undefined'&&(d.at[0]!==bx||d.at[1]!==bz))console.log('v150：'+d.type+'挪址重建 at('+d.at+')→('+bx+','+bz+')');
+    if(placedN>0){
+      n++;
+      /* v150.1：实际落位回传地图——build_done.at是判定者选址，挪址后地图绿点跟着实体走（TA「地图有坐标走到没有」的最后一环） */
+      if(!window.__builtAt)window.__builtAt={};
+      window.__builtAt[d.type]=[bx+1,bz+1];   /* 蓝图3×3中心：bx+1,bz+1 */
+      if(typeof d.at!=='undefined'&&(Math.round(d.at[0])!==bx||Math.round(d.at[1])!==bz))console.log('v150：'+d.type+'挪址重建 at('+d.at+')→('+bx+','+bz+')——地图点已同步');
+    }
   }
   if(n)console.log('v150：build_done权威重建——'+n+'件建筑在世界里立起来（账本=世界）');
 }
@@ -416,6 +435,18 @@ function buildJudgeHall(){
       if(ta<bestTa){bestTa=ta;best=[bx,bz];}
     }
     if(best){wx=best[0];wz=best[1];forced=true;}
+    /* v150.1兜底避让judge：落位区含账本建筑（井）则8向重选——账本优先于堂 */
+    for(let t2=0;t2<8&&best;){
+      let hit=0;
+      for(let dx=0;dx<5;dx++)for(let dz=0;dz<4;dz++){const x=best[0]+dx,z=best[1]+dz;const g2=groundY(x,z);if(g2>=1&&villCells[x+','+g2+','+z]==='judge')hit++;}
+      if(!hit)break;
+      const dd=[[5,0],[-5,0],[0,5],[0,-5],[5,5],[-5,5],[5,-5],[0,-7]][t2];
+      const nb=[Math.round(ax)+dd[0]-2,Math.round(az)+dd[1]-2];
+      let bad=false;
+      for(let dx=0;dx<5&&!bad;dx++)for(let dz=0;dz<4&&!bad;dz++){const x=nb[0]+dx,z=nb[1]+dz;if(!inW(x,1,z)||groundY(x,z)<1)bad=true;}
+      if(!bad)best=nb;
+      t2++;
+    }
     console.log('v149：议事堂兜底——探位40步全废，强制落位('+wx+','+wz+') TA块='+bestTa+'（系统格覆写）');
   }
   JUDGE_HALL_POS[0]=wx+2;JUDGE_HALL_POS[1]=wz+2;
